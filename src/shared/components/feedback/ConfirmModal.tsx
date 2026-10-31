@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { useBackInterceptor } from '@/app/navigation/useBackInterceptor';
 
 export interface ConfirmModalProps {
   isOpen: boolean;
@@ -27,6 +28,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   // Defaults follow the active UI language; explicit props still win so callers
   // that already pass localised text are unaffected.
   const { t } = useLanguage();
+
+  // Android Back dismisses this confirmation instead of leaving the page.
+  useBackInterceptor(onCancel, isOpen);
 
   if (!isOpen) return null;
 

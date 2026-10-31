@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { useBackInterceptor } from '@/app/navigation/useBackInterceptor';
 
 interface Props {
   isOpen: boolean;
@@ -10,6 +11,9 @@ interface Props {
 
 export const DeleteModal: React.FC<Props> = ({ isOpen, onClose, onConfirm }) => {
   const { t } = useLanguage();
+
+  // Android Back cancels the deletion prompt instead of navigating away.
+  useBackInterceptor(onClose, isOpen);
 
   if (!isOpen) return null;
 

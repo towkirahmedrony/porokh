@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Crown, Lock, Timer, X } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { useBackInterceptor } from '@/app/navigation/useBackInterceptor';
 import { localizeDigits } from '@/shared/i18n/messages';
 import Button from '@/shared/components/ui/Button';
 import type { PaywallState } from '../types';
@@ -41,6 +42,9 @@ export const PaywallSheet = ({ state, onClose }: PaywallSheetProps) => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [now, setNow] = useState(() => Date.now());
+
+  // Back closes the paywall sheet, never the page underneath it.
+  useBackInterceptor(onClose, Boolean(state));
 
   const resetAt = state?.reason === 'free_limit' ? state.resetAt ?? null : null;
 

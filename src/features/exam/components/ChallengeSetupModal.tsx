@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { useBackInterceptor } from '@/app/navigation/useBackInterceptor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
 import apiClient from '@/shared/lib/apiClient';
@@ -146,6 +147,9 @@ export const ChallengeSetupModal: React.FC<ChallengeModalProps> = ({
     if (challengeMutation.isPending) return;
     challengeMutation.mutate();
   }, [challengeMutation]);
+
+  // Registered before the early return so hardware Back closes the sheet.
+  useBackInterceptor(onClose, isOpen);
 
   if (!isOpen) return null;
 

@@ -13,6 +13,7 @@ import { PasswordRecoveryRedirect } from '@/features/auth/components/PasswordRec
 import { NativeAuthCallback } from '@/features/auth/components/NativeAuthCallback';
 import { UpdateProvider } from '@/features/app-update/UpdateProvider';
 import { UpdateBanner } from '@/features/app-update/UpdateBanner';
+import { AndroidBackButton } from '@/app/navigation/AndroidBackButton';
 
 // Routes
 import AppRoutes from '@/app/routes/AppRoutes';
@@ -50,6 +51,8 @@ const App: React.FC = () => {
         }}
       />
       <LanguageProvider>
+        {/* Single owner of Android hardware/gesture Back for the whole app. */}
+        <AndroidBackButton />
         <UpdateProvider>
           <PaywallProvider>
             {/* Runs above the guard so a recovery link is honoured even while the

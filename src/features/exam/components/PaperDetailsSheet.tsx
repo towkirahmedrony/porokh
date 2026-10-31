@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { useBackInterceptor } from '@/app/navigation/useBackInterceptor';
 import { pickLang } from '@/shared/i18n/localize';
 import { useAccess } from '@/features/access/hooks/useAccess';
 import {
@@ -35,6 +36,9 @@ const PaperDetailsSheet: React.FC<PaperDetailsSheetProps> = ({
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { isPremium, unlimitedExam, examsLeft } = useAccess();
+
+  // The sheet is only mounted while open, so Back dismisses it.
+  useBackInterceptor(onClose);
 
   if (typeof document === 'undefined') return null;
 

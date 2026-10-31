@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, memo } from 'react';
 import { X, AlertTriangle, MessageSquare, CheckCircle, Bug, FileQuestion } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { useBackInterceptor } from '@/app/navigation/useBackInterceptor';
 import type { AppMessageKey } from '@/shared/i18n/messages';
 import QuestionText from '@/shared/components/content/QuestionText';
 import MathDisplay from '@/shared/components/content/MathDisplay';
@@ -124,6 +125,9 @@ const ReportModal: React.FC<ReportModalProps> = memo(({
       setIsSubmitting(false);
     }
   }, [issueCategory, descriptionText, type, questionData, onSubmit, handleClose, t]);
+
+  // Android Back closes the report form; the submit guard is preserved.
+  useBackInterceptor(handleClose, isOpen);
 
   if (!isOpen) return null;
 

@@ -110,6 +110,7 @@ const bn = {
   'nav.settings': 'সেটিংস',
   'nav.logout': 'লগ আউট',
   'nav.startExam': 'পরীক্ষা শুরু করুন',
+  'nav.pressBackAgainToExit': 'অ্যাপ থেকে বের হতে আবার ব্যাক চাপুন',
   'nav.bottomLabel': 'নিচের নেভিগেশন',
 
   'header.logoAria':
@@ -1606,6 +1607,7 @@ const en: Record<AppMessageKey, string> = {
   'nav.settings': 'Settings',
   'nav.logout': 'Log out',
   'nav.startExam': 'Start exam',
+  'nav.pressBackAgainToExit': 'Press back again to exit',
   'nav.bottomLabel': 'Bottom navigation',
 
   'header.logoAria':
