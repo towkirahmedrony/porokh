@@ -205,13 +205,18 @@ const bn = {
 
   // ------------------------------ App updates -------------------------------
   'settings.sectionUpdates': 'অ্যাপ আপডেট',
-  'settings.checkUpdates': 'আপডেট চেক করুন / হার্ড রিলোড',
+  'settings.checkUpdates': 'অ্যাপ আপডেট',
   'settings.checkUpdatesDescription':
     'সর্বশেষ সংস্করণ খুঁজে নিন, পুরনো ক্যাশ পরিষ্কার করুন এবং দরকার হলে অ্যাপ রিলোড করুন। আপনার পরীক্ষার ডেটা অক্ষত থাকবে।',
   'settings.currentBuild': 'চলমান সংস্করণ: {version}',
   'settings.otaBundle': 'ডাউনলোড করা বান্ডেল: {version}',
   'settings.builtinBuild': 'অ্যাপের ভেতরে থাকা বান্ডেল: {version}',
   'settings.checkUpdatesAction': 'এখনই চেক করুন',
+  'settings.hardReloadAction': 'হার্ড রিলোড',
+  'settings.hardReloadConfirmTitle': 'অ্যাপটি হার্ড রিলোড করবেন?',
+  'settings.hardReloadConfirmBody':
+    'অ্যাপের ফাইল নতুন করে লোড হবে। পরীক্ষা চললে রিলোড হবে না; সংরক্ষিত উত্তর ও লগইন তথ্য মুছবে না।',
+  'settings.hardReloadConfirmAction': 'রিলোড করুন',
   'settings.confirmTitle': 'আপডেট চেক করবেন?',
   'settings.confirmBody':
     'অ্যাপটি নতুন সংস্করণ খুঁজবে এবং প্রয়োজনে রিলোড হবে। ইনডেক্সডবি, অসমাপ্ত পরীক্ষা ও জমা না হওয়া উত্তর মুছে যাবে না।',
@@ -239,7 +244,7 @@ const bn = {
   'settings.apkRequiredNative':
     'এই আপডেটের জন্য অ্যাপের নতুন সংস্করণ দরকার। অনুগ্রহ করে নতুন APK ইনস্টল করুন।',
   'settings.apkRequiredOta':
-    'অ্যাপ আপডেট সার্ভার এখন সাড়া দিচ্ছে না, তবে ওয়েবসাইটে নতুন বিল্ড ({version}) আছে। নতুন APK ইনস্টল করলে সমস্যা সমাধান হবে।',
+    'আপডেট সার্ভার এখন সাড়া দিচ্ছে না। অ্যাপটি ব্যবহার করা যাবে; সার্ভার চালু হলে আবার চেষ্টা করুন।',
   'settings.downloadApk': 'APK ডাউনলোড করুন',
   'settings.contactSupport': 'সহায়তা নিন',
   'settings.blockedExam': 'পরীক্ষা চলছে। আপডেট বা রিলোড এখন নিরাপদ নয়।',
@@ -1697,13 +1702,18 @@ const en: Record<AppMessageKey, string> = {
 
   // ------------------------------ App updates -------------------------------
   'settings.sectionUpdates': 'App updates',
-  'settings.checkUpdates': 'Check for Updates / Hard Reload',
+  'settings.checkUpdates': 'App updates',
   'settings.checkUpdatesDescription':
     'Look for the newest version, clear stale caches and reload the app if needed. Your exam data is kept.',
   'settings.currentBuild': 'Running version: {version}',
   'settings.otaBundle': 'Downloaded bundle: {version}',
   'settings.builtinBuild': 'Bundled in the APK: {version}',
   'settings.checkUpdatesAction': 'Check now',
+  'settings.hardReloadAction': 'Hard reload',
+  'settings.hardReloadConfirmTitle': 'Hard reload the app?',
+  'settings.hardReloadConfirmBody':
+    'The app assets will be refreshed. Reload is blocked during an exam; saved answers and sign-in data are preserved.',
+  'settings.hardReloadConfirmAction': 'Reload now',
   'settings.confirmTitle': 'Check for updates?',
   'settings.confirmBody':
     'The app will look for a newer version and reload if needed. IndexedDB, unfinished exams and unsynced answers are not deleted.',
@@ -1731,7 +1741,7 @@ const en: Record<AppMessageKey, string> = {
   'settings.apkRequiredNative':
     'This update needs a newer app version. Please install the new APK.',
   'settings.apkRequiredOta':
-    'The app update server is not responding, but the website has a newer build ({version}). Installing the new APK resolves it.',
+    'The update server is unavailable. The installed app remains usable; retry when the server is back online.',
   'settings.downloadApk': 'Download APK',
   'settings.contactSupport': 'Contact support',
   'settings.blockedExam': 'An exam is in progress. Updating or reloading now is not safe.',

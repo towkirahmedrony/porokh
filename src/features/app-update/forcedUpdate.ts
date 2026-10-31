@@ -55,7 +55,7 @@ export type ForcedUpdateOutcome =
       build: BuildInfo;
       remote: RemoteManifest | null;
       apkUrl: string | null;
-      reason: 'bundled_assets' | 'native_incompatible' | 'ota_unavailable';
+      reason: 'bundled_assets' | 'native_incompatible';
     }
   | { kind: 'blocked'; reasons: OtaBlockReason[] }
   | { kind: 'rejected'; reasons: OtaBlockReason[] }
@@ -71,6 +71,8 @@ export type OtaDriver = {
 
 export type ForcedUpdateDeps = {
   build: BuildInfo;
+  /** Installed Android app version, distinct from the running JS bundle version. */
+  nativeVersion?: string | null;
   /** True inside the Capacitor shell. */
   native: boolean;
   otaAvailable: boolean;
@@ -83,6 +85,72 @@ export type ForcedUpdateDeps = {
   isOnline: () => boolean;
   now?: () => number;
   onStage?: (stage: ForcedUpdateStage) => void;
+};
+
+export type HardReloadDeps = {
+  build: BuildInfo;
+  native: boolean;
+  otaAvailable: boolean;
+  reloadNative?: () => Promise<boolean>;
+  purgeCaches?: () => Promise<CachePurgeReport>;
+  performReload?: (pending: PendingReload) => void;
+  performNativeReload?: () => void;
+  isExamBusy: () => boolean;
+  isOnline: () => boolean;
+  now?: () => number;
+};
+
+/** Reload assets without checking/publishing an update or touching app data. */
+export const runHardReload = async (
+  deps: HardReloadDeps
+): Promise<ForcedUpdateOutcome> => {
+  if (deps.isExamBusy()) return { kind: 'blocked', reasons: ['exam_active'] };
+  if (!deps.isOnline()) return { kind: 'offline' };
+
+  try {
+    if (deps.native) {
+      let providerReloaded = false;
+      if (deps.otaAvailable && deps.reloadNative) {
+        try {
+          providerReloaded = await deps.reloadNative();
+        } catch {
+          // Fall back to reloading the WebView; do not touch provider bundles.
+        }
+        if (!providerReloaded && deps.isExamBusy()) {
+          return { kind: 'blocked', reasons: ['exam_active'] };
+        }
+      }
+      if (!providerReloaded) {
+        if (deps.performNativeReload) deps.performNativeReload();
+        else if (typeof window !== 'undefined') window.location.reload();
+      }
+      return {
+        kind: 'reloaded',
+        targetBuildId: deps.build.buildId,
+        targetVersion: deps.build.version,
+      };
+    }
+
+    await (deps.purgeCaches ?? (() => purgeFrontendCaches()))();
+    const pending: PendingReload = {
+      targetBuildId: deps.build.buildId,
+      targetVersion: deps.build.version,
+      fromBuildId: deps.build.buildId,
+      at: (deps.now ?? Date.now)(),
+    };
+    if (deps.performReload) deps.performReload(pending);
+    else defaultReload(pending);
+    return {
+      kind: 'reloaded',
+      targetBuildId: pending.targetBuildId,
+      targetVersion: pending.targetVersion,
+    };
+  } catch (error) {
+    return {
+      kind: 'server_error',
+      detail: error instanceof Error ? error.message : String(error),
+    };
+  }
 };
 
 const NATIVE_FAILURES: OtaBlockReason[] = [
@@ -111,9 +179,9 @@ const phaseStage = (phase: OtaPhase): ForcedUpdateStage | null => {
   }
 };
 
-const nativeTooOld = (build: BuildInfo, remote: RemoteManifest | null): boolean => {
-  if (!remote?.minNativeVersion) return false;
-  const order = compareNumericVersions(remote.minNativeVersion, build.version);
+const nativeTooOld = (nativeVersion: string | null | undefined, remote: RemoteManifest | null): boolean => {
+  if (!nativeVersion || !remote?.minNativeVersion) return false;
+  const order = compareNumericVersions(remote.minNativeVersion, nativeVersion);
   return order === null ? false : order > 0;
 };
 
@@ -221,20 +289,18 @@ const runOtaPath = async (
 
     case 'check_failed':
     case 'download_failed': {
-      // The provider is unreachable or refuses this device. If the deployment
-      // is newer anyway, the only usable recovery is a new APK.
+      // A different website build (including a commit-only difference on the
+      // same semver) does not prove that this APK is incompatible. Only an
+      // explicit native-version floor can establish that a new APK is needed.
       const manifest = await deps.checkManifest();
       if (manifest.ok) {
-        const comparison = compareBuilds(deps.build, manifest.manifest);
-        if (comparison.status === 'update_available') {
+        if (nativeTooOld(deps.nativeVersion, manifest.manifest)) {
           return {
             kind: 'apk_required',
             build: deps.build,
             remote: manifest.manifest,
             apkUrl: manifest.manifest.apkUrl,
-            reason: nativeTooOld(deps.build, manifest.manifest)
-              ? 'native_incompatible'
-              : 'ota_unavailable',
+            reason: 'native_incompatible',
           };
         }
       }
@@ -283,7 +349,7 @@ const runBundledPath = async (
     build: deps.build,
     remote: manifest.manifest,
     apkUrl: manifest.manifest.apkUrl,
-    reason: nativeTooOld(deps.build, manifest.manifest)
+    reason: nativeTooOld(deps.nativeVersion, manifest.manifest)
       ? 'native_incompatible'
       : 'bundled_assets',
   };

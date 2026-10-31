@@ -1,11 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, RefreshCw, Wrench, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/shared/lib/apiClient';
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage';
 import { STORAGE_KEYS } from '@/shared/constants/storageKeys';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { pickLang } from '@/shared/i18n/localize';
+import { getExamActivities, subscribeExamActivity } from '@/features/app-update/examActivity';
+import { isExamBusy } from '@/features/app-update/activationGate';
+import { currentBuild } from '@/features/app-update/buildInfo';
+import { purgeFrontendCaches, reloadFromNetwork, writePendingReload } from '@/features/app-update/cacheRecovery';
+import { Capacitor } from '@capacitor/core';
+import { useOta } from '@/features/app-update/UpdateProvider';
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || "1.0.0";
 
@@ -33,12 +40,17 @@ interface SystemGuardProps {
 
 export const SystemGuard: React.FC<SystemGuardProps> = ({ children }) => {
   const { language, t } = useLanguage();
+  const location = useLocation();
+  const ota = useOta();
+  const [, setActivityRevision] = useState(0);
+  useEffect(() => subscribeExamActivity(() => setActivityRevision((value) => value + 1)), []);
+  const examBusy = isExamBusy(getExamActivities(), location.pathname);
   const [dismissedNoticeId, setDismissedNoticeId] = useLocalStorage<string | null>(STORAGE_KEYS.DISMISSED_NOTICE, null);
 
   const { data: configs, isLoading } = useQuery<SystemConfig[]>({
     queryKey: ['system-configs'],
     queryFn: async () => {
-      const response = await apiClient.get('/app-builder/configs');
+      const response = await apiClient.get('/system/configs');
       return response.data?.data || [];
     },
     refetchInterval: 5 * 60 * 1000,
@@ -77,11 +89,27 @@ export const SystemGuard: React.FC<SystemGuardProps> = ({ children }) => {
   }, [configs, language]);
 
   const handleUpdate = async () => {
-    if ('caches' in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
+    if (isExamBusy(getExamActivities(), window.location.pathname)) return;
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await ota.initialize();
+        if (ota.getSnapshot().available) {
+          const reloaded = await ota.reloadCurrent();
+          if (reloaded || isExamBusy(getExamActivities(), window.location.pathname)) return;
+        }
+      } catch {
+        // A plugin failure must not block the WebView reload fallback.
+      }
     }
-    window.location.reload();
+    await purgeFrontendCaches();
+    const build = currentBuild();
+    writePendingReload({
+      targetBuildId: build.buildId,
+      targetVersion: build.version,
+      fromBuildId: build.buildId,
+      at: Date.now(),
+    });
+    reloadFromNetwork({ location: window.location });
   };
 
   const currentNoticeId = globalNotice ? `${globalNotice.title}-${globalNotice.message}` : null;
@@ -99,7 +127,7 @@ export const SystemGuard: React.FC<SystemGuardProps> = ({ children }) => {
     );
   }
 
-  if (forceUpdate) {
+  if (forceUpdate && !examBusy) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center fixed inset-0 z-[9999] bg-app text-text-primary">
         <AlertTriangle className="w-16 h-16 text-text-secondary mb-6" />

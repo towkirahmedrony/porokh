@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { currentBuild, type BuildInfo } from './buildInfo';
 import {
   reloadFromNetwork,
@@ -12,7 +13,12 @@ import {
 import { getExamActivities, isExamRoute } from './examActivity';
 import { OTA_EXAM_ROUTE_PATTERNS } from './config';
 import { fetchRemoteManifest } from './remoteManifest';
-import { runForcedUpdate, type ForcedUpdateOutcome, type ForcedUpdateStage } from './forcedUpdate';
+import {
+  runForcedUpdate,
+  runHardReload,
+  type ForcedUpdateOutcome,
+  type ForcedUpdateStage,
+} from './forcedUpdate';
 import { useOta } from './UpdateProvider';
 
 export type ForcedUpdateState = {
@@ -24,6 +30,7 @@ export type ForcedUpdateState = {
   outcome: ForcedUpdateOutcome | null;
   reloadOutcome: ReloadOutcome | null;
   run: () => Promise<ForcedUpdateOutcome>;
+  hardReload: () => Promise<ForcedUpdateOutcome>;
   reset: () => void;
   /** Version reported by the OTA provider, when one is active. */
   otaVersion: string | null;
@@ -66,9 +73,18 @@ export const useForcedUpdate = (): ForcedUpdateState => {
       // and guessing "no OTA plugin" would wrongly tell the user to reinstall.
       await ota.initialize();
       const available = native && ota.getSnapshot().available;
+      let nativeVersion = ota.getSnapshot().nativeVersion ?? null;
+      if (native) {
+        try {
+          nativeVersion = (await App.getInfo()).version || nativeVersion;
+        } catch {
+          // Unknown native version cannot prove APK incompatibility.
+        }
+      }
 
       const result = await runForcedUpdate({
         build,
+        nativeVersion,
         native,
         otaAvailable: available,
         ota: available ? ota : null,
@@ -84,6 +100,38 @@ export const useForcedUpdate = (): ForcedUpdateState => {
         onStage: setStage,
       });
 
+      setOutcome(result);
+      return result;
+    } finally {
+      setRunning(false);
+      setStage(null);
+    }
+  }, [build, location.pathname, native, ota]);
+
+  const hardReload = useCallback(async (): Promise<ForcedUpdateOutcome> => {
+    setRunning(true);
+    setOutcome(null);
+    setStage('reloading');
+    setReloadOutcome(null);
+
+    try {
+      if (native) await ota.initialize();
+      const available = native && ota.getSnapshot().available;
+      const result = await runHardReload({
+        build,
+        native,
+        otaAvailable: available,
+        reloadNative: available ? () => ota.reloadCurrent() : undefined,
+        isExamBusy: () =>
+          getExamActivities().length > 0 ||
+          isExamRoute(location.pathname, OTA_EXAM_ROUTE_PATTERNS),
+        isOnline,
+        performReload: (pending) => {
+          writePendingReload(pending);
+          reloadFromNetwork({ location: window.location });
+        },
+        performNativeReload: () => window.location.reload(),
+      });
       setOutcome(result);
       return result;
     } finally {
@@ -119,6 +167,7 @@ export const useForcedUpdate = (): ForcedUpdateState => {
     outcome,
     reloadOutcome,
     run,
+    hardReload,
     reset,
     otaVersion: ota.currentVersion,
     builtinVersion: ota.builtinVersion,

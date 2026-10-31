@@ -93,6 +93,8 @@ export type OtaController = {
   activate: () => Promise<ActivationDecision>;
   /** Last-resort recovery: abandon OTA bundles and run the APK's own build. */
   restoreBuiltin: () => Promise<boolean>;
+  /** Reload the active provider-managed bundle without changing bundle selection. */
+  reloadCurrent: () => Promise<boolean>;
   evaluateActivation: (auto?: boolean) => Promise<ActivationDecision>;
   handleForeground: () => void;
   handleOnline: () => void;
@@ -107,6 +109,7 @@ const defaultSnapshot = (channel: string): OtaSnapshot => ({
   phase: 'disabled',
   currentVersion: null,
   builtinVersion: null,
+  nativeVersion: null,
   channel,
   latestVersion: null,
   stagedVersion: null,
@@ -233,6 +236,7 @@ export const createOtaController = (
     patch({
       currentVersion: current.bundle.version || null,
       activatedVersion: current.bundle.version || snapshot.activatedVersion,
+      nativeVersion: current.native || null,
     });
     return current.bundle.version || null;
   };
@@ -589,6 +593,7 @@ export const createOtaController = (
     patch({
       currentVersion: installedVersion,
       builtinVersion: installedNative,
+      nativeVersion: current?.native || null,
       channel: providerChannel,
     });
 
@@ -910,6 +915,13 @@ export const createOtaController = (
       patch({ error: messageOf(error) });
       return false;
     }
+  };
+
+  const reloadCurrent = async (): Promise<boolean> => {
+    if (!snapshot.available) return false;
+    if (isExamBusy(getExamActivities(), getPathname())) return false;
+    await adapter.reload();
+    return true;
   };
 
   /**
@@ -1311,6 +1323,7 @@ export const createOtaController = (
     checkForUpdate,
     activate,
     restoreBuiltin,
+    reloadCurrent,
     evaluateActivation,
     handleForeground,
     handleOnline,

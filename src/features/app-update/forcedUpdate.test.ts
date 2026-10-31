@@ -1,14 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { runForcedUpdate, type ForcedUpdateDeps, type OtaDriver } from './forcedUpdate.ts';
+import {
+  runForcedUpdate,
+  runHardReload,
+  type ForcedUpdateDeps,
+  type OtaDriver,
+} from './forcedUpdate.ts';
 import { normalizeBuildInfo } from './buildInfo.ts';
 import type { RemoteManifest } from './remoteManifest.ts';
 import type { ActivationDecision, OtaSnapshot } from './types.ts';
 import type { PendingReload } from './cacheRecovery.ts';
 
 const BUILD = normalizeBuildInfo({
-  version: '1.0.0',
+  version: '1.0.1',
   buildId: 'local-build',
   channel: 'production-android',
   builtAt: '2026-10-27T00:00:00.000Z',
@@ -25,7 +30,7 @@ const REMOTE: RemoteManifest = {
 
 const SAME_REMOTE: RemoteManifest = {
   ...REMOTE,
-  version: '1.0.0',
+  version: '1.0.1',
   buildId: 'local-build',
 };
 
@@ -103,6 +108,63 @@ test('offline is reported before any request or reload', async () => {
 
   assert.deepEqual(outcome, { kind: 'offline' });
   assert.equal(reloaded, false);
+});
+
+test('hard reload refuses to interrupt an active exam', async () => {
+  let reloaded = false;
+  const outcome = await runHardReload({
+    build: BUILD,
+    native: false,
+    otaAvailable: false,
+    isExamBusy: () => true,
+    isOnline: () => true,
+    performReload: () => { reloaded = true; },
+  });
+  assert.deepEqual(outcome, { kind: 'blocked', reasons: ['exam_active'] });
+  assert.equal(reloaded, false);
+});
+
+test('hard reload on web purges frontend caches and reloads without a manifest check', async () => {
+  let purged = 0;
+  const captured: { pending: PendingReload | null } = { pending: null };
+  const outcome = await runHardReload({
+    build: BUILD,
+    native: false,
+    otaAvailable: false,
+    isExamBusy: () => false,
+    isOnline: () => true,
+    now: () => 42,
+    purgeCaches: async () => {
+      purged += 1;
+      return { deletedCaches: [], skipped: false, workerActivated: false, workerChecked: false };
+    },
+    performReload: (value) => { captured.pending = value; },
+  });
+  assert.equal(outcome.kind, 'reloaded');
+  assert.equal(purged, 1);
+  assert.equal(captured.pending?.targetBuildId, BUILD.buildId);
+  assert.equal(captured.pending?.fromBuildId, BUILD.buildId);
+  assert.equal(captured.pending?.at, 42);
+});
+
+test('hard reload on Android delegates to the OTA provider without purging caches', async () => {
+  let providerReloads = 0;
+  let purges = 0;
+  const outcome = await runHardReload({
+    build: BUILD,
+    native: true,
+    otaAvailable: true,
+    reloadNative: async () => { providerReloads += 1; return true; },
+    isExamBusy: () => false,
+    isOnline: () => true,
+    purgeCaches: async () => {
+      purges += 1;
+      return { deletedCaches: [], skipped: false, workerActivated: false, workerChecked: false };
+    },
+  });
+  assert.equal(outcome.kind, 'reloaded');
+  assert.equal(providerReloads, 1);
+  assert.equal(purges, 0);
 });
 
 test('an exam in progress is never interrupted', async () => {
@@ -267,17 +329,91 @@ test('native OTA: a bundle built for a newer native app asks for an APK', async 
   assert.equal(outcome.kind === 'apk_required' && outcome.reason, 'native_incompatible');
 });
 
-test('native OTA: an unreachable provider plus a newer website falls back to APK', async () => {
+test('native OTA: an unreachable provider plus a different website build is a server error, not an APK requirement', async () => {
   const { driver } = fakeOta({
     phase: { phase: 'check_failed', error: 'null_channel_data' },
   });
 
   const outcome = await runForcedUpdate(
-    baseDeps({ native: true, otaAvailable: true, ota: driver })
+    baseDeps({
+      native: true,
+      otaAvailable: true,
+      ota: driver,
+      checkManifest: async () => ({
+        ok: true,
+        manifest: { ...REMOTE, version: BUILD.version },
+        sourceUrl: 'https://x/version.json',
+      }),
+    })
+  );
+
+  assert.equal(outcome.kind, 'server_error');
+});
+
+test('native OTA: an unreachable provider requires an APK only when the native version floor proves incompatibility', async () => {
+  const { driver } = fakeOta({
+    phase: { phase: 'check_failed', error: 'network' },
+  });
+
+  const outcome = await runForcedUpdate(
+    baseDeps({
+      native: true,
+      nativeVersion: '1.0.0',
+      otaAvailable: true,
+      ota: driver,
+      checkManifest: async () => ({
+        ok: true,
+        manifest: { ...REMOTE, minNativeVersion: '1.1.0' },
+        sourceUrl: 'https://x/version.json',
+      }),
+    })
   );
 
   assert.equal(outcome.kind, 'apk_required');
-  assert.equal(outcome.kind === 'apk_required' && outcome.reason, 'ota_unavailable');
+  assert.equal(outcome.kind === 'apk_required' && outcome.reason, 'native_incompatible');
+});
+
+test('native OTA: download failure does not imply an APK update when the native floor is compatible', async () => {
+  const { driver } = fakeOta({
+    phase: { phase: 'download_failed', error: 'network' },
+  });
+
+  const outcome = await runForcedUpdate(
+    baseDeps({
+      native: true,
+      otaAvailable: true,
+      ota: driver,
+      checkManifest: async () => ({
+        ok: true,
+        manifest: { ...REMOTE, version: BUILD.version },
+        sourceUrl: 'https://x/version.json',
+      }),
+    })
+  );
+
+  assert.equal(outcome.kind, 'server_error');
+});
+
+test('native OTA: compatibility uses installed APK version rather than frontend bundle version', async () => {
+  const { driver } = fakeOta({
+    phase: { phase: 'check_failed', error: 'network' },
+  });
+
+  const outcome = await runForcedUpdate(
+    baseDeps({
+      native: true,
+      nativeVersion: '1.2.0',
+      otaAvailable: true,
+      ota: driver,
+      checkManifest: async () => ({
+        ok: true,
+        manifest: { ...REMOTE, minNativeVersion: '1.1.0' },
+        sourceUrl: 'https://x/version.json',
+      }),
+    })
+  );
+
+  assert.equal(outcome.kind, 'server_error');
 });
 
 test('native OTA: an unreachable provider with nothing newer is a server error', async () => {

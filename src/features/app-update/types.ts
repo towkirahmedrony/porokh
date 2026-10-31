@@ -157,6 +157,8 @@ export type OtaSnapshot = {
   phase: OtaPhase;
   currentVersion: string | null;
   builtinVersion: string | null;
+  /** Installed native APK/runtime version reported by the Capgo adapter. */
+  nativeVersion?: string | null;
   channel: string;
   latestVersion: string | null;
   stagedVersion: string | null;

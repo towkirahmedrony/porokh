@@ -84,6 +84,7 @@ export const ForcedUpdateCard: React.FC = () => {
     outcome,
     reloadOutcome,
     run,
+    hardReload,
     reset,
     otaVersion,
     builtinVersion,
@@ -91,14 +92,16 @@ export const ForcedUpdateCard: React.FC = () => {
     restoreBuiltin,
   } = useForcedUpdate();
 
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<'check' | 'reload' | null>(null);
   const [restoreConfirming, setRestoreConfirming] = useState(false);
 
   const start = useCallback(async () => {
-    setConfirming(false);
+    const action = confirming;
+    setConfirming(null);
     setRestoreConfirming(false);
-    await run();
-  }, [run]);
+    if (action === 'reload') await hardReload();
+    else await run();
+  }, [confirming, hardReload, run]);
 
   const outcomeCard = (result: ForcedUpdateOutcome) => {
     switch (result.kind) {
@@ -146,12 +149,9 @@ export const ForcedUpdateCard: React.FC = () => {
         );
 
       case 'apk_required': {
-        const bodyKey: AppMessageKey =
-          result.reason === 'native_incompatible'
-            ? 'settings.apkRequiredNative'
-            : result.reason === 'ota_unavailable'
-              ? 'settings.apkRequiredOta'
-              : 'settings.apkRequiredBundled';
+        const bodyKey: AppMessageKey = result.reason === 'native_incompatible'
+          ? 'settings.apkRequiredNative'
+          : 'settings.apkRequiredBundled';
 
         return (
           <Card
@@ -256,31 +256,44 @@ export const ForcedUpdateCard: React.FC = () => {
       </div>
 
       {!confirming && !running ? (
-        <button
-          type="button"
-          onClick={() => {
-            reset();
-            setConfirming(true);
-          }}
-          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white"
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          {t('settings.checkUpdatesAction')}
-        </button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              setConfirming('check');
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            {t('settings.checkUpdatesAction')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              setConfirming('reload');
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border-color px-3 py-2 text-sm font-semibold text-text-primary"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            {t('settings.hardReloadAction')}
+          </button>
+        </div>
       ) : null}
 
       {confirming && !running ? (
         <div className="mt-3 rounded-xl border border-border-color bg-surface-elevated p-3">
           <p className="text-sm font-semibold text-text-primary">
-            {t('settings.confirmTitle')}
+            {t(confirming === 'reload' ? 'settings.hardReloadConfirmTitle' : 'settings.confirmTitle')}
           </p>
           <p className="mt-1 text-xs leading-5 text-text-secondary">
-            {t('settings.confirmBody')}
+            {t(confirming === 'reload' ? 'settings.hardReloadConfirmBody' : 'settings.confirmBody')}
           </p>
           <div className="mt-3 flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setConfirming(false)}
+              onClick={() => setConfirming(null)}
               className="rounded-lg border border-border-color px-3 py-1.5 text-xs font-medium text-text-secondary"
             >
               {t('settings.confirmCancel')}
@@ -290,7 +303,7 @@ export const ForcedUpdateCard: React.FC = () => {
               onClick={() => void start()}
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white"
             >
-              {t('settings.confirmYes')}
+              {t(confirming === 'reload' ? 'settings.hardReloadConfirmAction' : 'settings.confirmYes')}
             </button>
           </div>
         </div>

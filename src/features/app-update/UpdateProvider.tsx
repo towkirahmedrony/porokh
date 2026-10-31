@@ -29,6 +29,7 @@ type UpdateContextValue = OtaSnapshot & {
   /** Current controller state, for callers that need it right after an await. */
   getSnapshot: () => OtaSnapshot;
   restoreBuiltin: () => Promise<boolean>;
+  reloadCurrent: () => Promise<boolean>;
 };
 
 const UpdateContext = createContext<UpdateContextValue | null>(null);
@@ -112,6 +113,10 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
     () => controller.restoreBuiltin(),
     [controller]
   );
+  const reloadCurrent = useCallback(
+    () => controller.reloadCurrent(),
+    [controller]
+  );
 
   const value = useMemo<UpdateContextValue>(
     () => ({
@@ -122,6 +127,7 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
       initialize,
       getSnapshot,
       restoreBuiltin,
+      reloadCurrent,
     }),
     [
       snapshot,
@@ -131,6 +137,7 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
       initialize,
       getSnapshot,
       restoreBuiltin,
+      reloadCurrent,
     ]
   );
 
