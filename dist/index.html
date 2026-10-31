@@ -206,12 +206,12 @@
         }
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-CzKR8vnf.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-Bd9jnFfy.js">
-    <link rel="modulepreload" crossorigin href="/assets/query-vendor-DUpYYjyi.js">
+    <script type="module" crossorigin src="/assets/index-CjjI3J1j.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-Bh4Q7a3k.js">
+    <link rel="modulepreload" crossorigin href="/assets/query-vendor-DN9oo5i3.js">
     <link rel="modulepreload" crossorigin href="/assets/supabase-vendor-ClVc2H6D.js">
-    <link rel="modulepreload" crossorigin href="/assets/firebase-vendor-slmyC3m8.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-Ca9AMvyS.css">
+    <link rel="modulepreload" crossorigin href="/assets/firebase-vendor-DOIGKryF.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-Cih0J4s_.css">
   </head>
 
   <body>
@@ -222,5 +222,23 @@
     </noscript>
 
     <div id="root"></div>
+    <script>
+      // If a module fails before React mounts (for example a missing build-time
+      // environment variable), the WebView would otherwise stay completely
+      // blank. Surface the failure instead of hiding it; detailed errors are
+      // still written to the console by the browser.
+      window.addEventListener('error', function () {
+        var root = document.getElementById('root');
+        if (!root || root.childElementCount > 0) return;
+
+        root.innerHTML =
+          '<div style="display:flex;min-height:100vh;align-items:center;justify-content:center;padding:2rem;font-family:system-ui,sans-serif;text-align:center;">' +
+          '<div>' +
+          '<h1 style="font-size:1.25rem;margin:0 0 0.75rem;">App could not start</h1>' +
+          '<p style="margin:0 0 1rem;color:#475569;">A required build configuration is missing. Please update to the latest version or try again.</p>' +
+          '<button type="button" onclick="window.location.reload()" style="padding:0.65rem 1.25rem;border:0;border-radius:0.5rem;background:#2563EB;color:#fff;font-weight:600;">Reload</button>' +
+          '</div></div>';
+      });
+    </script>
   </body>
 </html>

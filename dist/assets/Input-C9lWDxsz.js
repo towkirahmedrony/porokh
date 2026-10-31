@@ -1,0 +1,1 @@
+import{j as n}from"./query-vendor-DN9oo5i3.js";const s=({className:r="",...t})=>n.jsx("input",{className:`w-full px-4 py-2 rounded-lg transition-all focus:outline-none bg-input-bg border border-input-border text-text-primary focus:ring-2 focus:ring-focus-ring ${r}`,...t});export{s as I};
