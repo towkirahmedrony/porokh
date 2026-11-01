@@ -16,6 +16,7 @@ import type { AppMessageKey } from '@/shared/i18n/messages';
 import type { OtaBlockReason } from './types';
 import type { ForcedUpdateOutcome } from './forcedUpdate';
 import { describeBuild } from './buildInfo';
+import { OtaDiagnosticsPanel } from './OtaDiagnosticsPanel';
 import { useForcedUpdate } from './useForcedUpdate';
 
 const STAGE_MESSAGES = {
@@ -382,6 +383,8 @@ export const ForcedUpdateCard: React.FC = () => {
           )}
         </div>
       ) : null}
+
+      <OtaDiagnosticsPanel currentBuild={describeBuild(build)} />
     </div>
   );
 };
