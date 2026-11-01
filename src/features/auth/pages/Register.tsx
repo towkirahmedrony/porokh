@@ -1,18 +1,13 @@
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import RegisterForm from '../components/RegisterForm';
-import RegisterSuccess from '../components/RegisterSuccess';
+import { rememberPendingVerificationEmail } from '../utils/pendingVerification';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 
 export default function Register() {
-  const [successEmail, setSuccessEmail] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get('ref');
   const { t } = useLanguage();
-
-  if (successEmail) {
-    return <RegisterSuccess email={successEmail} />;
-  }
 
   return (
     <div className="min-h-screen w-full flex flex-col justify-center items-center px-4 py-8 bg-app">
@@ -42,7 +37,16 @@ export default function Register() {
         </div>
 
         {/* Registration Form */}
-        <RegisterForm onSuccess={setSuccessEmail} defaultRefCode={refCode} />
+        <RegisterForm
+          defaultRefCode={refCode}
+          onSuccess={(email) => {
+            rememberPendingVerificationEmail(email);
+            navigate('/auth/verify-email', {
+              replace: true,
+              state: { email },
+            });
+          }}
+        />
 
         {/* Bottom Login Link (Text Only) */}
         <div className="w-full mt-6 flex justify-center items-center text-[15px]">

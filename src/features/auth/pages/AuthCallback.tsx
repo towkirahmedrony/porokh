@@ -41,7 +41,8 @@ export default function AuthCallback() {
         }
 
         window.history.replaceState(null, '', window.location.pathname);
-        navigate('/dashboard/home', { replace: true });
+        // The onboarding gate sends users who already finished straight home.
+        navigate('/onboarding', { replace: true });
       } catch {
         if (active) {
           window.history.replaceState(null, '', window.location.pathname);

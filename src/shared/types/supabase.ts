@@ -2727,6 +2727,7 @@ export type Database = {
           last_active_at: string | null
           last_streak_reset_at: string | null
           mastery: Json | null
+          onboarding_completed_at: string | null
           phone_number: string | null
           pvp_matches_played: number | null
           pvp_matches_won: number | null
@@ -2775,6 +2776,7 @@ export type Database = {
           last_active_at?: string | null
           last_streak_reset_at?: string | null
           mastery?: Json | null
+          onboarding_completed_at?: string | null
           phone_number?: string | null
           pvp_matches_played?: number | null
           pvp_matches_won?: number | null
@@ -2823,6 +2825,7 @@ export type Database = {
           last_active_at?: string | null
           last_streak_reset_at?: string | null
           mastery?: Json | null
+          onboarding_completed_at?: string | null
           phone_number?: string | null
           pvp_matches_played?: number | null
           pvp_matches_won?: number | null
@@ -4310,6 +4313,16 @@ export type Database = {
         Returns: undefined
       }
       cancel_group_battle: { Args: { p_battle_id: string }; Returns: undefined }
+      complete_onboarding: {
+        Args: {
+          p_class_level?: string | null
+          p_full_name: string
+          p_group?: string | null
+          p_study_goal?: string | null
+          p_username: string
+        }
+        Returns: undefined
+      }
       consume_quota: {
         Args: { p_feature: string; p_reference_id: string; p_user_id: string }
         Returns: Json
@@ -4500,6 +4513,10 @@ export type Database = {
       has_permission: { Args: { p_action: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_group_member: { Args: { _group_id: string }; Returns: boolean }
+      is_username_available: {
+        Args: { p_username: string }
+        Returns: boolean
+      }
       join_group: {
         Args: { p_group_id: string; p_join_code?: string }
         Returns: string

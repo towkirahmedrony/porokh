@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { MailWarning, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import HomeSkeleton from "@/features/dashboard/components/HomeSkeleton";
 
 import { useAuth } from "../hooks/useAuth";
+import { readPendingVerificationEmail } from "../utils/pendingVerification";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 
 interface PermissionGuardProps {
@@ -14,40 +15,6 @@ interface PermissionGuardProps {
 
 function PermissionGuardLoader() {
   return <HomeSkeleton />;
-}
-
-function EmailVerificationRequired({ email }: { email?: string | null }) {
-  const { t } = useLanguage();
-
-  return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center p-6 text-center">
-      <div className="mb-6 rounded-full bg-accent/10 p-4">
-        <MailWarning className="h-12 w-12 text-accent" aria-hidden="true" />
-      </div>
-
-      <h2 className="mb-3 text-2xl font-bold text-text-primary">
-        {t('auth.verifyEmailRequired')}
-      </h2>
-
-      <p className="mb-6 max-w-md text-[15px] leading-relaxed text-text-secondary">
-        {t('auth.verifyEmailIntro')}
-        {email ? (
-          <strong className="break-all text-primary">{email}</strong>
-        ) : (
-          t('auth.field.emailWord')
-        )}
-        {t('auth.verifyEmailOutro')}
-      </p>
-
-      <button
-        type="button"
-        onClick={() => window.location.reload()}
-        className="rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-95"
-      >
-        {t('auth.iHaveVerified')}
-      </button>
-    </div>
-  );
 }
 
 function AccessDenied() {
@@ -67,14 +34,20 @@ export function PermissionGuard({
   requiredPermission,
   fallback,
 }: PermissionGuardProps) {
-  const { user, role, permissions, loading } = useAuth();
+  const { user, role, permissions, loading, profileLoading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  // The onboarding flag comes from the profile row, not the JWT. Wait for the
+  // enrichment pass so a returning user is never mistaken for a new one.
+  if (loading || (user && profileLoading)) {
     return <PermissionGuardLoader />;
   }
 
   if (!user) {
+    if (readPendingVerificationEmail()) {
+      return <Navigate to="/auth/verify-email" replace />;
+    }
+
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
@@ -83,7 +56,17 @@ export function PermissionGuard({
   const isEmailVerified = Boolean(user.email_confirmed_at) || Boolean(isOAuthUser);
 
   if (!isEmailVerified) {
-    return <EmailVerificationRequired email={user.email} />;
+    return (
+      <Navigate
+        to="/auth/verify-email"
+        state={{ email: user.email }}
+        replace
+      />
+    );
+  }
+
+  if (!user.onboarding_completed_at) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   const safePermissions = Array.isArray(permissions) ? permissions : [];

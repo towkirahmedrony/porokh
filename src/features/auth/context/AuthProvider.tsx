@@ -75,7 +75,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, institution, total_xp, language_preference')
+        .select(
+          'id, username, full_name, avatar_url, institution, total_xp, language_preference, class_level, group, study_goal, onboarding_completed_at'
+        )
         .eq('id', authUser.id)
         .single();
 
@@ -99,6 +101,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           avatar_url: profile.avatar_url ?? (prev as any).avatar_url ?? null,
           institution: profile.institution ?? (prev as any).institution ?? null,
           language_preference: profile.language_preference ?? (prev as any).language_preference ?? 'bn',
+          class_level: profile.class_level ?? null,
+          group: profile.group ?? null,
+          study_goal: profile.study_goal ?? null,
+          onboarding_completed_at: profile.onboarding_completed_at ?? null,
           total_xp: profile.total_xp ?? 0,
           total_score: profile.total_xp ?? 0
         } as AppUser;
@@ -133,7 +139,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const updateUserProfile = useCallback((userId: string, profile: Pick<AppUser, 'full_name' | 'username' | 'avatar_url'>) => {
+  const updateUserProfile = useCallback((
+    userId: string,
+    profile: Partial<
+      Pick<
+        AppUser,
+        | 'full_name'
+        | 'username'
+        | 'avatar_url'
+        | 'class_level'
+        | 'group'
+        | 'study_goal'
+        | 'onboarding_completed_at'
+      >
+    >
+  ) => {
     setUser((current) => current?.id === userId ? { ...current, ...profile } : current);
   }, []);
 

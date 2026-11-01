@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import ModelPageHeader from '../components/ModelPageHeader';
 import { useModelTrackSummary } from '../hooks/useModelTrackSummary';
 import {
@@ -13,9 +14,17 @@ import {
 
 const ModelCategoryPage: React.FC = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const summaryQuery = useModelTrackSummary();
+
+  const goalTrack = isModelTrack(user?.study_goal) ? user.study_goal : null;
+  const orderedTracks = goalTrack
+    ? [...MODEL_TRACK_CONFIGS].sort(
+        (a, b) => Number(b.value === goalTrack) - Number(a.value === goalTrack)
+      )
+    : MODEL_TRACK_CONFIGS;
 
   const legacyTrack = searchParams.get('category');
   if (isModelTrack(legacyTrack)) {
@@ -34,9 +43,10 @@ const ModelCategoryPage: React.FC = () => {
           {t('exam.modelChooseTrack')}
         </h2>
 
-        {MODEL_TRACK_CONFIGS.map((config) => {
+        {orderedTracks.map((config) => {
           const Icon = config.icon;
           const count = summaryQuery.data?.[config.value].paperCount ?? 0;
+          const isGoalTrack = config.value === goalTrack;
 
           return (
             <button
@@ -52,8 +62,15 @@ const ModelCategoryPage: React.FC = () => {
               </span>
 
               <span className="min-w-0 flex-1">
-                <span className="block font-['Hind_Siliguri'] text-lg font-bold text-text-primary">
-                  {t(config.labelKey)}
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-['Hind_Siliguri'] text-lg font-bold text-text-primary">
+                    {t(config.labelKey)}
+                  </span>
+                  {isGoalTrack && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+                      {t('exam.yourGoal')}
+                    </span>
+                  )}
                 </span>
                 <span className="mt-0.5 block text-sm text-text-secondary">
                   {t(config.descriptionKey)}

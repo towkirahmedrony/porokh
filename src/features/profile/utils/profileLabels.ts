@@ -14,6 +14,9 @@ const BOARD_LABELS_BN: Record<string, string> = {
 
 const GROUP_LABELS_BN: Record<string, string> = {
   Science: 'বিজ্ঞান',
+  Commerce: 'ব্যবসায় শিক্ষা',
+  Arts: 'মানবিক',
+  // Keep rows written before the onboarding flow readable.
   Business: 'ব্যবসায় শিক্ষা',
   Humanities: 'মানবিক',
 };

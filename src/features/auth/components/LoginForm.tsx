@@ -7,6 +7,7 @@ import { supabase } from "@/shared/lib/supabase";
 import { buildApiUrl } from "@/shared/lib/apiConfig";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import type { AppMessageKey } from "@/shared/i18n/messages";
+import { rememberPendingVerificationEmail } from "../utils/pendingVerification";
 
 type LoginFormData = {
   identifier: string;
@@ -115,7 +116,10 @@ export default function LoginForm() {
           const backendUrl = buildApiUrl('/auth/save-device');
           await fetch(backendUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${data.session.access_token}`,
+            },
             body: JSON.stringify({
               user_id: data.session.user.id,
               device_name: /Mobile|Android|iP(hone|od|ad)/.test(navigator.userAgent) ? 'Mobile Device' : 'Desktop/Laptop',
@@ -131,7 +135,17 @@ export default function LoginForm() {
       navigate(redirectPath, { replace: true });
     },
     onError: (error) => {
-      setCustomError(getLoginErrorMessage(error));
+      const key = getLoginErrorMessage(error);
+      const identifier = formData.identifier.trim().toLowerCase();
+
+      if (
+        key === "auth.login.emailNotVerified" &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)
+      ) {
+        rememberPendingVerificationEmail(identifier);
+      }
+
+      setCustomError(key);
     },
   });
 
@@ -188,7 +202,18 @@ export default function LoginForm() {
           className="mb-4 flex items-start gap-2 rounded-lg border border-accent bg-surface-elevated p-3 text-sm text-accent"
         >
           <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-          <p className="font-medium">{t(customError)}</p>
+          <div className="min-w-0">
+            <p className="font-medium">{t(customError)}</p>
+            {customError === "auth.login.emailNotVerified" && (
+              <Link
+                to="/auth/verify-email"
+                state={{ email: formData.identifier.trim().toLowerCase() }}
+                className="mt-1 inline-block text-sm font-bold underline underline-offset-2"
+              >
+                {t("auth.login.verifyCta")}
+              </Link>
+            )}
+          </div>
         </div>
       )}
 

@@ -11,5 +11,5 @@ export const EDUCATION_BOARDS = [
 ];
 
 export const CLASS_LEVELS = ['HSC 24', 'HSC 25', 'HSC 26'];
-export const ACADEMIC_GROUPS = ['Science', 'Business', 'Humanities'];
+export const ACADEMIC_GROUPS = ['Science', 'Commerce', 'Arts'];
 export const GENDERS = ['Male', 'Female', 'Other'];

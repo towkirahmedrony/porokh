@@ -5,8 +5,7 @@ import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 
 import { supabase } from '@/shared/lib/supabase';
-import { DASHBOARD_HOME_PATH, LOGIN_PATH } from '../utils/changePasswordUtils';
-import {
+import { LOGIN_PATH } from '../utils/changePasswordUtils';import {
   OAUTH_ERROR_EVENT,
   createCallbackGuard,
   createNativeCallbackHandler,
@@ -40,7 +39,8 @@ export function NativeAuthCallback() {
           // The custom tab may already be gone after the deep-link redirect.
         }
 
-        navigate(DASHBOARD_HOME_PATH, { replace: true });
+        // The onboarding gate sends users who already finished straight home.
+        navigate('/onboarding', { replace: true });
       },
       onError: (messageKey) => {
         void Browser.close().catch(() => undefined);

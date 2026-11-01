@@ -610,6 +610,7 @@ const bn = {
   'exam.track.engineeringDesc': 'বুয়েটসহ ইঞ্জিনিয়ারিং ভর্তি',
   'exam.track.varsityDesc': 'বিশ্ববিদ্যালয় ভর্তি প্রস্তুতি',
   'exam.trackComingSoon': 'শিগগিরই আসছে',
+  'exam.yourGoal': 'তোমার লক্ষ্য',
   'exam.noTrackPapers': 'এই ক্যাটাগরিতে এখনো পরীক্ষা নেই',
   'exam.noTrackPapersHint': 'শিগগিরই যোগ হবে। অন্য ক্যাটাগরি দেখুন।',
   'exam.fullModelTest': 'ফুল মডেল টেস্ট',
@@ -942,6 +943,8 @@ const bn = {
   'auth.register.weakPassword':
     'পাসওয়ার্ডটি যথেষ্ট শক্তিশালী নয়। অন্তত {min} অক্ষর ব্যবহার করুন।',
   'auth.register.failed': 'অ্যাকাউন্ট তৈরি করতে সমস্যা হচ্ছে। আবার চেষ্টা করুন।',
+  'auth.register.rateLimited':
+    'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।',
   'auth.register.usernamePlaceholder': 'ইউজারনেম (ছোট হাতের অক্ষর ও সংখ্যা)',
   'auth.register.passwordPlaceholder': 'পাসওয়ার্ড (অন্তত {min} অক্ষরের)',
 
@@ -951,6 +954,71 @@ const bn = {
   'auth.verifyEmailClickLink': 'লিংকে ক্লিক করে অ্যাকাউন্ট ভেরিফাই করো।',
   'auth.checkSpamFolder': 'মেইল না পেলে Spam বা Junk ফোল্ডার দেখো।',
   'auth.welcomeToPorokh': 'পরোখে স্বাগতম',
+
+  'auth.verify.title': 'ইমেইল ভেরিফাই করো',
+  'auth.verify.sentTo': '{email} ঠিকানায় একটি ভেরিফিকেশন লিংক পাঠানো হয়েছে।',
+  'auth.verify.openLink': 'লিংকে ট্যাপ করে অ্যাকাউন্ট ভেরিফাই করো।',
+  'auth.verify.spam': 'মেইল না পেলে Spam বা Junk ফোল্ডার দেখো।',
+  'auth.verify.resend': 'আবার পাঠাও',
+  'auth.verify.resendIn': 'আবার পাঠাও ({seconds} সেকেন্ড)',
+  'auth.verify.resending': 'পাঠানো হচ্ছে...',
+  'auth.verify.resent': 'নতুন ভেরিফিকেশন লিংক পাঠানো হয়েছে।',
+  'auth.verify.resendFailed': 'লিংক পাঠানো যাচ্ছে না। আবার চেষ্টা করুন।',
+  'auth.verify.tooMany':
+    'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।',
+  'auth.verify.alreadyVerified': 'ইমেইলটি ইতিমধ্যে ভেরিফাই করা হয়েছে।',
+  'auth.verify.checking': 'ভেরিফিকেশন চেক করা হচ্ছে...',
+  'auth.verify.notYet':
+    'এখনো ভেরিফাই হয়নি। ইমেইলের লিংকটি খুলে আবার চেষ্টা করো।',
+  'auth.verify.loginToContinue':
+    'ভেরিফাই হয়ে থাকলে এখন ইমেইল ও পাসওয়ার্ড দিয়ে লগ ইন করো।',
+  'auth.verify.iVerified': 'আমি ভেরিফাই করেছি',
+  'auth.verify.wrongEmail': 'ভুল ইমেইল? ফিরে যান',
+  'auth.verify.missingEmail':
+    'ইমেইলের ঠিকানা পাওয়া যায়নি। আবার সাইন আপ করো।',
+  'auth.verify.backToLogin': 'লগ ইন করো',
+  'auth.login.verifyCta': 'ভেরিফিকেশন পেজে যান',
+
+  'onboarding.stepLabel': 'ধাপ {current}/{total}',
+  'onboarding.step1Title': 'তোমার পরিচয় দাও',
+  'onboarding.step1Subtitle':
+    'নাম আর ইউজারনেম দিয়ে তোমার প্রোফাইল তৈরি করো।',
+  'onboarding.fullNameLabel': 'পুরো নাম',
+  'onboarding.fullNamePlaceholder': 'যেমন: তৌকির আহমেদ',
+  'onboarding.usernameLabel': 'ইউজারনেম',
+  'onboarding.usernamePlaceholder': 'towkir_ahmed',
+  'onboarding.usernameHint':
+    'ছোট হাতের a–z, 0–9 এবং _ ব্যবহার করো। ৩–২০ অক্ষর।',
+  'onboarding.usernameChecking': 'দেখা হচ্ছে...',
+  'onboarding.usernameAvailable': 'পাওয়া যাবে',
+  'onboarding.usernameTakenStatus': 'নেওয়া হয়ে গেছে',
+  'onboarding.usernameCheckFailed':
+    'ইউজারনেম চেক করা যাচ্ছে না। আবার চেষ্টা করুন।',
+  'onboarding.usernameRequired': 'ইউজারনেম লিখুন।',
+  'onboarding.usernameInvalid':
+    'ইউজারনেমে শুধু ছোট হাতের a–z, 0–9 এবং _ ব্যবহার করো (৩–২০ অক্ষর)।',
+  'onboarding.usernameWait':
+    'ইউজারনেম চেক শেষ হওয়া পর্যন্ত অপেক্ষা করো।',
+  'onboarding.nameRequired': 'পুরো নাম লিখুন।',
+  'onboarding.nameInvalid': 'পুরো নাম ২–৮০ অক্ষরের হতে হবে।',
+  'onboarding.next': 'পরবর্তী',
+  'onboarding.step2Title': 'তোমার প্রস্তুতি',
+  'onboarding.step2Subtitle':
+    'পছন্দের বিষয়গুলো বেছে নাও, চাইলে পরে করো।',
+  'onboarding.classLabel': 'শ্রেণি',
+  'onboarding.groupLabel': 'বিভাগ',
+  'onboarding.goalLabel': 'লক্ষ্য',
+  'onboarding.skip': 'পরে করব',
+  'onboarding.finish': 'শেষ করো',
+  'onboarding.back': 'পেছনে',
+  'onboarding.saving': 'সেভ হচ্ছে...',
+  'onboarding.saveFailed': 'সেভ করা যাচ্ছে না। আবার চেষ্টা করুন।',
+  'onboarding.sessionExpired': 'সেশনের মেয়াদ শেষ। আবার লগ ইন করো।',
+  'onboarding.goalInvalid': 'লক্ষ্যটি সঠিক নয়। আবার বেছে নাও।',
+  'onboarding.usernameTaken':
+    'এই ইউজারনেমটি নেওয়া হয়ে গেছে। অন্য একটি বেছে নাও।',
+  'onboarding.optional': 'ঐচ্ছিক',
+  'onboarding.selected': 'নির্বাচিত',
 
   'auth.verifyEmailRequired': 'ইমেইল ভেরিফিকেশন প্রয়োজন',
   'auth.verifyEmailIntro': 'এগিয়ে যাওয়ার আগে অনুগ্রহ করে আপনার ',
@@ -2113,6 +2181,7 @@ const en: Record<AppMessageKey, string> = {
   'exam.track.engineeringDesc': 'BUET and engineering admission',
   'exam.track.varsityDesc': 'University admission preparation',
   'exam.trackComingSoon': 'Coming soon',
+  'exam.yourGoal': 'Your goal',
   'exam.noTrackPapers': 'No exams in this category yet',
   'exam.noTrackPapersHint': 'They will be added soon. Try another category.',
   'exam.fullModelTest': 'Full model test',
@@ -2445,6 +2514,8 @@ const en: Record<AppMessageKey, string> = {
   'auth.register.weakPassword':
     'The password is not strong enough. Use at least {min} characters.',
   'auth.register.failed': 'Could not create the account. Please try again.',
+  'auth.register.rateLimited':
+    'Too many attempts. Please wait a while and try again.',
   'auth.register.usernamePlaceholder': 'Username (lowercase letters and numbers)',
   'auth.register.passwordPlaceholder': 'Password (at least {min} characters)',
 
@@ -2453,6 +2524,68 @@ const en: Record<AppMessageKey, string> = {
   'auth.verifyEmailClickLink': 'Click the link to verify your account.',
   'auth.checkSpamFolder': "If you cannot find it, check the Spam or Junk folder.",
   'auth.welcomeToPorokh': 'Welcome to Porokh',
+
+  'auth.verify.title': 'Verify your email',
+  'auth.verify.sentTo': 'A verification link has been sent to {email}.',
+  'auth.verify.openLink': 'Tap the link to verify your account.',
+  'auth.verify.spam': 'If it is not there, check the Spam or Junk folder.',
+  'auth.verify.resend': 'Send again',
+  'auth.verify.resendIn': 'Send again ({seconds}s)',
+  'auth.verify.resending': 'Sending...',
+  'auth.verify.resent': 'A new verification link has been sent.',
+  'auth.verify.resendFailed': 'Could not send the link. Please try again.',
+  'auth.verify.tooMany':
+    'Too many attempts. Please wait a while and try again.',
+  'auth.verify.alreadyVerified': 'This email is already verified.',
+  'auth.verify.checking': 'Checking verification...',
+  'auth.verify.notYet':
+    'Not verified yet. Open the link in your email and try again.',
+  'auth.verify.loginToContinue':
+    'If you already verified it, log in with your email and password.',
+  'auth.verify.iVerified': "I've verified it",
+  'auth.verify.wrongEmail': 'Wrong email? Go back',
+  'auth.verify.missingEmail':
+    'No email address was found. Please sign up again.',
+  'auth.verify.backToLogin': 'Log in',
+  'auth.login.verifyCta': 'Open the verification page',
+
+  'onboarding.stepLabel': 'Step {current} of {total}',
+  'onboarding.step1Title': 'Introduce yourself',
+  'onboarding.step1Subtitle': 'Create your profile with a name and username.',
+  'onboarding.fullNameLabel': 'Full name',
+  'onboarding.fullNamePlaceholder': 'e.g. Towkir Ahmed',
+  'onboarding.usernameLabel': 'Username',
+  'onboarding.usernamePlaceholder': 'towkir_ahmed',
+  'onboarding.usernameHint':
+    'Use lowercase a–z, 0–9 and _. 3–20 characters.',
+  'onboarding.usernameChecking': 'Checking...',
+  'onboarding.usernameAvailable': 'Available',
+  'onboarding.usernameTakenStatus': 'Already taken',
+  'onboarding.usernameCheckFailed':
+    'Could not check the username. Please try again.',
+  'onboarding.usernameRequired': 'Enter a username.',
+  'onboarding.usernameInvalid':
+    'Usernames may only use lowercase a–z, 0–9 and _ (3–20 characters).',
+  'onboarding.usernameWait': 'Wait for the username check to finish.',
+  'onboarding.nameRequired': 'Enter your full name.',
+  'onboarding.nameInvalid': 'Full name must be 2–80 characters.',
+  'onboarding.next': 'Next',
+  'onboarding.step2Title': 'Your preparation',
+  'onboarding.step2Subtitle': 'Pick what fits you, or do it later.',
+  'onboarding.classLabel': 'Class',
+  'onboarding.groupLabel': 'Group',
+  'onboarding.goalLabel': 'Goal',
+  'onboarding.skip': 'Do it later',
+  'onboarding.finish': 'Finish',
+  'onboarding.back': 'Back',
+  'onboarding.saving': 'Saving...',
+  'onboarding.saveFailed': 'Could not save. Please try again.',
+  'onboarding.sessionExpired': 'Your session expired. Log in again.',
+  'onboarding.goalInvalid': 'That goal is not valid. Pick another one.',
+  'onboarding.usernameTaken':
+    'This username is already taken. Choose another one.',
+  'onboarding.optional': 'Optional',
+  'onboarding.selected': 'Selected',
 
   'auth.verifyEmailRequired': 'Email verification required',
   'auth.verifyEmailIntro': 'Before continuing, please check the inbox of your ',

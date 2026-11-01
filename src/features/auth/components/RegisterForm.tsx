@@ -4,7 +4,6 @@ import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { supabase } from "@/shared/lib/supabase";
 import { buildApiUrl } from "@/shared/lib/apiConfig";
-import { isValidUsername, normalizeUsername } from "../utils/username";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import type { AppMessageKey } from "@/shared/i18n/messages";
 
@@ -14,18 +13,9 @@ interface RegisterFormProps {
 }
 
 type RegisterFormData = {
-  fullName: string;
-  username: string;
   email: string;
   password: string;
   confirmPassword: string;
-};
-
-type NormalizedRegisterData = {
-  fullName: string;
-  username: string;
-  email: string;
-  password: string;
 };
 
 /** A message is kept as a key plus its interpolation values so the rendered
@@ -36,8 +26,6 @@ type FormMessage = {
 };
 
 const INITIAL_FORM_DATA: RegisterFormData = {
-  fullName: "",
-  username: "",
   email: "",
   password: "",
   confirmPassword: "",
@@ -45,44 +33,28 @@ const INITIAL_FORM_DATA: RegisterFormData = {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
-const MAX_FULL_NAME_LENGTH = 80;
-const MAX_USERNAME_LENGTH = 20;
-const MIN_USERNAME_LENGTH = 3;
 
-function normalizeRegisterData(userData: RegisterFormData): NormalizedRegisterData {
-  return {
-    fullName: userData.fullName.trim().replace(/\s+/g, " "),
-    username: normalizeUsername(userData.username),
-    email: userData.email.trim().toLowerCase(),
-    password: userData.password,
-  };
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 function getRegisterErrorMessage(error: unknown): FormMessage {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
 
-  if (
-    message.includes("profiles_username_key") ||
-    message.includes("duplicate key value") ||
-    (message.includes("username") && message.includes("duplicate"))
-  ) {
-    return { key: "auth.register.usernameTaken" };
-  }
-
-  if (
-    message.includes("user already registered") ||
-    message.includes("already registered") ||
-    (message.includes("email") && message.includes("already"))
-  ) {
+  if (message.includes("email_already_registered") || message.includes("already registered")) {
     return { key: "auth.register.blocked" };
   }
 
-  if (message.includes("valid_username") || message.includes("username")) {
-    return { key: "auth.register.usernameFormat" };
+  if (message.includes("weak_password") || message.includes("password")) {
+    return { key: "auth.register.weakPassword", values: { min: MIN_PASSWORD_LENGTH } };
   }
 
-  if (message.includes("password")) {
-    return { key: "auth.register.weakPassword", values: { min: MIN_PASSWORD_LENGTH } };
+  if (message.includes("rate_limited") || message.includes("too many")) {
+    return { key: "auth.register.rateLimited" };
+  }
+
+  if (message.includes("validation_failed") || message.includes("valid email")) {
+    return { key: "auth.register.emailInvalid" };
   }
 
   return { key: "auth.register.failed" };
@@ -99,53 +71,46 @@ export default function RegisterForm({
 
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterFormData) => {
-      const normalizedData = normalizeRegisterData(userData);
+      const email = normalizeEmail(userData.email);
 
-      const { data, error } = await supabase.auth.signUp({
-        email: normalizedData.email,
-        password: normalizedData.password,
-        options: {
-          data: {
-            full_name: normalizedData.fullName,
-            username: normalizedData.username,
-            referred_by_code: defaultRefCode?.trim() || null,
-          },
-        },
+      const response = await fetch(buildApiUrl("/auth/register"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password: userData.password,
+          referred_by_code: defaultRefCode?.trim() || null,
+        }),
       });
 
-      if (error) {
-        throw error;
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          typeof body?.code === "string"
+            ? body.code
+            : typeof body?.message === "string"
+              ? body.message
+              : "registration failed"
+        );
       }
 
-      if (data.user?.identities && data.user.identities.length === 0) {
-        throw new Error("user already registered");
+      const accessToken = body?.session?.access_token;
+      const refreshToken = body?.session?.refresh_token;
+
+      if (typeof accessToken === "string" && typeof refreshToken === "string") {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error) throw new Error("registration failed");
       }
 
-      return {
-        ...data,
-        submittedEmail: normalizedData.email,
-      };
+      return { email };
     },
-    onSuccess: async (data) => {
-      // 🚀 [NEW] IP Address ও Device Info ব্যাকএন্ডে সেভ করার জন্য API Call
-      if (data.user) {
-        try {
-          const backendUrl = buildApiUrl('/auth/save-device');
-          await fetch(backendUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_id: data.user.id,
-              device_name: /Mobile|Android|iP(hone|od|ad)/.test(navigator.userAgent) ? 'Mobile Device' : 'Desktop/Laptop',
-              os_or_browser: navigator.userAgent
-            })
-          });
-        } catch (err) {
-          console.error('IP saving process failed:', err);
-        }
-        
-        onSuccess(data.submittedEmail);
-      }
+    onSuccess: (data) => {
+      onSuccess(data.email);
     },
     onError: (error) => {
       setCustomError(getRegisterErrorMessage(error));
@@ -158,7 +123,7 @@ export default function RegisterForm({
   const updateField = (field: keyof RegisterFormData, value: string) => {
     setFormData((prev) => ({
       ...prev,
-      [field]: field === "username" ? value.trim().toLowerCase() : value,
+      [field]: value,
     }));
 
     if (customError) {
@@ -167,50 +132,21 @@ export default function RegisterForm({
   };
 
   const validateForm = (): FormMessage | null => {
-    const normalizedData = normalizeRegisterData(formData);
-    const confirmPassword = formData.confirmPassword;
+    const email = normalizeEmail(formData.email);
 
-    if (!normalizedData.fullName) {
-      return { key: "auth.register.nameRequired" };
-    }
-
-    if (normalizedData.fullName.length < 2) {
-      return { key: "auth.register.nameMin" };
-    }
-
-    if (normalizedData.fullName.length > MAX_FULL_NAME_LENGTH) {
-      return { key: "auth.register.nameMax", values: { max: MAX_FULL_NAME_LENGTH } };
-    }
-
-    if (!normalizedData.username) {
-      return { key: "auth.register.usernameRequired" };
-    }
-
-    if (normalizedData.username.length < MIN_USERNAME_LENGTH) {
-      return { key: "auth.register.usernameMin", values: { min: MIN_USERNAME_LENGTH } };
-    }
-
-    if (normalizedData.username.length > MAX_USERNAME_LENGTH) {
-      return { key: "auth.register.usernameMax", values: { max: MAX_USERNAME_LENGTH } };
-    }
-
-    if (!isValidUsername(normalizedData.username)) {
-      return { key: "auth.register.usernameFormat" };
-    }
-
-    if (!normalizedData.email) {
+    if (!email) {
       return { key: "auth.register.emailRequired" };
     }
 
-    if (!EMAIL_PATTERN.test(normalizedData.email)) {
+    if (!EMAIL_PATTERN.test(email)) {
       return { key: "auth.register.emailInvalid" };
     }
 
-    if (normalizedData.password.length < MIN_PASSWORD_LENGTH) {
+    if (formData.password.length < MIN_PASSWORD_LENGTH) {
       return { key: "auth.register.passwordMin", values: { min: MIN_PASSWORD_LENGTH } };
     }
 
-    if (normalizedData.password !== confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       return { key: "auth.register.passwordMismatch" };
     }
 
@@ -252,39 +188,6 @@ export default function RegisterForm({
       )}
 
       <form onSubmit={handleRegister} className="space-y-3" noValidate>
-        <input
-          id="register-full-name"
-          type="text"
-          required
-          autoComplete="name"
-          maxLength={MAX_FULL_NAME_LENGTH}
-          disabled={isPending}
-          className={inputClasses}
-          placeholder={t('auth.field.fullName')}
-          value={formData.fullName}
-          onChange={(event) => updateField("fullName", event.target.value)}
-          aria-invalid={Boolean(customError)}
-          aria-describedby={errorId}
-        />
-
-        <input
-          id="register-username"
-          type="text"
-          required
-          autoComplete="username"
-          inputMode="text"
-          pattern="[a-z0-9_]+"
-          minLength={MIN_USERNAME_LENGTH}
-          maxLength={MAX_USERNAME_LENGTH}
-          disabled={isPending}
-          className={`${inputClasses} lowercase`}
-          placeholder={t('auth.register.usernamePlaceholder')}
-          value={formData.username}
-          onChange={(event) => updateField("username", event.target.value)}
-          aria-invalid={Boolean(customError)}
-          aria-describedby={errorId}
-        />
-
         <input
           id="register-email"
           type="email"

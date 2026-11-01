@@ -2,7 +2,10 @@ import { STORAGE_KEYS, StorageKey, LOCAL_STORAGE_SYNC_EVENT } from '../constants
 
 // Strictly enforce StorageKey or the dynamic exam progress prefix
 // Removing the unsafe (string & {}) to maintain strict architectural rules
-export type AnyStorageKey = StorageKey | `${typeof STORAGE_KEYS.EXAM_PROGRESS_PREFIX}${string}`;
+export type AnyStorageKey =
+  | StorageKey
+  | `${typeof STORAGE_KEYS.EXAM_PROGRESS_PREFIX}${string}`
+  | `${typeof STORAGE_KEYS.SIGNUP_ONBOARDING_DRAFT_PREFIX}${string}`;
 
 export const StorageUtils = {
   get: <T>(key: AnyStorageKey, fallback: T | null = null): T | null => {

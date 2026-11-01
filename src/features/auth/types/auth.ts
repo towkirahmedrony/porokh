@@ -12,6 +12,10 @@ export interface AppUser extends SupabaseUser {
   avatar_url?: string | null;
   institution?: string | null;
   language_preference?: 'bn' | 'en' | string | null;
+  class_level?: string | null;
+  group?: string | null;
+  study_goal?: string | null;
+  onboarding_completed_at?: string | null;
 }
 
 export interface AuthContextType {
@@ -21,7 +25,21 @@ export interface AuthContextType {
   profileLoading: boolean;
   role: string;
   permissions: string[];
-  updateUserProfile: (userId: string, profile: Pick<AppUser, 'full_name' | 'username' | 'avatar_url'>) => void;
+  updateUserProfile: (
+    userId: string,
+    profile: Partial<
+      Pick<
+        AppUser,
+        | 'full_name'
+        | 'username'
+        | 'avatar_url'
+        | 'class_level'
+        | 'group'
+        | 'study_goal'
+        | 'onboarding_completed_at'
+      >
+    >
+  ) => void;
   /** Keeps the in-memory profile in sync after the language switch persists it. */
   setLanguagePreference: (language: 'bn' | 'en') => void;
   signOut: () => Promise<void>;

@@ -11,6 +11,7 @@ import {
 // Shared Components & Layouts
 import { MainLayout } from '@/shared/components/layout/MainLayout';
 import { PermissionGuard } from '@/features/auth/components/PermissionGuard';
+import { OnboardingGate } from '@/features/onboarding/components/OnboardingGate';
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -40,6 +41,8 @@ const Streak = lazy(() => import('@/features/dashboard/pages/Streak'));
 const Marketplace = lazy(() => import('@/features/economy/pages/Marketplace'));
 const Login = lazy(() => import('@/features/auth/pages/Login'));
 const Register = lazy(() => import('@/features/auth/pages/Register'));
+const VerifyEmail = lazy(() => import('@/features/auth/pages/VerifyEmail'));
+const Onboarding = lazy(() => import('@/features/onboarding/pages/Onboarding'));
 const AuthCallback = lazy(() => import('@/features/auth/pages/AuthCallback'));
 const ForgotPassword = lazy(() => import('@/features/auth/pages/ForgotPassword'));
 const ChangePassword = lazy(() => import('@/features/auth/pages/ChangePassword'));
@@ -213,6 +216,7 @@ const AppRoutes: React.FC = () => {
         {/* --- Public auth routes --- */}
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/register" element={<Register />} />
+        <Route path="/auth/verify-email" element={<VerifyEmail />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
 
@@ -238,6 +242,16 @@ const AppRoutes: React.FC = () => {
         <Route path="/faq" element={<FAQ />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/data-deletion" element={<DataDeletion />} />
+
+        {/* --- Post-verification onboarding (outside the app shell) --- */}
+        <Route
+          path="/onboarding"
+          element={
+            <OnboardingGate>
+              <Onboarding />
+            </OnboardingGate>
+          }
+        />
 
         {/* --- Fullscreen protected routes --- */}
         <Route

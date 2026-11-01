@@ -2,6 +2,9 @@ export const STORAGE_KEYS = {
   THEME: 'app_theme',
   LANGUAGE: 'app_language',
   ONBOARDING_SEEN: 'onboarding_seen',
+  SIGNUP_PENDING_VERIFICATION: 'porokh_pending_verification_email',
+  SIGNUP_VERIFY_RESEND_AT: 'porokh_verification_resend_at',
+  SIGNUP_ONBOARDING_DRAFT_PREFIX: 'porokh_onboarding_draft_',
   SIDEBAR_COLLAPSED: 'sidebar_collapsed',
   // Kept stable on purpose: the stored device id is sent to the backend as
   // x-device-id, and in-progress exam data must survive the rebrand.
