@@ -1,26 +1,5 @@
 name: OTA release (GitHub Releases)
 
-# Build, validate and (optionally) publish a signed Capgo-format bundle to the
-# public distribution repository (towkirahmedrony/porokh-ota).
-#
-# Two entry points:
-#   * push to main      → build + validate only. Nothing reaches users unless the
-#                         repository variable OTA_AUTO_PUBLISH is "true".
-#   * workflow_dispatch → explicit publish control, still gated by `publish`.
-#
-# Nothing here accepts a manual version override: the bundle version is derived
-# from package.json plus a monotonic release revision (the commit count), and the
-# minimum native version comes from ota.config.json. That is what makes a release
-# unique, correctly ordered, and compatible with the APKs already installed.
-#
-# Distribution model:
-#   * one immutable GitHub Release per bundle, tag `ota-<channel>-r<revision>`
-#   * assets: encrypted bundle, manifest.json, manifest.json.sig, SHA256SUMS
-#   * channels/<channel>.json in porokh-ota is the only mutable document
-#   * the RSA key-v2 key encrypts/signs the bundle (verified natively by the APK)
-#   * the Ed25519 key signs the channel pointer (verified by the app before it
-#     trusts any metadata)
-# No Capgo cloud API is contacted at any point.
 on:
   workflow_dispatch:
     inputs:
@@ -32,15 +11,18 @@ on:
         options:
           - production-android
           - staging-android
+
       publish:
         description: Publish to porokh-ota (off = build + validate only)
         required: true
         default: false
         type: boolean
+
       rollback_to:
         description: Existing release tag to point the channel at (rollback)
         required: false
         type: string
+
   push:
     branches:
       - main
@@ -59,42 +41,46 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: production-android
+    timeout-minutes: 30
+
+    # Staging and Production use separate GitHub Environments.
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'staging-android' && 'staging-android' || 'production-android' }}
+
     env:
       OTA_CHANNEL: ${{ github.event.inputs.channel || 'production-android' }}
       VITE_OTA_CHANNEL: ${{ github.event.inputs.channel || 'production-android' }}
       POROKH_OTA_CHANNEL: ${{ github.event.inputs.channel || 'production-android' }}
-      # One identity per commit, shared by the Vercel deployment, the APK build
-      # and this bundle, so the app can tell "same build" from "new build".
+
       POROKH_BUILD_ID: ${{ github.sha }}
-      # The bundled web app must refuse unsigned releases in exactly the builds
-      # whose APK embeds a public key.
+
       VITE_OTA_REQUIRE_SIGNATURE: 'true'
       POROKH_OTA_REQUIRE_SIGNATURE: 'true'
+
       CAPGO_PUBLIC_KEY: ${{ vars.CAPGO_PUBLIC_KEY }}
-      # Ed25519 key that verifies the channel pointer inside the app.
+
       VITE_OTA_POINTER_PUBLIC_KEY: ${{ vars.OTA_ED25519_PUBLIC_KEY }}
       OTA_ED25519_PUBLIC_KEY: ${{ vars.OTA_ED25519_PUBLIC_KEY }}
+
       OTA_REPO: towkirahmedrony/porokh-ota
-      # Only a boolean reaches every step; the token itself is scoped to the
-      # publish step so the build cannot read it.
+
+      # Only expose whether the secret exists.
       OTA_TOKEN_CONFIGURED: ${{ secrets.OTA_PUBLISH_TOKEN != '' }}
+
     steps:
-      # Actions are pinned to immutable commit SHAs: a retagged release cannot
-      # change what runs in a job that can publish to another repository.
-      # The release revision is `git rev-list --count HEAD`, so the full history
-      # is required: on a depth-1 clone every publish resolves to revision 1 and
-      # after the first one every run fails on an existing release tag.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Checkout full repository history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
       - name: Configure frontend environment
         env:
@@ -102,76 +88,123 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
-            echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY repository secrets are required; without them OTA bundles crash on startup with a white screen."
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required."
             exit 1
           fi
+
           {
             printf 'VITE_SUPABASE_URL=%s\n' "$SUPABASE_URL"
             printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY"
           } > .env.local
 
-      - name: Require the signing keys
+      - name: Validate public signing keys
         run: |
           set -euo pipefail
-          if [ -z "${CAPGO_PUBLIC_KEY:-}" ]; then
-            echo "::error::CAPGO_PUBLIC_KEY is not configured. Set the repository variable to the Capgo key-v2 public key; APKs built with signature enforcement cannot verify any bundle without it."
-            exit 1
-          fi
-          if [ -z "${OTA_ED25519_PUBLIC_KEY:-}" ]; then
-            echo "::error::OTA_ED25519_PUBLIC_KEY is not configured. The app cannot verify a channel pointer without the Ed25519 public key."
-            exit 1
-          fi
-          node -e "
-            const rsa = (process.env.CAPGO_PUBLIC_KEY || '').replace(/\\\\n/g, '\n').trim();
-            if (!rsa.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
-              console.error('::error::CAPGO_PUBLIC_KEY is not a PKCS#1 RSA public key');
-              process.exit(1);
-            }
-            if (!rsa.endsWith('-----END RSA PUBLIC KEY-----')) {
-              console.error('::error::CAPGO_PUBLIC_KEY is truncated');
-              process.exit(1);
-            }
-            const raw = Buffer.from(process.env.OTA_ED25519_PUBLIC_KEY.trim(), 'base64');
-            if (raw.length !== 32) {
-              console.error('::error::OTA_ED25519_PUBLIC_KEY must be a base64 raw 32-byte Ed25519 key');
-              process.exit(1);
-            }
-            console.log('signing keys present: RSA key-v2 (bundle) + Ed25519 (pointer)');
-          "
 
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+          node <<'NODE'
+          const { createPublicKey } = require('node:crypto');
 
-      - name: Verify the build manifest
+          function fail(message) {
+            console.error(`::error::${message}`);
+            process.exit(1);
+          }
+
+          const rsaPem = (process.env.CAPGO_PUBLIC_KEY || '')
+            .replace(/\\n/g, '\n')
+            .trim();
+
+          if (
+            !rsaPem.startsWith('-----BEGIN RSA PUBLIC KEY-----') ||
+            !rsaPem.endsWith('-----END RSA PUBLIC KEY-----')
+          ) {
+            fail('CAPGO_PUBLIC_KEY must be a complete PKCS#1 RSA public key.');
+          }
+
+          try {
+            const rsaKey = createPublicKey(rsaPem);
+
+            if (rsaKey.asymmetricKeyType !== 'rsa') {
+              fail('CAPGO_PUBLIC_KEY is not an RSA public key.');
+            }
+          } catch {
+            fail('CAPGO_PUBLIC_KEY could not be parsed.');
+          }
+
+          const publicKeyBase64 =
+            (process.env.OTA_ED25519_PUBLIC_KEY || '').trim();
+
+          // A canonical Base64 encoding of 32 raw Ed25519 bytes is 44
+          // characters and ends with exactly one "=".
+          if (!/^[A-Za-z0-9+/]{43}=$/.test(publicKeyBase64)) {
+            fail('OTA_ED25519_PUBLIC_KEY must be canonical Base64 for 32 bytes.');
+          }
+
+          const raw = Buffer.from(publicKeyBase64, 'base64');
+
+          if (
+            raw.length !== 32 ||
+            raw.toString('base64') !== publicKeyBase64
+          ) {
+            fail('OTA_ED25519_PUBLIC_KEY is invalid or not exactly 32 bytes.');
+          }
+
+          console.log('Public signing keys passed format validation.');
+          NODE
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Verify build manifest
         run: |
           set -euo pipefail
-          test -f dist/version.json || { echo "::error::dist/version.json was not generated"; exit 1; }
-          node -e "
-            const fs = require('fs');
-            const m = JSON.parse(fs.readFileSync('dist/version.json', 'utf8'));
-            if (!m.buildId || !m.version || !m.channel) {
-              console.error('::error::version.json is missing required fields', m);
-              process.exit(1);
-            }
-            if (m.buildId !== process.env.POROKH_BUILD_ID.slice(0, 12)) {
-              console.error('::error::version.json buildId does not match the commit', m.buildId);
-              process.exit(1);
-            }
-            if (m.channel !== process.env.POROKH_OTA_CHANNEL) {
-              console.error('::error::version.json channel does not match POROKH_OTA_CHANNEL', m.channel);
-              process.exit(1);
-            }
-            console.log('manifest', m);
-          "
 
-      - name: Resolve the bundle version and validate the release
+          test -f dist/version.json || {
+            echo "::error::dist/version.json was not generated."
+            exit 1
+          }
+
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const manifest = JSON.parse(
+            fs.readFileSync('dist/version.json', 'utf8')
+          );
+
+          if (!manifest.buildId || !manifest.version || !manifest.channel) {
+            console.error('::error::version.json is missing required fields.');
+            process.exit(1);
+          }
+
+          if (manifest.buildId !== process.env.POROKH_BUILD_ID.slice(0, 12)) {
+            console.error('::error::Build ID does not match the commit.');
+            process.exit(1);
+          }
+
+          if (manifest.channel !== process.env.POROKH_OTA_CHANNEL) {
+            console.error('::error::Build channel does not match OTA channel.');
+            process.exit(1);
+          }
+
+          console.log('Build manifest validation passed.');
+          NODE
+
+      - name: Resolve bundle version and validate release
         id: release
         run: |
           set -euo pipefail
+
           summary="$(node node_modules/tsx/dist/cli.mjs scripts/check-release.ts)"
+
           printf '%s\n' "$summary" | tee -a "$GITHUB_OUTPUT"
+
           {
             echo "### OTA release"
             echo ""
@@ -186,61 +219,191 @@ jobs:
           COMPUTED_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
-          if [ "${OTA_TOKEN_CONFIGURED}" != "true" ]; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::OTA_PUBLISH_TOKEN is not configured, so no OTA bundle can be published. Installed apps keep running the frontend baked into their APK."
-            exit 0
-          fi
+
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            echo "publish=${DISPATCH_PUBLISH:-false}" >> "$GITHUB_OUTPUT"
+            case "${DISPATCH_PUBLISH:-false}" in
+              true)
+                if [ "${OTA_TOKEN_CONFIGURED}" != "true" ]; then
+                  echo "::error::OTA_PUBLISH_TOKEN is missing. Cannot publish."
+                  exit 1
+                fi
+
+                echo "publish=true" >> "$GITHUB_OUTPUT"
+                ;;
+
+              false|"")
+                echo "publish=false" >> "$GITHUB_OUTPUT"
+                echo "Manual publish was not requested."
+                ;;
+
+              *)
+                echo "::error::Invalid publish input."
+                exit 1
+                ;;
+            esac
+
           elif [ "${AUTO_PUBLISH}" = "true" ]; then
+            if [ "${OTA_TOKEN_CONFIGURED}" != "true" ]; then
+              echo "::error::OTA_AUTO_PUBLISH is true but OTA_PUBLISH_TOKEN is missing."
+              exit 1
+            fi
+
             echo "publish=true" >> "$GITHUB_OUTPUT"
+
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Bundle ${COMPUTED_VERSION} built and validated but not published. Dispatch with publish=true, or set OTA_AUTO_PUBLISH=true."
+
+            echo "::notice::Bundle ${COMPUTED_VERSION} was built and validated but not published."
           fi
 
-      - name: Provision the signing keys
+      - name: Provision and verify signing keys
         if: steps.intent.outputs.publish == 'true'
         env:
           RSA_PRIVATE_KEY: ${{ secrets.CAPGO_PRIVATE_KEY }}
           ED25519_PRIVATE_KEY: ${{ secrets.OTA_ED25519_PRIVATE_KEY }}
+          ED25519_PUBLIC_KEY: ${{ vars.OTA_ED25519_PUBLIC_KEY }}
+          RSA_PUBLIC_KEY: ${{ vars.CAPGO_PUBLIC_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${RSA_PRIVATE_KEY:-}" ]; then
-            echo "::error::CAPGO_PRIVATE_KEY is not configured. Refusing to publish an unsigned (clear) bundle."
-            exit 1
-          fi
-          if [ -z "${ED25519_PRIVATE_KEY:-}" ]; then
-            echo "::error::OTA_ED25519_PRIVATE_KEY is not configured. Refusing to publish an unverifiable channel pointer."
-            exit 1
-          fi
-
           umask 077
-          rsa_path="$RUNNER_TEMP/capgo_key_v2"
-          printf '%s' "$RSA_PRIVATE_KEY" | sed 's/\\n/\n/g' > "$rsa_path"
-          chmod 600 "$rsa_path"
-          if ! head -1 "$rsa_path" | grep -q -- '-----BEGIN RSA PRIVATE KEY-----'; then
-            echo "::error::CAPGO_PRIVATE_KEY is not a PKCS#1 RSA private key (the encryption step rejects PKCS#8)."
-            rm -f "$rsa_path"
-            exit 1
-          fi
 
-          # The Ed25519 key signs the pointer in-process from the secret, so it
-          # never needs to exist on the runner's disk.
-          echo "CAPGO_PRIVATE_KEY_PATH=$rsa_path" >> "$GITHUB_ENV"
-          echo "signing keys provisioned"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
 
-      - name: Validate the release with signing credentials
+          const {
+            createPrivateKey,
+            createPublicKey,
+          } = require('node:crypto');
+
+          function fail(message) {
+            console.error(`::error::${message}`);
+            process.exit(1);
+          }
+
+          function normalizePem(value) {
+            return (value || '').replace(/\\n/g, '\n').trim();
+          }
+
+          const rsaPrivatePem = normalizePem(process.env.RSA_PRIVATE_KEY);
+          const rsaPublicPem = normalizePem(process.env.RSA_PUBLIC_KEY);
+
+          const edPrivatePem = normalizePem(
+            process.env.ED25519_PRIVATE_KEY
+          );
+
+          const edPublicBase64 = (
+            process.env.ED25519_PUBLIC_KEY || ''
+          ).trim();
+
+          if (!rsaPrivatePem || !rsaPublicPem) {
+            fail('RSA signing key pair is incomplete.');
+          }
+
+          if (!edPrivatePem || !edPublicBase64) {
+            fail('Ed25519 signing key pair is incomplete.');
+          }
+
+          if (!rsaPrivatePem.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
+            fail('CAPGO_PRIVATE_KEY must use PKCS#1 RSA private key format.');
+          }
+
+          let rsaPrivate;
+          let rsaPublic;
+          let edPrivate;
+
+          try {
+            rsaPrivate = createPrivateKey(rsaPrivatePem);
+            rsaPublic = createPublicKey(rsaPublicPem);
+            edPrivate = createPrivateKey(edPrivatePem);
+          } catch {
+            fail('One or more signing keys could not be parsed.');
+          }
+
+          if (rsaPrivate.asymmetricKeyType !== 'rsa') {
+            fail('CAPGO_PRIVATE_KEY is not an RSA private key.');
+          }
+
+          if (edPrivate.asymmetricKeyType !== 'ed25519') {
+            fail('OTA_ED25519_PRIVATE_KEY is not an Ed25519 private key.');
+          }
+
+          // Verify that the RSA private key matches CAPGO_PUBLIC_KEY.
+          const derivedRsaPublic = createPublicKey(rsaPrivate).export({
+            format: 'der',
+            type: 'spki',
+          });
+
+          const configuredRsaPublic = rsaPublic.export({
+            format: 'der',
+            type: 'spki',
+          });
+
+          if (!Buffer.from(derivedRsaPublic).equals(
+            Buffer.from(configuredRsaPublic)
+          )) {
+            fail('CAPGO_PRIVATE_KEY does not match CAPGO_PUBLIC_KEY.');
+          }
+
+          // Verify strict Base64 and the Ed25519 key pair.
+          if (!/^[A-Za-z0-9+/]{43}=$/.test(edPublicBase64)) {
+            fail('OTA_ED25519_PUBLIC_KEY has an invalid Base64 format.');
+          }
+
+          const configuredEdRaw = Buffer.from(edPublicBase64, 'base64');
+
+          if (
+            configuredEdRaw.length !== 32 ||
+            configuredEdRaw.toString('base64') !== edPublicBase64
+          ) {
+            fail('OTA_ED25519_PUBLIC_KEY must decode to exactly 32 bytes.');
+          }
+
+          const derivedEdSpki = createPublicKey(edPrivate).export({
+            format: 'der',
+            type: 'spki',
+          });
+
+          const derivedEdRaw = Buffer.from(derivedEdSpki).subarray(-32);
+
+          if (!derivedEdRaw.equals(configuredEdRaw)) {
+            fail('OTA_ED25519_PRIVATE_KEY does not match OTA_ED25519_PUBLIC_KEY.');
+          }
+
+          // The Capgo native encryption process requires the RSA private key
+          // as a temporary file. The Ed25519 private key stays in memory.
+          const rsaPath = path.join(
+            process.env.RUNNER_TEMP,
+            'capgo_key_v2'
+          );
+
+          fs.writeFileSync(rsaPath, `${rsaPrivatePem}\n`, {
+            mode: 0o600,
+            flag: 'wx',
+          });
+
+          fs.chmodSync(rsaPath, 0o600);
+
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            `CAPGO_PRIVATE_KEY_PATH=${rsaPath}\n`
+          );
+
+          console.log('RSA and Ed25519 key pairs verified successfully.');
+          NODE
+
+      - name: Validate release with signing credentials
         if: steps.intent.outputs.publish == 'true'
         env:
           OTA_PUBLISH_TOKEN: ${{ secrets.OTA_PUBLISH_TOKEN }}
           OTA_ED25519_PRIVATE_KEY: ${{ secrets.OTA_ED25519_PRIVATE_KEY }}
         run: |
           set -euo pipefail
+
           node node_modules/tsx/dist/cli.mjs scripts/check-release.ts --publish
 
       - name: Publish to GitHub Releases
+        id: publish
         if: steps.intent.outputs.publish == 'true'
         env:
           OTA_PUBLISH_TOKEN: ${{ secrets.OTA_PUBLISH_TOKEN }}
@@ -249,27 +412,41 @@ jobs:
           BUNDLE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
-          if [ -z "${BUNDLE_VERSION:-}" ]; then
-            echo "::error::No bundle version was produced"
+
+          if [ -z "${OTA_PUBLISH_TOKEN:-}" ]; then
+            echo "::error::OTA_PUBLISH_TOKEN is missing."
             exit 1
           fi
+
+          if [ -z "${BUNDLE_VERSION:-}" ]; then
+            echo "::error::No bundle version was produced."
+            exit 1
+          fi
+
           if [ -z "${CAPGO_PRIVATE_KEY_PATH:-}" ]; then
-            echo "::error::No signing key path; refusing to publish an unsigned bundle."
+            echo "::error::RSA signing key was not provisioned."
             exit 1
           fi
 
           args=(scripts/publish-ota-release.ts --publish)
+
           if [ -n "${OTA_ROLLBACK_TO:-}" ]; then
             args+=(--rollback-to "$OTA_ROLLBACK_TO")
           fi
 
           node node_modules/tsx/dist/cli.mjs "${args[@]}"
 
-      - name: Remove the signing keys
+          # Only mark Published after the publisher exits successfully.
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+      - name: Remove temporary signing keys
         if: always()
         run: |
+          set -euo pipefail
+
           rm -f "$RUNNER_TEMP/capgo_key_v2"
-          echo "signing keys removed from the runner"
+
+          echo "Temporary RSA signing key removed."
 
       - name: Summarise
         if: always()
@@ -279,11 +456,14 @@ jobs:
           MIN_NATIVE: ${{ steps.release.outputs.min_native_version }}
           SCHEMA: ${{ steps.release.outputs.schema_version }}
           SIGNATURE: ${{ steps.release.outputs.signature_required }}
-          PUBLISHED: ${{ steps.intent.outputs.publish }}
+          PUBLISH_REQUESTED: ${{ steps.intent.outputs.publish }}
+          PUBLISHED: ${{ steps.publish.outputs.published || 'false' }}
         run: |
           {
             echo ""
-            echo "| | |"
+            echo "### OTA Publish Summary"
+            echo ""
+            echo "| Item | Value |"
             echo "|---|---|"
             echo "| Commit | \`${GITHUB_SHA:0:7}\` |"
             echo "| Channel | ${OTA_CHANNEL} |"
@@ -292,5 +472,6 @@ jobs:
             echo "| Native requirement | nv${MIN_NATIVE:-?} |"
             echo "| Schema | db${SCHEMA:-?} |"
             echo "| Signature required | ${SIGNATURE:-?} |"
-            echo "| Published | ${PUBLISHED:-false} |"
+            echo "| Publish requested | ${PUBLISH_REQUESTED:-false} |"
+            echo "| Published | ${PUBLISHED} |"
           } >> "$GITHUB_STEP_SUMMARY"
