@@ -1146,3 +1146,48 @@ test('activating an update leaves cached questions, answers and submissions read
   );
   assert.equal((await storage.getPreparedExam('offline:u1:e1'))?.attemptId, 'a1');
 });
+
+test('a blocked provider reports the reason it actually failed on', async () => {
+  const { controller, adapter } = harness();
+  adapter.latest = {
+    version: RELEASE,
+    url: 'https://example.com/bundle.zip',
+    checksum: CHECKSUM,
+    kind: 'blocked',
+    // A pointer whose Ed25519 signature did not verify.
+    reason: 'unsigned_bundle',
+    error: 'signature_invalid',
+  };
+
+  await controller.initialize();
+  await controller.checkForUpdate(true);
+
+  const snapshot = controller.getSnapshot();
+  assert.equal(snapshot.phase, 'rejected');
+  assert.deepEqual(snapshot.reasons, ['unsigned_bundle']);
+  assert.equal(adapter.downloadCalls.length, 0);
+});
+
+test('an unreachable update source leaves the app usable and backs off', async () => {
+  const { controller, adapter, kv } = harness();
+  // No pointer: the provider throws, exactly like an offline device.
+  adapter.latest = null;
+
+  await controller.initialize();
+  // Startup never waits on the network; the check is scheduled, not awaited.
+  assert.equal(controller.getSnapshot().available, true);
+
+  await controller.checkForUpdate(true);
+
+  const snapshot = controller.getSnapshot();
+  assert.equal(snapshot.phase, 'check_failed');
+  assert.ok(snapshot.error);
+  assert.equal(adapter.downloadCalls.length, 0);
+  // A bounded retry is recorded so the next automatic check is deferred.
+  const retry = JSON.parse(String(kv.getItem(OTA_STORAGE_KEYS.checkRetry))) as {
+    attempts: number;
+    nextAt: number;
+  };
+  assert.equal(retry.attempts, 1);
+  assert.ok(retry.nextAt > 0);
+});

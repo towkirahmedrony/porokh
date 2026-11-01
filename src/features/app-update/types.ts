@@ -74,6 +74,8 @@ export type ProviderLatest = {
   sessionKey?: string;
   kind?: 'up_to_date' | 'blocked' | 'failed';
   error?: string;
+  /** Precise block reason, so a rejected pointer reports what actually failed. */
+  reason?: OtaBlockReason;
   old?: string;
   major?: boolean;
 };

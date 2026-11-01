@@ -61,6 +61,10 @@ const config: CapacitorConfig = {
       resetWhenUpdate: true,
       defaultChannel: otaChannel,
       keepUrlPathAfterReload: true,
+      // Bundles are distributed through GitHub Releases, so there is no Capgo
+      // endpoint to report statistics to. An empty value disables reporting
+      // instead of letting every check fire failing requests at the old host.
+      statsUrl: '',
       ...(signature.policy.publicKey
         ? { publicKey: signature.policy.publicKey }
         : {}),
