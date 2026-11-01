@@ -1,4 +1,5 @@
 import { OFFLINE_SCHEMA_VERSION } from '../exam/offline/schemaVersion';
+import { DEFAULT_OTA_MANIFEST_BASE_URL } from './githubManifest';
 
 /**
  * OTA build-time configuration.
@@ -30,6 +31,26 @@ export const OTA_LOCAL_SCHEMA_VERSION = OFFLINE_SCHEMA_VERSION;
  */
 export const OTA_REQUIRE_SIGNATURE =
   (env?.VITE_OTA_REQUIRE_SIGNATURE ?? '').trim().toLowerCase() === 'true';
+
+/**
+ * Where signed channel pointers are published.
+ *
+ * Defaults to the public distribution repository; the override exists so a
+ * staging deployment can be exercised without rebuilding the bundle logic.
+ * Only https is accepted by the manifest reader.
+ */
+export const OTA_MANIFEST_BASE_URL =
+  env?.VITE_OTA_MANIFEST_BASE_URL?.trim() || DEFAULT_OTA_MANIFEST_BASE_URL;
+
+/**
+ * Base64 raw (32-byte) Ed25519 public key used to verify channel pointers.
+ *
+ * Public material only. The private key stays in CI and never enters the app.
+ * Empty means pointers cannot be authenticated, which is a rejected update when
+ * `OTA_REQUIRE_SIGNATURE` is on rather than a silent skip.
+ */
+export const OTA_POINTER_PUBLIC_KEY =
+  env?.VITE_OTA_POINTER_PUBLIC_KEY?.trim() || '';
 
 /** Non-intrusive check cadence. */
 export const OTA_INITIAL_CHECK_DELAY_MS = 4_000;

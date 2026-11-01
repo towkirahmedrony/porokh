@@ -625,7 +625,10 @@ export const createOtaController = (
       clearRetryState(kv, OTA_STORAGE_KEYS.checkRetry);
       patch({
         phase: 'rejected',
-        reasons: ['channel_mismatch'],
+        // The provider knows *why* it blocked (wrong channel, unverifiable
+        // pointer, unusable metadata); reporting channel_mismatch for all of
+        // them hid the real cause from the user.
+        reasons: [latest.reason ?? 'channel_mismatch'],
         error: latest.error || 'The update server blocked this check',
         lastCheckedAt: now(),
       });

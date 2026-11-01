@@ -33,6 +33,9 @@ jobs:
       POROKH_OTA_REQUIRE_SIGNATURE: 'true'
       VITE_OTA_REQUIRE_SIGNATURE: 'true'
       CAPGO_PUBLIC_KEY: ${{ vars.CAPGO_PUBLIC_KEY }}
+      # Ed25519 key that verifies the GitHub channel pointer. It is compiled into
+      # the web bundle, so an APK built without it can never verify an update.
+      VITE_OTA_POINTER_PUBLIC_KEY: ${{ vars.OTA_ED25519_PUBLIC_KEY }}
 
     steps:
       - name: Checkout Code
@@ -90,6 +93,18 @@ jobs:
             }
             console.log('public key present (PKCS#1 RSA)');
           "
+          if [ -z "${VITE_OTA_POINTER_PUBLIC_KEY:-}" ]; then
+            echo "::error::OTA_ED25519_PUBLIC_KEY is not configured. The web bundle would carry no pointer verification key, so every update check would be rejected as unsigned and the app could never update."
+            exit 1
+          fi
+          node -e "
+            const raw = Buffer.from((process.env.VITE_OTA_POINTER_PUBLIC_KEY || '').trim(), 'base64');
+            if (raw.length !== 32) {
+              console.error('::error::OTA_ED25519_PUBLIC_KEY must be a base64 raw 32-byte Ed25519 key');
+              process.exit(1);
+            }
+            console.log('pointer verification key present (Ed25519, 32 bytes)');
+          "
 
       - run: npm run typecheck
       - run: npm test
@@ -119,6 +134,17 @@ jobs:
 
           print("packaged manifest", manifest)
           PY
+
+      - name: Verify the packaged OTA pointer key
+        run: |
+          set -euo pipefail
+          # The key is inlined into the JS bundle; if it is not there, every
+          # pointer fails verification on the device and OTA is dead silently.
+          if ! grep -rqF "$VITE_OTA_POINTER_PUBLIC_KEY" android/app/src/main/assets/public/assets; then
+            echo "::error::The packaged bundle does not contain OTA_ED25519_PUBLIC_KEY; pointer verification would always fail on the device."
+            exit 1
+          fi
+          echo "packaged pointer verification key present"
 
       - name: Verify the native OTA configuration
         run: |

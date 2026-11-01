@@ -9,8 +9,9 @@ import { OFFLINE_SCHEMA_VERSION } from '../exam/offline/schemaVersion.ts';
  * Static assertions about the release pipeline.
  *
  * These are not a substitute for running it, but they lock in the properties the
- * audit found missing: a signed upload, a credential that is not on the command
- * line, a fail-closed path when the key material is absent, and no manual
+ * migration to GitHub Releases must keep: no Capgo cloud credential or endpoint,
+ * a signed bundle and a signed pointer, a credential that never reaches argv,
+ * a fail-closed path when key material is absent, pinned actions, and no manual
  * version override that would re-break native compatibility.
  */
 const root = process.cwd();
@@ -27,10 +28,17 @@ const instructions = (body: string): string =>
 const otaRelease = instructions(read('.github/workflows/ota-release.yml'));
 const android = instructions(read('.github/workflows/android.yml'));
 const capacitorConfig = read('capacitor.config.ts');
+const publishScript = read('scripts/publish-ota-release.ts');
+const checkRelease = read('scripts/check-release.ts');
+const adapter = read('src/features/app-update/capgoUpdater.ts');
+const manifest = read('src/features/app-update/githubManifest.ts');
+const config = read('src/features/app-update/config.ts');
 const otaConfig = JSON.parse(read('ota.config.json')) as {
   minNativeVersion?: string;
   schemaVersion?: number;
 };
+const pkg = JSON.parse(read('package.json')) as { version?: string };
+const gradle = read('android/app/build.gradle');
 
 /**
  * The Android application id is the Capgo app id, the deep-link scheme and the
@@ -40,51 +48,187 @@ const otaConfig = JSON.parse(read('ota.config.json')) as {
 const appId = /appId:\s*'([^']+)'/.exec(capacitorConfig)?.[1] ?? '';
 const escape = (value: string): string => value.replace(/\./g, '\\.');
 
-test('the upload signs the bundle with a key-v2 private key', () => {
-  assert.match(otaRelease, /--key-v2 "\$CAPGO_PRIVATE_KEY_PATH"/);
-  assert.doesNotMatch(
-    otaRelease,
-    /--no-key/,
-    'a clear (unsigned) upload must never be configured'
-  );
+test('nothing publishes to or depends on Capgo Cloud any more', () => {
+  for (const needle of [
+    'api.capgo.app',
+    'plugin.capgo.app',
+    'CAPGO_TOKEN',
+    'CAPGO_API_KEY',
+    '--apikey',
+  ]) {
+    assert.equal(
+      otaRelease.includes(needle),
+      false,
+      `ota-release.yml still references ${needle}`
+    );
+    assert.equal(
+      checkRelease.includes(needle),
+      false,
+      `check-release.ts still references ${needle}`
+    );
+  }
+
+  assert.doesNotMatch(otaRelease, /bundle upload/, 'no cloud upload may remain');
+  assert.doesNotMatch(checkRelease, /--registry|bundle list/, 'no cloud registry check may remain');
 });
 
-test('the private key is provisioned from a secret and removed afterwards', () => {
+test('publishing targets the distribution repository through the publish script', () => {
+  assert.match(otaRelease, /scripts\/publish-ota-release\.ts/);
+  assert.match(otaRelease, /OTA_REPO: towkirahmedrony\/porokh-ota/);
+  assert.match(publishScript, /releases\/download/);
+  assert.match(publishScript, /contents\/\$\{channelPointerPath\(channel\)\}/);
+});
+
+test('the publish credential is scoped to the publish step and never on argv', () => {
+  assert.match(otaRelease, /OTA_PUBLISH_TOKEN: \$\{\{ secrets\.OTA_PUBLISH_TOKEN \}\}/);
+  assert.match(
+    otaRelease,
+    /OTA_TOKEN_CONFIGURED: \$\{\{ secrets\.OTA_PUBLISH_TOKEN != '' \}\}/
+  );
+  // The token may only appear in an env block, never inside a command.
+  assert.doesNotMatch(otaRelease, /--token|Bearer \$\{?OTA_PUBLISH_TOKEN/);
+  assert.doesNotMatch(publishScript, /console\.log\([^)]*token/i);
+});
+
+test('both signing keys come from secrets and never linger on the runner', () => {
   assert.match(otaRelease, /secrets\.CAPGO_PRIVATE_KEY/);
+  assert.match(otaRelease, /secrets\.OTA_ED25519_PRIVATE_KEY/);
   assert.match(otaRelease, /chmod 600/);
   assert.match(otaRelease, /if: always\(\)/);
   assert.match(otaRelease, /rm -f "\$RUNNER_TEMP\/capgo_key_v2"/);
+  // Only the RSA key needs a file (the CLI reads a path). The Ed25519 key is
+  // used in-process, so it must never be written to the runner's disk.
+  assert.doesNotMatch(otaRelease, /ota-ed25519\.pem/);
+  assert.doesNotMatch(otaRelease, /OTA_ED25519_KEY_PATH/);
   // The key must never be echoed or written into an artifact.
-  assert.doesNotMatch(otaRelease, /echo\s+"?\$CAPGO_PRIVATE_KEY/);
-  assert.doesNotMatch(otaRelease, /printf '%s\\n' "\$CAPGO_PRIVATE_KEY"/);
+  assert.doesNotMatch(otaRelease, /echo\s+"?\$(RSA_PRIVATE_KEY|ED25519_PRIVATE_KEY)/);
 });
 
-test('the API credential travels through the environment, not argv', () => {
-  assert.match(otaRelease, /CAPGO_TOKEN: \$\{\{ secrets\.CAPGO_API_KEY \}\}/);
-  assert.doesNotMatch(
-    otaRelease,
-    /--apikey/,
-    'an --apikey value is visible in the process list'
-  );
+test('the release revision is derived from the full commit history', () => {
+  // `git rev-list --count HEAD` is the revision; on the default depth-1 clone
+  // every publish would resolve to revision 1 and the second one would collide
+  // with the existing, immutable release tag.
+  assert.match(otaRelease, /fetch-depth: 0/);
 });
 
-test('publishing fails closed when signing material is missing', () => {
+test('release metadata is signed, and a rollback verifies it before copying', () => {
+  // The manifest asset must carry the pointer signature so it is verifiable on
+  // its own...
+  assert.match(publishScript, /manifestDocument\(pointer, signature\)/);
+  // ...and the rollback path must verify it instead of trusting the asset.
+  assert.match(publishScript, /ed25519Verify\(/);
+  assert.match(publishScript, /manifest signature does not verify/);
+});
+
+test('the signing keys must match the keys baked into the installed apps', () => {
+  assert.match(publishScript, /does not match CAPGO_PUBLIC_KEY/);
+  assert.match(publishScript, /does not match OTA_ED25519_PUBLIC_KEY/);
+});
+
+test('publishing fails closed when either key is missing', () => {
   assert.match(otaRelease, /CAPGO_PRIVATE_KEY is not configured/);
   assert.match(otaRelease, /Refusing to publish an unsigned/);
+  assert.match(otaRelease, /OTA_ED25519_PRIVATE_KEY is not configured/);
   assert.match(otaRelease, /CAPGO_PUBLIC_KEY is not configured/);
+  assert.match(otaRelease, /OTA_ED25519_PUBLIC_KEY is not configured/);
+  assert.match(checkRelease, /OTA_ED25519_PRIVATE_KEY is not set/);
+  assert.match(checkRelease, /OTA_PUBLISH_TOKEN is not set/);
 });
 
-test('the release is validated and then verified after publication', () => {
+test('workflow actions are pinned to immutable commit SHAs', () => {
+  const uses = otaRelease.match(/^\s*-?\s*uses: .+$/gm) ?? [];
+  assert.ok(uses.length > 0, 'the workflow must use at least one action');
+
+  for (const line of uses) {
+    const ref = line.split('@')[1]?.split(/\s+/)[0] ?? '';
+    assert.match(
+      ref,
+      /^[0-9a-f]{40}$/,
+      `action reference "${line.trim()}" is not pinned to a commit SHA`
+    );
+  }
+});
+
+test('publishing is opt-in and a validation-only run is possible', () => {
+  assert.match(otaRelease, /workflow_dispatch:/);
+  const publishInput = /publish:\s*\n(?:.*\n)*?\s+default: false/.test(otaRelease);
+  assert.equal(publishInput, true, 'dispatch must default to a dry run');
+});
+
+test('no manual version override can re-break native compatibility', () => {
+  assert.doesNotMatch(otaRelease, /base_version:/);
+  assert.doesNotMatch(otaRelease, /min_native_version:/);
   assert.match(otaRelease, /scripts\/check-release\.ts/);
-  assert.match(otaRelease, /--publish --registry/);
-  assert.match(otaRelease, /Verify the published bundle is retrievable/);
-  assert.match(otaRelease, new RegExp(`bundle list ${escape(appId)}`));
+});
+
+test('the app discovers updates from the signed channel pointer, not from Capgo', () => {
+  assert.doesNotMatch(
+    adapter,
+    /CapacitorUpdater\.getLatest\(/,
+    'the cloud getLatest path must be gone'
+  );
+  assert.doesNotMatch(
+    adapter,
+    /CapacitorUpdater\.getChannel\(/,
+    'channel discovery must be local'
+  );
+  assert.match(adapter, /fetchChannelLatest/);
+  assert.match(adapter, /options\.channel \?\? OTA_CHANNEL/);
+
+  assert.match(manifest, /raw\.githubusercontent\.com/);
+  assert.match(manifest, /porokh-ota/);
+  assert.match(manifest, /releases\/download/);
+  assert.match(config, /OTA_MANIFEST_BASE_URL/);
+  // A configured base URL that the reader ignores would silently point a
+  // staging build at production pointers.
+  assert.match(adapter, /baseUrl: OTA_MANIFEST_BASE_URL/);
+  assert.match(config, /OTA_POINTER_PUBLIC_KEY/);
+});
+
+test('the native config keeps a rollback bundle and cannot auto-activate', () => {
+  assert.match(capacitorConfig, /autoDeletePrevious: false/);
+  assert.match(capacitorConfig, /autoUpdate: 'off'/);
+  assert.match(capacitorConfig, /publicKey/);
+  assert.match(capacitorConfig, /POROKH_OTA_REQUIRE_SIGNATURE/);
+  // Statistics must not be sent to the Capgo endpoint any more.
+  assert.match(capacitorConfig, /statsUrl: ''/);
+});
+
+test('the Android build embeds the keys and enforces signatures', () => {
+  assert.match(android, /CAPGO_PUBLIC_KEY: \$\{\{ vars\.CAPGO_PUBLIC_KEY \}\}/);
+  assert.match(android, /POROKH_OTA_REQUIRE_SIGNATURE: 'true'/);
+  assert.match(android, /VITE_OTA_REQUIRE_SIGNATURE: 'true'/);
+  assert.match(android, /capacitor\.config\.json/);
+  assert.match(android, /packaged config has no publicKey/);
+  assert.match(otaRelease, /VITE_OTA_POINTER_PUBLIC_KEY: \$\{\{ vars\.OTA_ED25519_PUBLIC_KEY \}\}/);
+});
+
+test('every APK build bakes the pointer verification key', () => {
+  // An APK without the Ed25519 pointer key compiles to a client that rejects
+  // every pointer as unsigned, i.e. an app that can never receive an update.
+  for (const file of ['android.yml', 'build-apk.yml']) {
+    const body = instructions(read(`.github/workflows/${file}`));
+    assert.match(
+      body,
+      /VITE_OTA_POINTER_PUBLIC_KEY: \$\{\{ vars\.OTA_ED25519_PUBLIC_KEY \}\}/,
+      `${file} must pass the pointer key into the web bundle`
+    );
+    assert.match(
+      body,
+      /OTA_ED25519_PUBLIC_KEY is not configured/,
+      `${file} must fail closed when the pointer key is missing`
+    );
+    assert.match(
+      body,
+      /grep -rqF "\$VITE_OTA_POINTER_PUBLIC_KEY"/,
+      `${file} must prove the key reached the packaged bundle`
+    );
+  }
 });
 
 test('the Android package matches the Capacitor app id everywhere', () => {
   assert.match(appId, /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, 'appId must be a valid application id');
 
-  const gradle = read('android/app/build.gradle');
   assert.match(gradle, new RegExp(`applicationId "${escape(appId)}"`));
   assert.match(gradle, new RegExp(`namespace = "${escape(appId)}"`));
   assert.match(
@@ -96,9 +240,9 @@ test('the Android package matches the Capacitor app id everywhere', () => {
     new RegExp(`name="custom_url_scheme">${escape(appId)}<`)
   );
   assert.match(
-    read('scripts/check-release.ts'),
+    publishScript,
     new RegExp(`'${escape(appId)}'`),
-    'the registry check must query the same Capgo app'
+    'the publish script must zip the same app'
   );
   assert.ok(
     fs.existsSync(
@@ -106,34 +250,6 @@ test('the Android package matches the Capacitor app id everywhere', () => {
     ),
     `MainActivity must live in ${appId.split('.').join('/')}`
   );
-});
-
-test('publishing is opt-in and a validation-only run is possible', () => {
-  assert.match(otaRelease, /workflow_dispatch:/);
-  const publishInput = /publish:\s*\n(?:.*\n)*?\s+default: false/.test(otaRelease);
-  assert.equal(publishInput, true, 'dispatch must default to a dry run');
-});
-
-test('no manual version override can re-break native compatibility', () => {
-  assert.doesNotMatch(otaRelease, /base_version/);
-  assert.doesNotMatch(otaRelease, /min_native_version:/);
-  assert.match(otaRelease, /scripts\/check-release\.ts/);
-});
-
-test('the Android build embeds the public key and enforces signatures', () => {
-  assert.match(android, /CAPGO_PUBLIC_KEY: \$\{\{ vars\.CAPGO_PUBLIC_KEY \}\}/);
-  assert.match(android, /POROKH_OTA_REQUIRE_SIGNATURE: 'true'/);
-  assert.match(android, /VITE_OTA_REQUIRE_SIGNATURE: 'true'/);
-  assert.match(android, /capgo\.config|CAPGO_PUBLIC_KEY is not configured/);
-  assert.match(android, /capacitor\.config\.json/);
-  assert.match(android, /packaged config has no publicKey/);
-});
-
-test('the native config keeps a rollback bundle and cannot auto-activate', () => {
-  assert.match(capacitorConfig, /autoDeletePrevious: false/);
-  assert.match(capacitorConfig, /autoUpdate: 'off'/);
-  assert.match(capacitorConfig, /publicKey/);
-  assert.match(capacitorConfig, /POROKH_OTA_REQUIRE_SIGNATURE/);
 });
 
 test('the compatibility policy is committed and consistent', () => {
@@ -149,14 +265,46 @@ test('the compatibility policy is committed and consistent', () => {
   );
 });
 
-test('no workflow file contains a real credential', () => {
-  for (const file of ['.github/workflows/ota-release.yml', '.github/workflows/android.yml', '.github/workflows/ci.yml']) {
+test('the native version floor can always be satisfied by the APK being built', () => {
+  const versionName = /versionName\s+"([^"]+)"/.exec(gradle)?.[1] ?? '';
+  const versionCode = Number(/versionCode\s+(\d+)/.exec(gradle)?.[1] ?? 0);
+
+  assert.match(versionName, /^\d+\.\d+\.\d+$/);
+  assert.equal(
+    versionName,
+    String(pkg.version),
+    'package.json and android versionName must describe the same build'
+  );
+  // Play/Android require a monotonic versionCode; the script derives it from
+  // major*10000 + minor*100 + patch, so 1.0.2 -> 10002.
+  assert.ok(versionCode >= 10002, `versionCode ${versionCode} must increase for the rebuild`);
+
+  const floor = String(otaConfig.minNativeVersion);
+  const [floorMajor, floorMinor, floorPatch] = floor.split('.').map(Number);
+  const [major, minor, patch] = versionName.split('.').map(Number);
+  assert.ok(
+    floorMajor * 10000 + floorMinor * 100 + floorPatch <= versionCode &&
+      (floorMajor < major ||
+        (floorMajor === major && floorMinor < minor) ||
+        (floorMajor === major && floorMinor === minor && floorPatch <= patch)),
+    `minNativeVersion ${floor} is not satisfiable by ${versionName}`
+  );
+});
+
+test('no workflow file contains private key material or a token', () => {
+  for (const file of [
+    '.github/workflows/ota-release.yml',
+    '.github/workflows/android.yml',
+    '.github/workflows/ci.yml',
+  ]) {
     const body = read(file);
     assert.doesNotMatch(body, /ghp_[A-Za-z0-9]{20,}/, `${file} contains a GitHub token`);
+    assert.doesNotMatch(body, /github_pat_[A-Za-z0-9_]{20,}/, `${file} contains a fine-grained token`);
+    // A header alone (used to validate a secret) is fine; key material is not.
     assert.doesNotMatch(
       body,
-      /-----BEGIN (RSA )?PRIVATE KEY-----/,
-      `${file} contains a private key`
+      /-----BEGIN (?:RSA )?PRIVATE KEY-----[A-Za-z0-9+/=\s]{40,}/,
+      `${file} contains an embedded private key`
     );
   }
 });

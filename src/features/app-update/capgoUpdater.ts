@@ -1,5 +1,16 @@
 import { Capacitor } from '@capacitor/core';
 import { CapacitorUpdater, type BundleInfo } from '@capgo/capacitor-updater';
+import {
+  OTA_CHANNEL,
+  OTA_MANIFEST_BASE_URL,
+  OTA_POINTER_PUBLIC_KEY,
+  OTA_REQUIRE_SIGNATURE,
+} from './config';
+import {
+  blockedLatest,
+  fetchChannelLatest,
+  type ChannelLatestResult,
+} from './githubManifest';
 import type {
   DownloadProgress,
   OtaUpdaterAdapter,
@@ -24,11 +35,42 @@ const toProviderBundle = (bundle: BundleInfo): ProviderBundle => ({
   builtin: bundle.id === 'builtin',
 });
 
+export type CapgoUpdaterAdapterOptions = {
+  /** Channel this build follows. Defaults to the build-time channel. */
+  channel?: string;
+  /** Override for tests; defaults to the GitHub pointer reader. */
+  latestFromPointer?: (channel: string) => Promise<ChannelLatestResult>;
+};
+
 /**
- * Thin Capgo boundary. Every call is guarded by the native-platform check in
+ * Thin plugin boundary. Every call is guarded by the native-platform check in
  * the controller; this class contains no activation policy of its own.
+ *
+ * The class no longer talks to Capgo: bundle discovery comes from the signed
+ * channel pointer in the public distribution repository, and the channel is the
+ * one this build was produced for. Download, activation, rollback and
+ * `notifyAppReady` still go through the open-source plugin, which keeps owning
+ * native decryption and checksum verification.
  */
 export class CapgoUpdaterAdapter implements OtaUpdaterAdapter {
+  private readonly channel: string;
+  private readonly loadLatest: (channel: string) => Promise<ChannelLatestResult>;
+
+  constructor(options: CapgoUpdaterAdapterOptions = {}) {
+    this.channel = options.channel ?? OTA_CHANNEL;
+    this.loadLatest =
+      options.latestFromPointer ??
+      ((channel) =>
+        fetchChannelLatest({
+          channel,
+          // Honouring the documented override keeps a staging deployment from
+          // silently reading pointers published for another environment.
+          baseUrl: OTA_MANIFEST_BASE_URL,
+          requireSignature: OTA_REQUIRE_SIGNATURE,
+          publicKeyBase64: OTA_POINTER_PUBLIC_KEY,
+        }));
+  }
+
   async isAvailable(): Promise<boolean> {
     return (
       Capacitor.isNativePlatform() &&
@@ -37,18 +79,25 @@ export class CapgoUpdaterAdapter implements OtaUpdaterAdapter {
     );
   }
 
+  /**
+   * Map a verified pointer into the provider contract the controller expects.
+   *
+   * Transport failures throw so the controller records a check failure and
+   * backs off; a pointer that is signed wrong, for another channel or plainly
+   * malformed blocks this release with the reason that describes it. Everything
+   * else (native floor, schema, downgrade, signature of the *bundle*) is still
+   * decided by the controller.
+   */
   async getLatest(): Promise<ProviderLatest> {
-    const latest = await CapacitorUpdater.getLatest();
-    return {
-      version: latest.version ?? '',
-      url: latest.url ?? '',
-      checksum: latest.checksum ?? '',
-      sessionKey: latest.sessionKey,
-      kind: latest.kind,
-      error: latest.error,
-      old: latest.old,
-      major: latest.breaking ?? latest.major,
-    };
+    const result = await this.loadLatest(this.channel);
+    if (result.ok) return result.latest;
+
+    const blocked = blockedLatest(result);
+    if (blocked) return blocked;
+
+    throw new Error(
+      `update pointer unavailable (${result.problem}${result.detail ? `: ${result.detail}` : ''})`
+    );
   }
 
   async getBuiltinVersion(): Promise<string> {
@@ -56,9 +105,14 @@ export class CapgoUpdaterAdapter implements OtaUpdaterAdapter {
     return result.version ?? '';
   }
 
+  /**
+   * The channel is decided by the build, not by a cloud service.
+   *
+   * `getChannel()`/`setChannel()` would validate against Capgo's backend, which
+   * this distribution does not use, so the plugin is never asked.
+   */
   async getChannel(): Promise<string | null> {
-    const result = await CapacitorUpdater.getChannel();
-    return typeof result.channel === 'string' ? result.channel : null;
+    return this.channel;
   }
 
   async current(): Promise<ProviderCurrent> {
