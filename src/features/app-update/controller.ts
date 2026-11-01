@@ -518,7 +518,12 @@ export const createOtaController = (
       unsubscribe();
     }
 
-    if (!bundle || bundle.status !== 'success' || bundle.version !== candidate.version) {
+    // Capgo reports a fully downloaded bundle as `pending` until it is activated.
+    if (
+      !bundle ||
+      (bundle.status !== 'success' && bundle.status !== 'pending') ||
+      bundle.version !== candidate.version
+    ) {
       if (bundle?.id) {
         try {
           await adapter.deleteBundle(bundle.id);
@@ -577,7 +582,7 @@ export const createOtaController = (
       const listed = bundles.find((item) => item.id === bundle?.id);
       if (
         !listed ||
-        listed.status !== 'success' ||
+        (listed.status !== 'success' && listed.status !== 'pending') ||
         listed.version !== candidate.version ||
         (listed.checksum && !sameChecksum(listed.checksum, localChecksum))
       ) {
@@ -813,7 +818,7 @@ export const createOtaController = (
     const listed = bundles.find((bundle) => bundle.id === candidate.id);
     if (
       !listed ||
-      listed.status !== 'success' ||
+      (listed.status !== 'success' && listed.status !== 'pending') ||
       listed.version !== candidate.version ||
       !listed.checksum ||
       !sameChecksum(listed.checksum, candidate.checksum)

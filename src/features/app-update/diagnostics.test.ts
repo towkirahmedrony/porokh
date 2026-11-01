@@ -33,12 +33,16 @@ test('diagnostic details redact sensitive field names but keep useful version da
     version: '1.0.2-ota.r000120',
     sessionKey: 'iv:secret',
     accessToken: 'abc123',
+    hasChecksum: true,
+    checksum: 'not-for-logs',
     percent: 42,
   });
 
   assert.equal(value.version, '1.0.2-ota.r000120');
   assert.equal(value.sessionKey, '[redacted]');
   assert.equal(value.accessToken, '[redacted]');
+  assert.equal(value.hasChecksum, true);
+  assert.equal(value.checksum, '[redacted]');
   assert.equal(value.percent, 42);
 });
 

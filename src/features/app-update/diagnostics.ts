@@ -47,10 +47,10 @@ const safePrimitive = (
   key: string,
   value: unknown
 ): string | number | boolean | null | undefined => {
-  if (SENSITIVE_FIELD.test(key)) return '[redacted]';
   if (value === null) return null;
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (SENSITIVE_FIELD.test(key)) return '[redacted]';
   if (typeof value === 'string') return sanitizeDiagnosticText(value);
   return undefined;
 };

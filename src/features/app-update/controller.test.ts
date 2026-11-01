@@ -129,7 +129,7 @@ class FakeAdapter implements OtaUpdaterAdapter {
       status: 'success',
     };
 
-    if (bundle.status === 'success') {
+    if (bundle.status === 'success' || bundle.status === 'pending') {
       this.bundles.push(bundle);
     }
     return bundle;
@@ -866,6 +866,28 @@ test('a signed release is accepted and staged with the local digest', async () =
   );
   assert.equal(staged.manifestChecksum, SIGNED_CHECKSUM);
   assert.equal(staged.signed, true);
+});
+
+test('a downloaded pending bundle is verified, staged, and activatable', async () => {
+  const { controller, adapter } = harness({ requireSignature: true });
+  setLatest(adapter, RELEASE, SIGNED_CHECKSUM, SESSION_KEY);
+  adapter.downloadResult = {
+    id: 'bundle-pending',
+    version: RELEASE,
+    checksum: CHECKSUM,
+    status: 'pending',
+  };
+
+  await controller.initialize();
+  await controller.checkForUpdate(true);
+
+  assert.equal(controller.getSnapshot().phase, 'staged');
+  assert.equal(controller.getSnapshot().stagedVersion, RELEASE);
+  assert.equal(adapter.deleted.length, 0);
+
+  const decision = await controller.activate();
+  assert.equal(decision.allowed, true);
+  assert.deepEqual(adapter.setCalls, ['bundle-pending']);
 });
 
 test('a signed release whose extracted digest is not a digest is rejected', async () => {
