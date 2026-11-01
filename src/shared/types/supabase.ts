@@ -1988,6 +1988,7 @@ export type Database = {
           created_at: string | null
           icon_name: string
           id: string
+          image_url: string | null
           is_active: boolean | null
           link: string | null
           serial_order: number | null
@@ -2002,6 +2003,7 @@ export type Database = {
           created_at?: string | null
           icon_name: string
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           link?: string | null
           serial_order?: number | null
@@ -2016,6 +2018,7 @@ export type Database = {
           created_at?: string | null
           icon_name?: string
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           link?: string | null
           serial_order?: number | null

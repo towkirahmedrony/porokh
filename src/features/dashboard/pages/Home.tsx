@@ -6,6 +6,7 @@ import DynamicBanner from '../components/DynamicBanner';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { supabase } from '@/shared/lib/supabase';
 import { useHomeGrids } from '../hooks/useHomeGrids';
+import { matchesHomeGridTargetRules } from '../utils/homeGridTargeting';
 import { useLiveExamActive } from '../hooks/useLiveExamActive';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { PromoBanner } from '@/features/access/components/PromoBanner';
@@ -84,7 +85,7 @@ const isWithinSchedule = (banner: HomeBannerRow, now: number) => {
 
 const Home: React.FC = memo(() => {
   const { user, loading: authLoading, profileLoading } = useAuth();
-  const { features, loading: featuresLoading } = useHomeGrids();
+  const { features, loading: featuresLoading, error: featuresError, refetch: refetchFeatures } = useHomeGrids();
   const { isLive: isLiveExamActive } = useLiveExamActive();
   const { language, t } = useLanguage();
 
@@ -128,13 +129,19 @@ const Home: React.FC = memo(() => {
   // লাইভ এক্সাম ব্যানার শুধু এক্সাম চলাকালীন দেখাবে; বাকি ব্যানার আগের মতোই।
   const visibleBanners = useMemo(() => {
     const now = Date.now();
+    const profile = {
+      studyGoal: user?.study_goal ?? null,
+      classLevel: user?.class_level ?? null,
+      group: user?.group ?? null,
+    };
 
     return ((activeBanners ?? []) as HomeBannerRow[]).filter((banner) => {
       if (!isWithinSchedule(banner, now)) return false;
+      if (!matchesHomeGridTargetRules(banner.target_rules, profile)) return false;
       if (isLiveExamBanner(banner)) return isLiveExamActive;
       return true;
     });
-  }, [activeBanners, isLiveExamActive]);
+  }, [activeBanners, isLiveExamActive, user?.study_goal, user?.class_level, user?.group]);
 
   const resolvedProfileName = resolveNamecardName({
     fullName: user?.full_name,
@@ -208,6 +215,8 @@ const Home: React.FC = memo(() => {
           <FeatureGrid
             features={features}
             loading={featuresLoading}
+            error={featuresError}
+            onRetry={() => void refetchFeatures()}
             themeConfig={themeConfig}
             loadingLabel={t('home.featuresLoading')}
           />
