@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/shared/lib/supabase';
 import { buildApiUrl } from '@/shared/lib/apiConfig';
 import { authService } from '../services/authService';
-import type { AppUser, AuthContextType } from '../types/auth';
+import type { AppUser, AuthContextType, ProfileStatus } from '../types/auth';
 import {
   isSameAppUser,
   isSameSession,
@@ -52,7 +52,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [role, setRole] = useState<string>('student');
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [profileLoading, setProfileLoading] = useState<boolean>(false);
+  // The flag lives only in the profile row. Until that row has been read the
+  // gate must render a loader; "unknown" is never "not onboarded".
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>('idle');
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
   const roleFetchRef = useRef(false);
@@ -63,6 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // keyed to a user id, never to an auth event, so token refreshes cannot reset
   // the name/avatar back to "loading".
   const enrichedUserIdRef = useRef<string | null>(null);
+  const profileRequestRef = useRef<string | null>(null);
   const roleUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -71,6 +75,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const enrichUserWithProfile = useCallback(async (authUser: AppUser | null) => {
     if (!authUser?.id || !mountedRef.current) return;
+    // Never run two reads for the same user (StrictMode, retry + auth event).
+    if (profileRequestRef.current === authUser.id) return;
+
+    profileRequestRef.current = authUser.id;
+    enrichedUserIdRef.current = authUser.id;
+    setProfileStatus('loading');
+    setProfileError(null);
 
     try {
       const { data: profile, error } = await supabase
@@ -82,14 +93,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .single();
 
       if (error || !profile) {
-        // Allow a later auth event to retry, but never on every render.
-        if (activeUserIdRef.current === authUser.id) {
-          enrichedUserIdRef.current = null;
-        }
-        return;
+        throw error ?? new Error('Profile row not found');
       }
 
-      if (!mountedRef.current) return;
+      // The account changed while this read was in flight; the new user's
+      // enrichment owns the state now.
+      if (!mountedRef.current || activeUserIdRef.current !== authUser.id) return;
 
       setUser(prev => {
         if (!prev || prev.id !== authUser.id) return prev;
@@ -109,11 +118,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
           total_score: profile.total_xp ?? 0
         } as AppUser;
       });
+      setProfileStatus('ready');
     } catch (error) {
+      if (!mountedRef.current || activeUserIdRef.current !== authUser.id) return;
+      // Leave the flag unknown instead of guessing "not onboarded". A retry or
+      // the next auth event may read the row again.
+      enrichedUserIdRef.current = null;
+      setProfileStatus('error');
+      setProfileError(error instanceof Error ? error.message : 'Profile load failed');
       console.warn('Profile enrichment failed:', error);
     } finally {
-      if (mountedRef.current && activeUserIdRef.current === authUser.id) {
-        setProfileLoading(false);
+      if (profileRequestRef.current === authUser.id) {
+        profileRequestRef.current = null;
       }
     }
   }, []);
@@ -181,7 +197,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         roleUserIdRef.current = null;
         setSession(null);
         setUser(null);
-        setProfileLoading(false);
+        setProfileStatus('idle');
+        setProfileError(null);
         setRole('student');
         setPermissions([]);
         setLoading(false);
@@ -210,7 +227,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       enrichedUserIdRef.current = null;
       roleUserIdRef.current = null;
       setUser(null);
-      setProfileLoading(false);
+      setProfileStatus('idle');
+      setProfileError(null);
       setRole('student');
       setPermissions([]);
       setLoading(false);
@@ -233,8 +251,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setLoading(false);
 
     if (needsProfileEnrichment(enrichedUserIdRef.current, nextUserId)) {
-      enrichedUserIdRef.current = nextUserId;
-      setProfileLoading(true);
       void enrichUserWithProfile(baseUser);
     }
 
@@ -243,6 +259,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       void fetchRoleData();
     }
   }, [enrichUserWithProfile, fetchRoleData]);
+
+  const refreshProfile = useCallback(() => {
+    const currentSession = sessionRef.current;
+    if (!currentSession?.user?.id) return;
+
+    enrichedUserIdRef.current = null;
+    void enrichUserWithProfile(currentSession.user as AppUser);
+  }, [enrichUserWithProfile]);
 
   const signOut = useCallback(async () => {
     try {
@@ -268,7 +292,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       activeUserIdRef.current = null;
       enrichedUserIdRef.current = null;
       roleUserIdRef.current = null;
-      setProfileLoading(false);
+      setProfileStatus('idle');
+      setProfileError(null);
       setRole('student');
       setPermissions([]);
     } catch (error) {
@@ -302,7 +327,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       sessionRef.current = null;
       setSession(null);
       setUser(null);
-      setProfileLoading(false);
+      setProfileStatus('idle');
+      setProfileError(null);
       setRole('student');
       setPermissions([]);
       setLoading(false);
@@ -328,7 +354,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } catch (error) {
         console.error('Auth initialization failed:', error);
         if (!mountedRef.current) return;
-        setProfileLoading(false);
+        setProfileStatus('idle');
         setLoading(false);
       }
     };
@@ -360,11 +386,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     role,
     permissions,
     loading,
-    profileLoading,
+    profileStatus,
+    profileError,
+    refreshProfile,
     updateUserProfile,
     setLanguagePreference,
     signOut
-  }), [session, user, role, permissions, loading, profileLoading, updateUserProfile, setLanguagePreference, signOut]);
+  }), [session, user, role, permissions, loading, profileStatus, profileError, refreshProfile, updateUserProfile, setLanguagePreference, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

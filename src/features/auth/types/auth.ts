@@ -18,11 +18,22 @@ export interface AppUser extends SupabaseUser {
   onboarding_completed_at?: string | null;
 }
 
+/**
+ * The profile row is the only source of the onboarding flag; a session user
+ * never carries it. `ready` means the row was read, so "no timestamp" is a
+ * real answer. `idle`/`loading` mean the answer is not known yet and must never
+ * be treated as "not onboarded".
+ */
+export type ProfileStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 export interface AuthContextType {
   user: AppUser | null;
   session: Session | null;
   loading: boolean;
-  profileLoading: boolean;
+  profileStatus: ProfileStatus;
+  profileError: string | null;
+  /** Re-reads the signed-in user's profile, e.g. after a failed load. */
+  refreshProfile: () => void;
   role: string;
   permissions: string[];
   updateUserProfile: (

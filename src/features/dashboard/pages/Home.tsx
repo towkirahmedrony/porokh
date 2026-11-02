@@ -84,7 +84,7 @@ const isWithinSchedule = (banner: HomeBannerRow, now: number) => {
 };
 
 const Home: React.FC = memo(() => {
-  const { user, loading: authLoading, profileLoading } = useAuth();
+  const { user, loading: authLoading, profileStatus } = useAuth();
   const { features, loading: featuresLoading, error: featuresError, refetch: refetchFeatures } = useHomeGrids();
   const { isLive: isLiveExamActive } = useLiveExamActive();
   const { language, t } = useLanguage();
@@ -148,7 +148,10 @@ const Home: React.FC = memo(() => {
     username: user?.username,
     metadataName,
   });
-  const isNameLoading = authLoading || profileLoading;
+  const isNameLoading =
+    authLoading ||
+    (Boolean(user?.id) &&
+      (profileStatus === 'idle' || profileStatus === 'loading'));
   // Never swap a known name back to a skeleton. Profile enrichment is
   // background work; only the very first paint (no name at all) may show it.
   const showNameSkeleton = shouldShowNameSkeleton(

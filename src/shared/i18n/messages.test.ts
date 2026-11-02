@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { APP_MESSAGES } from './messages';
+import { APP_MESSAGES, localizeDigits } from './messages';
 
 const SRC_ROOT = path.resolve(process.cwd(), 'src');
 const MESSAGES_FILE = path.resolve(SRC_ROOT, 'shared/i18n/messages.ts');
@@ -69,6 +69,15 @@ const asMap = (messages: Record<string, string>): Record<string, string> =>
 
 const BN = asMap(APP_MESSAGES.bn);
 const EN = asMap(APP_MESSAGES.en);
+
+test('Bengali digits map 1 and 2 to ১ and ২ (not ৬)', () => {
+  assert.equal(localizeDigits(1, 'bn'), '১');
+  assert.equal(localizeDigits(2, 'bn'), '২');
+  assert.equal(localizeDigits('12', 'bn'), '১২');
+  assert.equal(localizeDigits(1, 'en'), '1');
+  assert.equal(BN['onboarding.stepLabel'], 'ধাপ {current}/{total}');
+  assert.equal(EN['onboarding.stepLabel'], 'Step {current} of {total}');
+});
 
 test('Bangla and English resources cover exactly the same keys', () => {
   const bnKeys = Object.keys(BN).sort();

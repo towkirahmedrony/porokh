@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Check, Loader2 } from 'lucide-react';
 
 import { supabase } from '@/shared/lib/supabase';
@@ -18,8 +18,8 @@ import {
 import { MODEL_TRACK_CONFIGS } from '@/features/exam/constants/modelTracks';
 import { useUsernameAvailability } from '../hooks/useUsernameAvailability';
 import {
-  EMPTY_ONBOARDING_DRAFT,
   buildCompleteOnboardingParams,
+  buildOnboardingDraft,
   classLevelNeedsGroup,
   mapCompleteOnboardingError,
   normalizeFullName,
@@ -50,14 +50,17 @@ export default function Onboarding() {
 
   const [draft, setDraft] = useState<OnboardingDraft>(() => {
     const saved = userId ? loadOnboardingDraft(userId) : null;
-    if (saved) return saved;
 
-    // Legacy users may already have a name/username from the old signup form.
-    return {
-      ...EMPTY_ONBOARDING_DRAFT,
+    // Existing profile values prefill the form so a user who is only missing
+    // the flag does not retype their name, class or goal (and their own
+    // username counts as available).
+    return buildOnboardingDraft(saved, {
       fullName: user?.full_name ?? '',
-      username: user?.username ?? '',
-    };
+      username: normalizeUsername(user?.username ?? ''),
+      classLevel: user?.class_level ?? '',
+      group: user?.group ?? '',
+      studyGoal: user?.study_goal ?? '',
+    });
   });
   const [error, setError] = useState<AppMessageKey | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -207,6 +210,12 @@ export default function Onboarding() {
     return null;
   })();
 
+  // Safety net: a completed user never sees the form even when /onboarding is
+  // opened directly (deep link, back button, restored Capacitor URL).
+  if (user?.onboarding_completed_at) {
+    return <Navigate to="/dashboard/home" replace />;
+  }
+
   return (
     <div className="min-h-screen w-full bg-app text-text-primary">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col">
@@ -226,7 +235,7 @@ export default function Onboarding() {
               <span className="h-9 w-9" aria-hidden="true" />
             )}
 
-            <span className="text-sm font-semibold text-text-secondary">
+            <span className="font-['Hind_Siliguri'] text-sm font-semibold text-text-secondary">
               {stepLabel}
             </span>
           </div>

@@ -24,6 +24,7 @@ const makeUser = (overrides: Partial<AppUser> = {}) =>
     full_name: 'Metadata Name',
     username: null,
     avatar_url: null,
+    institution: null,
     language_preference: 'bn',
     total_xp: 0,
     total_score: 0,
@@ -41,6 +42,41 @@ test('a token refresh keeps the profile name instead of falling back to JWT data
   assert.equal(refreshed.full_name, 'Rahim Uddin');
   assert.equal(refreshed.username, 'rahim');
   assert.equal(refreshed.total_xp, 420);
+});
+
+test('a token refresh keeps the onboarding flag and academic fields', () => {
+  const enriched = makeUser({
+    onboarding_completed_at: '2026-11-01T08:26:00.000Z',
+    class_level: 'hsc',
+    group: 'science',
+    study_goal: 'medical',
+  });
+
+  const refreshed = mergeSessionUser(
+    makeUser({
+      onboarding_completed_at: undefined,
+      class_level: undefined,
+      group: undefined,
+      study_goal: undefined,
+    }),
+    enriched
+  );
+
+  assert.equal(refreshed.onboarding_completed_at, '2026-11-01T08:26:00.000Z');
+  assert.equal(refreshed.class_level, 'hsc');
+  assert.equal(refreshed.group, 'science');
+  assert.equal(refreshed.study_goal, 'medical');
+  assert.equal(isSameAppUser(enriched, refreshed), true);
+});
+
+test('missing the onboarding flag counts as a real user change', () => {
+  assert.equal(
+    isSameAppUser(
+      makeUser({ onboarding_completed_at: '2026-11-01T08:26:00.000Z' }),
+      makeUser({ onboarding_completed_at: null })
+    ),
+    false
+  );
 });
 
 test('profile fields from another account are never carried over', () => {

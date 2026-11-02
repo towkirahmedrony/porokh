@@ -45,6 +45,14 @@ export function mergeSessionUser(
     institution: previous.institution ?? next.institution ?? null,
     language_preference:
       previous.language_preference ?? next.language_preference ?? 'bn',
+    // A token refresh carries no profile data. These fields decide the
+    // onboarding gate, so dropping them here would send a finished user back
+    // to the form until the next full reload.
+    class_level: previous.class_level ?? next.class_level ?? null,
+    group: previous.group ?? next.group ?? null,
+    study_goal: previous.study_goal ?? next.study_goal ?? null,
+    onboarding_completed_at:
+      previous.onboarding_completed_at ?? next.onboarding_completed_at ?? null,
   };
 }
 
@@ -76,6 +84,10 @@ export function isSameAppUser(
     a.avatar_url === b.avatar_url &&
     a.institution === b.institution &&
     a.language_preference === b.language_preference &&
+    a.class_level === b.class_level &&
+    a.group === b.group &&
+    a.study_goal === b.study_goal &&
+    a.onboarding_completed_at === b.onboarding_completed_at &&
     (a.total_xp ?? 0) === (b.total_xp ?? 0) &&
     (a.total_score ?? 0) === (b.total_score ?? 0) &&
     current.app_metadata?.provider === next.app_metadata?.provider &&

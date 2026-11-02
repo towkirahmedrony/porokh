@@ -1030,6 +1030,7 @@ const bn = {
   'onboarding.back': 'পেছনে',
   'onboarding.saving': 'সেভ হচ্ছে...',
   'onboarding.saveFailed': 'সেভ করা যাচ্ছে না। আবার চেষ্টা করুন।',
+  'onboarding.profileLoadFailed': 'তোমার প্রোফাইল লোড করা যায়নি।',
   'onboarding.sessionExpired': 'সেশনের মেয়াদ শেষ। আবার লগ ইন করো।',
   'onboarding.goalInvalid': 'লক্ষ্যটি সঠিক নয়। আবার বেছে নাও।',
   'onboarding.usernameTaken':
@@ -2622,6 +2623,7 @@ const en: Record<AppMessageKey, string> = {
   'onboarding.back': 'Back',
   'onboarding.saving': 'Saving...',
   'onboarding.saveFailed': 'Could not save. Please try again.',
+  'onboarding.profileLoadFailed': 'Could not load your profile.',
   'onboarding.sessionExpired': 'Your session expired. Log in again.',
   'onboarding.goalInvalid': 'That goal is not valid. Pick another one.',
   'onboarding.usernameTaken':

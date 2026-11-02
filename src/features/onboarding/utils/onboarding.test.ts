@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildCompleteOnboardingParams,
+  buildOnboardingDraft,
   classLevelNeedsGroup,
   mapCompleteOnboardingError,
   normalizeFullName,
@@ -44,6 +45,50 @@ test('a group is only saved for HSC-level classes', () => {
     buildCompleteOnboardingParams({ ...draft, classLevel: 'Admission' }).p_group,
     null
   );
+});
+
+const profileDefaults = {
+  fullName: 'Towkir Ahmed',
+  username: 'towkir',
+  classLevel: 'HSC 26',
+  group: 'Science',
+  studyGoal: 'medical',
+};
+
+test('an existing profile prefills every onboarding field', () => {
+  assert.deepEqual(buildOnboardingDraft(null, profileDefaults), {
+    step: 1,
+    ...profileDefaults,
+  });
+});
+
+test('a saved draft keeps what the user typed and fills only its gaps', () => {
+  const saved = {
+    step: 2 as const,
+    fullName: '',
+    username: 'towkir',
+    classLevel: '',
+    group: 'Science',
+    studyGoal: 'engineering',
+  };
+
+  assert.deepEqual(buildOnboardingDraft(saved, profileDefaults), {
+    step: 2,
+    fullName: 'Towkir Ahmed',
+    username: 'towkir',
+    classLevel: 'HSC 26',
+    group: 'Science',
+    studyGoal: 'engineering',
+  });
+});
+
+test('a prefilled group is dropped when the level does not use one', () => {
+  const prefilled = buildOnboardingDraft(null, {
+    ...profileDefaults,
+    classLevel: 'Admission',
+  });
+
+  assert.equal(prefilled.group, '');
 });
 
 test('RPC exceptions map to friendly onboarding messages', () => {

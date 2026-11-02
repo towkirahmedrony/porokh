@@ -38,6 +38,46 @@ export const normalizeFullName = (value: string): string =>
 export const classLevelNeedsGroup = (classLevel: string): boolean =>
   /^hsc\b/i.test(classLevel.trim());
 
+export type OnboardingProfileDefaults = {
+  fullName: string;
+  username: string;
+  classLevel: string;
+  group: string;
+  studyGoal: string;
+};
+
+/**
+ * Draft values win because they hold what the user typed last; fields the
+ * draft never had are filled from the existing profile row. Without this a
+ * user who once had a profile (e.g. flagged incomplete) retypes their name.
+ */
+export const buildOnboardingDraft = (
+  saved: OnboardingDraft | null,
+  profile: OnboardingProfileDefaults
+): OnboardingDraft => {
+  if (!saved) {
+    return {
+      ...EMPTY_ONBOARDING_DRAFT,
+      ...profile,
+      group: classLevelNeedsGroup(profile.classLevel) ? profile.group : '',
+    };
+  }
+
+  const merged: OnboardingDraft = {
+    ...saved,
+    fullName: saved.fullName || profile.fullName,
+    username: saved.username || profile.username,
+    classLevel: saved.classLevel || profile.classLevel,
+    group: saved.group || profile.group,
+    studyGoal: saved.studyGoal || profile.studyGoal,
+  };
+
+  return {
+    ...merged,
+    group: classLevelNeedsGroup(merged.classLevel) ? merged.group : '',
+  };
+};
+
 export const buildCompleteOnboardingParams = (
   draft: OnboardingDraft,
   skipStepTwo = false
