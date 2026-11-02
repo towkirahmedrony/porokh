@@ -7,6 +7,7 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 
 // Shared Components & Layouts
 import { MainLayout } from '@/shared/components/layout/MainLayout';
@@ -30,6 +31,7 @@ import {
   examListPath,
   isExamType,
 } from '@/features/exam/constants/examTypes';
+import { decideNativeStart } from './nativeStart';
 
 // ==========================================
 // ২. বাকি পেজগুলো (Lazy Loaded - মেমোরি বাঁচানোর জন্য)
@@ -131,6 +133,50 @@ const GroupBattle = lazy(() => import('@/features/groups/pages/GroupBattle'));
 const FullPageLoader = () => (
   <div className="min-h-screen bg-slate-50 dark:bg-slate-900" />
 );
+
+/**
+ * Startup screen of the Android app while the persisted session is restored.
+ * It reuses the splash branding so the hand-off from the native splash does not
+ * jump through a marketing page or a login form.
+ */
+const AppStartLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-app">
+    <img
+      src="/icons/porokh-logo.svg"
+      alt="Porokh (পরোখ)"
+      className="h-24 w-auto animate-pulse"
+    />
+  </div>
+);
+
+/**
+ * Root entry.
+ *
+ * The website keeps the public marketing homepage. The Android app starts on
+ * the app itself: the dashboard when the stored session was restored, the login
+ * page when there is none, and a loader while the session is still loading.
+ * Deciding here (instead of a global "/" redirect) keeps the marketing site and
+ * its SEO pages untouched for browsers.
+ */
+const NativeStartRoute = () => {
+  const { loading, user } = useAuth();
+
+  const start = decideNativeStart({
+    native: Capacitor.isNativePlatform(),
+    authLoading: loading,
+    userId: user?.id ?? null,
+  });
+
+  if (start === 'landing') return <LandingPage />;
+  if (start === 'loading') return <AppStartLoader />;
+
+  return (
+    <Navigate
+      to={start === 'dashboard' ? '/dashboard/home' : '/auth/login'}
+      replace
+    />
+  );
+};
 
 // Placeholder component
 const Placeholder = ({ title }: { title: string }) => {
@@ -247,7 +293,7 @@ const AppRoutes: React.FC = () => {
           get the same markup; the app routes below stay behind PermissionGuard.
         */}
         <Route element={<PublicLayout />}>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<NativeStartRoute />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/contact" element={<Contact />} />
