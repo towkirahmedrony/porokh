@@ -1,9 +1,8 @@
-import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   CheckCircle2,
-  CloudOff,
   Download,
   Loader2,
   RefreshCw,
@@ -12,226 +11,199 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import type { AppMessageKey } from '@/shared/i18n/messages';
-import type { OtaBlockReason } from './types';
-import type { ForcedUpdateOutcome } from './forcedUpdate';
-import { describeBuild } from './buildInfo';
+import { QUERY_KEYS } from '@/shared/constants/storageKeys';
+import apiClient from '@/shared/lib/apiClient';
+import { getDeviceId } from '@/shared/utils/device';
+import { getNativeVersion } from '@/shared/utils/nativeVersion';
+import { useOta } from './UpdateProvider';
+import { REASON_MESSAGES, primaryReason } from './reasonMessages';
+import { decideUpdate, normalizeUpdatePolicy } from './versionPolicy';
+import { currentBuild } from './buildInfo';
 import { OtaDiagnosticsPanel } from './OtaDiagnosticsPanel';
-import { useForcedUpdate } from './useForcedUpdate';
 
-const STAGE_MESSAGES = {
-  checking: 'settings.updateChecking',
-  downloading: 'settings.updateDownloading',
-  activating: 'settings.updateActivating',
-  reloading: 'settings.updateReloading',
-} as const satisfies Record<string, AppMessageKey>;
+type ConfigRow = { key: string; value?: unknown };
 
-const BLOCKING_REASONS: OtaBlockReason[] = [
-  'pending_answers',
-  'submission_pending',
-  'attempt_unresolved',
-  'recovery_in_progress',
-];
-
-const blockedMessage = (reasons: OtaBlockReason[]): AppMessageKey => {
-  if (reasons.some((reason) => BLOCKING_REASONS.includes(reason))) {
-    return 'settings.blockedPending';
-  }
-  if (reasons.includes('exam_active') || reasons.includes('exam_route')) {
-    return 'settings.blockedExam';
-  }
-  if (reasons.includes('auth_unknown')) return 'update.blockedAuth';
-  if (reasons.includes('storage_unavailable')) return 'update.blockedStorage';
-  return 'settings.rejectedBody';
-};
-
-type Tone = 'success' | 'warning' | 'error' | 'info';
-
-const toneClasses: Record<Tone, string> = {
-  success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-  error: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300',
-  info: 'border-primary/30 bg-primary/10 text-text-primary',
-};
-
-const Card: React.FC<{ tone: Tone; icon: React.ReactNode; title: string; body?: string; children?: React.ReactNode }> = ({
-  tone,
-  icon,
-  title,
-  body,
-  children,
-}) => (
-  <div className={`mt-3 rounded-xl border p-3 ${toneClasses[tone]}`} role="status" aria-live="polite">
-    <div className="flex items-start gap-2.5">
-      <span className="mt-0.5 shrink-0">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold leading-snug">{title}</p>
-        {body ? <p className="mt-1 text-xs leading-5 opacity-90">{body}</p> : null}
-        {children}
-      </div>
-    </div>
-  </div>
-);
-
+/**
+ * The single user-facing App Updates panel.
+ *
+ * It only ever talks about the installed Capacitor app: the website is served
+ * fresh by the deployment, so there is no website update to offer here. Every
+ * action goes through the existing OTA controller — the signed GitHub release
+ * pointer, checksum verification, activation gate and rollback are unchanged.
+ *
+ * "Check for updates" resolves the newest signed release for this channel and
+ * downloads it when it is newer; "Download and install" then activates the
+ * staged bundle once the exam-aware gate allows it.
+ */
 export const ForcedUpdateCard: React.FC = () => {
   const { t } = useLanguage();
-  const navigate = useNavigate();
-  const {
-    build,
-    native,
-    running,
-    stage,
-    progress,
-    outcome,
-    reloadOutcome,
-    run,
-    hardReload,
-    reset,
-    otaVersion,
-    builtinVersion,
-    canRestoreBuiltin,
-    restoreBuiltin,
-  } = useForcedUpdate();
+  const ota = useOta();
 
-  const [confirming, setConfirming] = useState<'check' | 'reload' | null>(null);
-  const [restoreConfirming, setRestoreConfirming] = useState(false);
+  const [nativeVersion, setNativeVersion] = useState<string | null>(null);
+  const [action, setAction] = useState<'check' | 'install' | null>(null);
 
-  const start = useCallback(async () => {
-    const action = confirming;
-    setConfirming(null);
-    setRestoreConfirming(false);
-    if (action === 'reload') await hardReload();
-    else await run();
-  }, [confirming, hardReload, run]);
+  useEffect(() => {
+    let cancelled = false;
+    void getNativeVersion().then((version) => {
+      if (!cancelled) setNativeVersion(version);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const outcomeCard = (result: ForcedUpdateOutcome) => {
-    switch (result.kind) {
-      case 'up_to_date':
-        return (
-          <Card
-            tone="success"
-            icon={<CheckCircle2 className="h-5 w-5" />}
-            title={t('settings.upToDateTitle')}
-            body={
-              result.webAhead && result.remote
-                ? t('settings.webAheadBody', { version: result.remote.version })
-                : t('settings.reloadDoneBody', { version: describeBuild(result.build) })
-            }
-          />
-        );
+  // Same query as SystemGuard, so the policy is read once and shared.
+  const { data: configs } = useQuery<ConfigRow[]>({
+    queryKey: QUERY_KEYS.SYSTEM_CONFIGS,
+    queryFn: async () => {
+      const response = await apiClient.get('/system/configs');
+      return (response.data?.data ?? []) as ConfigRow[];
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+  });
 
-      case 'ota_staged':
-        return (
-          <Card
-            tone="info"
-            icon={<Download className="h-5 w-5" />}
-            title={t('settings.otaStagedTitle')}
-            body={t('settings.otaStagedBody', { version: result.version })}
-          />
-        );
+  const policy = useMemo(
+    () => normalizeUpdatePolicy(configs?.find((row) => row.key === 'update_policy')?.value),
+    [configs]
+  );
 
-      case 'ota_activated':
-      case 'ota_restart_required':
-        return (
-          <Card
-            tone="info"
-            icon={<Loader2 className="h-5 w-5 animate-spin" />}
-            title={t('settings.otaActivatedTitle', { version: result.version })}
-          />
-        );
+  /** Mandatory APK checks reuse the same decision logic as SystemGuard. */
+  const decision = useMemo(
+    () =>
+      decideUpdate(policy, {
+        websiteVersion: currentBuild().version,
+        nativeVersion,
+        otaVersion: ota.currentVersion ?? ota.builtinVersion ?? null,
+        native: true,
+        deviceId: getDeviceId(),
+      }),
+    [policy, nativeVersion, ota.currentVersion, ota.builtinVersion]
+  );
 
-      case 'reloaded':
-        return (
-          <Card
-            tone="success"
-            icon={<CheckCircle2 className="h-5 w-5" />}
-            title={t('settings.updateReloading')}
-          />
-        );
+  const apkUrl =
+    decision.kind === 'mandatory_apk'
+      ? decision.apkUrl
+      : policy.apk_download_url || null;
 
-      case 'apk_required': {
-        const bodyKey: AppMessageKey = result.reason === 'native_incompatible'
-          ? 'settings.apkRequiredNative'
-          : 'settings.apkRequiredBundled';
+  /**
+   * The provider reports "no new version" without a version string, and in that
+   * case the running bundle *is* the latest release for this channel.
+   */
+  const latestOtaVersion =
+    ota.latestVersion ?? (ota.phase === 'up_to_date' ? ota.currentVersion : null);
 
-        return (
-          <Card
-            tone="warning"
-            icon={<Smartphone className="h-5 w-5" />}
-            title={t('settings.apkRequiredTitle')}
-            body={t(bodyKey, { version: result.remote?.version ?? result.build.version })}
-          >
-            <div className="mt-2 flex flex-wrap gap-2">
-              {result.apkUrl ? (
-                <a
-                  href={result.apkUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  {t('settings.downloadApk')}
-                </a>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => navigate('/contact')}
-                className="rounded-lg border border-current px-3 py-1.5 text-xs font-semibold"
-              >
-                {t('settings.contactSupport')}
-              </button>
-            </div>
-          </Card>
-        );
-      }
+  const checking = ota.phase === 'checking';
+  const downloading = ota.phase === 'available' || ota.phase === 'downloading';
+  const installing = ota.phase === 'staged' || ota.phase === 'activation_blocked';
+  const running = checking || downloading || ota.phase === 'activating';
 
-      case 'blocked':
-        return (
-          <Card
-            tone="warning"
-            icon={<AlertTriangle className="h-5 w-5" />}
-            title={t('update.blockedTitle')}
-            body={t(blockedMessage(result.reasons))}
-          />
-        );
+  const blockedReasons = installing
+    ? ota.reasons.filter((reason) => reason !== 'exam_active')
+    : [];
+  const blocked = blockedReasons.length > 0;
 
-      case 'rejected':
-        return (
-          <Card
-            tone="warning"
-            icon={<ShieldAlert className="h-5 w-5" />}
-            title={t('update.unsupported')}
-            body={t('settings.rejectedBody')}
-          />
-        );
-
-      case 'offline':
-        return (
-          <Card
-            tone="warning"
-            icon={<CloudOff className="h-5 w-5" />}
-            title={t('settings.offlineTitle')}
-            body={t('settings.offlineBody')}
-          />
-        );
-
-      default:
-        return (
-          <Card
-            tone="error"
-            icon={<AlertTriangle className="h-5 w-5" />}
-            title={t('settings.serverErrorTitle')}
-            body={t('settings.serverErrorBody')}
-          />
-        );
+  const checkForUpdates = useCallback(async () => {
+    setAction('check');
+    try {
+      await ota.checkForUpdate(true);
+    } finally {
+      setAction(null);
     }
-  };
+  }, [ota]);
+
+  const installDownloaded = useCallback(async () => {
+    setAction('install');
+    try {
+      await ota.activate();
+    } finally {
+      setAction(null);
+    }
+  }, [ota]);
+
+  const statusCopy = useMemo((): { tone: 'neutral' | 'info' | 'success' | 'warning' | 'error'; title: string; body?: string } => {
+    switch (ota.phase) {
+      case 'disabled':
+        return { tone: 'warning', title: t('settings.otaUnavailable') };
+      case 'checking':
+        return { tone: 'info', title: t('settings.updateChecking') };
+      case 'available':
+      case 'downloading':
+        return {
+          tone: 'info',
+          title: t('settings.updateDownloading', { percent: ota.progress }),
+        };
+      case 'staged':
+      case 'activation_blocked':
+        return blocked
+          ? {
+              tone: 'warning',
+              title: t('update.blockedTitle'),
+              body: t(REASON_MESSAGES[primaryReason(blockedReasons) ?? 'activation_not_applied']),
+            }
+          : {
+              tone: 'info',
+              title: t('settings.otaStagedTitle'),
+              body: ota.stagedVersion
+                ? t('settings.otaStagedBody', { version: ota.stagedVersion })
+                : undefined,
+            };
+      case 'activating':
+        return { tone: 'info', title: t('settings.updateActivating') };
+      case 'activated':
+        return {
+          tone: 'success',
+          title: t('settings.otaActivatedTitle', { version: ota.currentVersion ?? '' }),
+        };
+      case 'up_to_date':
+        return { tone: 'success', title: t('settings.upToDateTitle') };
+      case 'check_failed':
+        return {
+          tone: 'error',
+          title: t('settings.serverErrorTitle'),
+          body: t('settings.serverErrorBody'),
+        };
+      case 'download_failed':
+        return { tone: 'warning', title: t('update.downloadFailed') };
+      case 'rejected':
+        return {
+          tone: 'warning',
+          title: t('update.unsupported'),
+          body: ota.reasons.length > 0
+            ? t(REASON_MESSAGES[primaryReason(ota.reasons) ?? 'metadata_invalid'])
+            : t('settings.rejectedBody'),
+        };
+      case 'activation_failed':
+        return { tone: 'warning', title: t('update.failedTitle') };
+      case 'recovery':
+        return { tone: 'warning', title: t('update.recoveryTitle') };
+      default:
+        return { tone: 'neutral', title: t('settings.checkUpdatesDescription') };
+    }
+  }, [ota.phase, ota.progress, ota.stagedVersion, ota.currentVersion, ota.reasons, blocked, blockedReasons, t]);
+
+  const toneClasses = {
+    neutral: 'border-border-color bg-surface-elevated text-text-secondary',
+    info: 'border-primary/30 bg-primary/10 text-text-primary',
+    success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+    warning: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+    error: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300',
+  } as const;
+
+  const versionRow = (label: string, value: string | null) => (
+    <div className="flex items-baseline justify-between gap-3 py-1">
+      <span className="text-xs text-text-secondary">{label}</span>
+      <span className="font-mono text-xs font-medium text-text-primary">
+        {value || t('settings.unknownVersion')}
+      </span>
+    </div>
+  );
 
   return (
     <div className="p-4">
       <div className="flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-primary">
-          <RefreshCw size={18} aria-hidden="true" />
+          <Smartphone size={18} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-text-primary">
@@ -240,151 +212,118 @@ export const ForcedUpdateCard: React.FC = () => {
           <p className="mt-0.5 text-xs leading-5 text-text-secondary">
             {t('settings.checkUpdatesDescription')}
           </p>
-          <p className="mt-1 text-xs font-medium text-text-secondary">
-            {t('settings.currentBuild', { version: describeBuild(build) })}
-          </p>
-          {native && otaVersion && otaVersion !== build.version ? (
-            <p className="mt-0.5 text-xs text-text-secondary">
-              {t('settings.otaBundle', { version: otaVersion })}
-            </p>
-          ) : null}
-          {native && builtinVersion && otaVersion && otaVersion !== builtinVersion ? (
-            <p className="mt-0.5 text-xs text-text-secondary">
-              {t('settings.builtinBuild', { version: builtinVersion })}
-            </p>
-          ) : null}
         </div>
       </div>
 
-      {!confirming && !running ? (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              reset();
-              setConfirming('check');
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white"
-          >
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            {t('settings.checkUpdatesAction')}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              reset();
-              setConfirming('reload');
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border-color px-3 py-2 text-sm font-semibold text-text-primary"
-          >
-            <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            {t('settings.hardReloadAction')}
-          </button>
-        </div>
-      ) : null}
+      <div className="mt-3 rounded-xl border border-border-color bg-surface-elevated p-3">
+        {versionRow(t('settings.apkVersionLabel'), nativeVersion)}
+        {versionRow(t('settings.otaInstalledLabel'), ota.currentVersion)}
+        {versionRow(t('settings.otaLatestLabel'), latestOtaVersion)}
+      </div>
 
-      {confirming && !running ? (
-        <div className="mt-3 rounded-xl border border-border-color bg-surface-elevated p-3">
-          <p className="text-sm font-semibold text-text-primary">
-            {t(confirming === 'reload' ? 'settings.hardReloadConfirmTitle' : 'settings.confirmTitle')}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-text-secondary">
-            {t(confirming === 'reload' ? 'settings.hardReloadConfirmBody' : 'settings.confirmBody')}
-          </p>
-          <div className="mt-3 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setConfirming(null)}
-              className="rounded-lg border border-border-color px-3 py-1.5 text-xs font-medium text-text-secondary"
-            >
-              {t('settings.confirmCancel')}
-            </button>
-            <button
-              type="button"
-              onClick={() => void start()}
-              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white"
-            >
-              {t(confirming === 'reload' ? 'settings.hardReloadConfirmAction' : 'settings.confirmYes')}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {running ? (
-        <div className="mt-3 rounded-xl border border-border-color bg-surface-elevated p-3" role="status" aria-live="polite">
-          <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            {t(STAGE_MESSAGES[stage ?? 'checking'], { percent: progress })}
-          </div>
-          {stage === 'downloading' ? (
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/10">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-300"
-                style={{ width: `${Math.max(3, Math.min(100, progress))}%` }}
-              />
+      {decision.kind === 'mandatory_apk' ? (
+        <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300" role="status">
+          <div className="flex items-start gap-2.5">
+            <Smartphone className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{t('settings.apkRequiredTitle')}</p>
+              <p className="mt-1 text-xs leading-5">
+                {t('settings.apkRequiredNative', { version: decision.minVersion })}
+              </p>
+              {apkUrl ? (
+                <a
+                  href={apkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white"
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t('settings.downloadApk')}
+                </a>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       ) : null}
 
-      {!running && reloadOutcome?.kind === 'verified' ? (
-        <Card
-          tone="success"
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          title={t('settings.reloadDoneTitle')}
-          body={t('settings.reloadDoneBody', {
-            version: describeBuild(reloadOutcome.build),
-          })}
-        />
-      ) : null}
-
-      {!running && reloadOutcome?.kind === 'still_stale' ? (
-        <Card
-          tone="warning"
-          icon={<AlertTriangle className="h-5 w-5" />}
-          title={t('settings.reloadStaleTitle')}
-          body={t('settings.reloadStaleBody')}
-        />
-      ) : null}
-
-      {!running && outcome && !reloadOutcome ? outcomeCard(outcome) : null}
-
-      {canRestoreBuiltin && !running ? (
-        <div className="mt-3 border-t border-border-color pt-3">
-          {restoreConfirming ? (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-text-secondary">{t('settings.restoreBuiltinHint')}</p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRestoreConfirming(false)}
-                  className="rounded-lg border border-border-color px-3 py-1.5 text-xs font-medium text-text-secondary"
-                >
-                  {t('settings.confirmCancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void restoreBuiltin()}
-                  className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300"
-                >
-                  {t('settings.restoreConfirm')}
-                </button>
+      <div className={`mt-3 rounded-xl border p-3 ${toneClasses[statusCopy.tone]}`} role="status" aria-live="polite">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 shrink-0">
+            {running ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            ) : statusCopy.tone === 'success' ? (
+              <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+            ) : statusCopy.tone === 'warning' ? (
+              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+            ) : statusCopy.tone === 'error' ? (
+              <ShieldAlert className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="h-5 w-5" aria-hidden="true" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-snug">{statusCopy.title}</p>
+            {statusCopy.body ? (
+              <p className="mt-1 text-xs leading-5 opacity-90">{statusCopy.body}</p>
+            ) : null}
+            {downloading ? (
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/10">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-300"
+                  style={{ width: `${Math.max(3, Math.min(100, ota.progress))}%` }}
+                />
               </div>
-            </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void checkForUpdates()}
+          disabled={!ota.available || running || ota.examActive || action !== null}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {checking ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
-            <button
-              type="button"
-              onClick={() => setRestoreConfirming(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary underline-offset-2 hover:underline"
-            >
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-              {t('settings.restoreBuiltin')}
-            </button>
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
           )}
+          {t('settings.checkUpdatesAction')}
+        </button>
+
+        {ota.available && (installing || ota.stagedVersion) ? (
+          <button
+            type="button"
+            onClick={() => void installDownloaded()}
+            disabled={running || blocked || ota.examActive || action !== null}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border-color px-3 py-2 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {action === 'install' ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="h-4 w-4" aria-hidden="true" />
+            )}
+            {t('settings.otaInstallAction')}
+          </button>
+        ) : null}
+      </div>
+
+      {ota.available && ota.currentVersion && ota.builtinVersion && ota.currentVersion !== ota.builtinVersion && !running ? (
+        <div className="mt-3 border-t border-border-color pt-3">
+          <button
+            type="button"
+            onClick={() => void ota.restoreBuiltin()}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary underline-offset-2 hover:underline"
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('settings.restoreBuiltin')}
+          </button>
         </div>
       ) : null}
 
-      <OtaDiagnosticsPanel currentBuild={describeBuild(build)} />
+      <OtaDiagnosticsPanel currentBuild={nativeVersion ? `APK ${nativeVersion}` : 'APK'} />
     </div>
   );
 };

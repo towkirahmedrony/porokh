@@ -14,8 +14,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { LANGUAGE_OPTION_LABELS } from '@/shared/i18n/messages';
 import { ForcedUpdateCard } from '@/features/app-update/ForcedUpdateCard';
 import NotificationPreferencesCard from '@/features/notifications/components/NotificationPreferencesCard';
-
-const APP_VERSION = 'Porokh v5.0.0 (Supreme)';
+import { Capacitor } from '@capacitor/core';
 
 // --------------------------------- Pieces ---------------------------------
 
@@ -165,6 +164,10 @@ export const Settings: React.FC = () => {
   const textFontClass =
     language === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans';
 
+  // The website always runs the deployed build, so update controls belong to
+  // the Android app only.
+  const native = Capacitor.isNativePlatform();
+
   const handleLogout = useCallback(async () => {
     try {
       if (signOut) await signOut();
@@ -286,18 +289,16 @@ export const Settings: React.FC = () => {
           )}
         </SettingSection>
 
-        {/* E. App updates — real OTA check / hard reload, see app-update/forcedUpdate.ts */}
-        <SettingSection title={t('settings.sectionUpdates')}>
-          <ForcedUpdateCard />
-        </SettingSection>
+        {/* E. App updates — the single OTA/APK surface for the Android app */}
+        {native ? (
+          <SettingSection title={t('settings.sectionUpdates')}>
+            <ForcedUpdateCard />
+          </SettingSection>
+        ) : null}
 
         {/* F. About */}
         <SettingSection title={t('settings.sectionAbout')}>
-          <SettingRow
-            icon={Info}
-            title={t('settings.appName')}
-            rightText={`${t('settings.version')} ${APP_VERSION}`}
-          />
+          <SettingRow icon={Info} title={t('settings.appName')} />
           <SettingRow
             icon={Shield}
             title={t('settings.aboutUs')}
@@ -320,10 +321,6 @@ export const Settings: React.FC = () => {
             isLast
           />
         </SettingSection>
-
-        <div className="mt-8 mb-4 text-center">
-          <p className="text-xs text-text-secondary">{APP_VERSION}</p>
-        </div>
       </div>
     </div>
   );
