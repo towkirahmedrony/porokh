@@ -129,7 +129,7 @@ class FakeAdapter implements OtaUpdaterAdapter {
       status: 'success',
     };
 
-    if (bundle.status === 'success') {
+    if (bundle.status === 'success' || bundle.status === 'pending') {
       this.bundles.push(bundle);
     }
     return bundle;
@@ -866,6 +866,58 @@ test('a signed release is accepted and staged with the local digest', async () =
   );
   assert.equal(staged.manifestChecksum, SIGNED_CHECKSUM);
   assert.equal(staged.signed, true);
+});
+
+test('a downloaded pending bundle is verified, staged, and activatable', async () => {
+  const { controller, adapter } = harness({ requireSignature: true });
+  setLatest(adapter, RELEASE, SIGNED_CHECKSUM, SESSION_KEY);
+  adapter.downloadResult = {
+    id: 'bundle-pending',
+    version: RELEASE,
+    checksum: CHECKSUM,
+    status: 'pending',
+  };
+
+  await controller.initialize();
+  await controller.checkForUpdate(true);
+
+  assert.equal(controller.getSnapshot().phase, 'staged');
+  assert.equal(controller.getSnapshot().stagedVersion, RELEASE);
+  assert.equal(adapter.deleted.length, 0);
+
+  const decision = await controller.activate();
+  assert.equal(decision.allowed, true);
+  assert.deepEqual(adapter.setCalls, ['bundle-pending']);
+});
+
+test('manual checks bypass persisted download backoff while automatic checks wait', async () => {
+  const seedBackoff = (kv: OtaKeyValue): void => {
+    kv.setItem(
+      OTA_STORAGE_KEYS.downloadRetry,
+      JSON.stringify({
+        key: RELEASE,
+        attempts: 3,
+        nextAt: Date.now() + 60 * 60 * 1000,
+      })
+    );
+  };
+
+  const automatic = harness();
+  setLatest(automatic.adapter);
+  seedBackoff(automatic.kv);
+  await automatic.controller.initialize();
+  await automatic.controller.checkForUpdate(false);
+  assert.equal(automatic.adapter.downloadCalls.length, 0);
+  assert.equal(automatic.controller.getSnapshot().phase, 'download_failed');
+
+  const manual = harness();
+  setLatest(manual.adapter);
+  seedBackoff(manual.kv);
+  await manual.controller.initialize();
+  await manual.controller.checkForUpdate(true);
+  assert.equal(manual.adapter.downloadCalls.length, 1);
+  assert.equal(manual.controller.getSnapshot().phase, 'staged');
+  assert.equal(manual.kv.getItem(OTA_STORAGE_KEYS.downloadRetry), null);
 });
 
 test('a signed release whose extracted digest is not a digest is rejected', async () => {

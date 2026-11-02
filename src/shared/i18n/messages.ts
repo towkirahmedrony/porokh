@@ -249,6 +249,16 @@ const bn = {
     'আপডেট সার্ভার এখন সাড়া দিচ্ছে না। অ্যাপটি ব্যবহার করা যাবে; সার্ভার চালু হলে আবার চেষ্টা করুন।',
   'settings.downloadApk': 'APK ডাউনলোড করুন',
   'settings.contactSupport': 'সহায়তা নিন',
+  'settings.otaDiagnosticTitle': 'OTA ডায়াগনস্টিক লগ',
+  'settings.otaDiagnosticToggle': 'ডায়াগনস্টিক লগ ({count})',
+  'settings.otaDiagnosticPrivacy':
+    'এখানে শুধু OTA আপডেটের ধাপ ও ত্রুটি রাখা হয়। লগ এই ফোনেই থাকে; কপি না করলে কোথাও পাঠানো হয় না। key, token ও signed URL-এর গোপন অংশ বাদ দেওয়া হয়।',
+  'settings.otaDiagnosticCopy': 'লগ কপি করুন',
+  'settings.otaDiagnosticCopied': 'কপি হয়েছে',
+  'settings.otaDiagnosticCopyManual':
+    'কপি করা যায়নি। নিচের লগে চেপে ধরে Select all করে কপি করুন।',
+  'settings.otaDiagnosticClear': 'লগ মুছুন',
+  'settings.otaDiagnosticEmpty': 'এখনো কোনো OTA লগ নেই।',
   'settings.blockedExam': 'পরীক্ষা চলছে। আপডেট বা রিলোড এখন নিরাপদ নয়।',
   'settings.blockedPending':
     'সিঙ্ক না হওয়া উত্তর বা অসম্পন্ন জমা আছে। সেগুলো শেষ হওয়ার পর আপডেট করুন।',
@@ -1816,6 +1826,16 @@ const en: Record<AppMessageKey, string> = {
     'The update server is unavailable. The installed app remains usable; retry when the server is back online.',
   'settings.downloadApk': 'Download APK',
   'settings.contactSupport': 'Contact support',
+  'settings.otaDiagnosticTitle': 'OTA diagnostic log',
+  'settings.otaDiagnosticToggle': 'Diagnostic log ({count})',
+  'settings.otaDiagnosticPrivacy':
+    'Only OTA update steps and errors are stored here. Logs stay on this phone unless you copy them. Keys, tokens, and sensitive signed-URL parts are redacted.',
+  'settings.otaDiagnosticCopy': 'Copy log',
+  'settings.otaDiagnosticCopied': 'Copied',
+  'settings.otaDiagnosticCopyManual':
+    'Copy was unavailable. Long-press the log, select all, and copy it.',
+  'settings.otaDiagnosticClear': 'Clear log',
+  'settings.otaDiagnosticEmpty': 'No OTA diagnostic entries yet.',
   'settings.blockedExam': 'An exam is in progress. Updating or reloading now is not safe.',
   'settings.blockedPending':
     'There are unsynced answers or an unfinished submission. Update once they are settled.',

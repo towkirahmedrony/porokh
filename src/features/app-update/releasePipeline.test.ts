@@ -93,7 +93,7 @@ test('the publish credential is scoped to the publish step and never on argv', (
 test('both signing keys come from secrets and never linger on the runner', () => {
   assert.match(otaRelease, /secrets\.CAPGO_PRIVATE_KEY/);
   assert.match(otaRelease, /secrets\.OTA_ED25519_PRIVATE_KEY/);
-  assert.match(otaRelease, /chmod 600/);
+  assert.match(otaRelease, /umask 077/);
   assert.match(otaRelease, /if: always\(\)/);
   assert.match(otaRelease, /rm -f "\$RUNNER_TEMP\/capgo_key_v2"/);
   // Only the RSA key needs a file (the CLI reads a path). The Ed25519 key is
@@ -125,12 +125,13 @@ test('the signing keys must match the keys baked into the installed apps', () =>
   assert.match(publishScript, /does not match OTA_ED25519_PUBLIC_KEY/);
 });
 
-test('publishing fails closed when either key is missing', () => {
-  assert.match(otaRelease, /CAPGO_PRIVATE_KEY is not configured/);
-  assert.match(otaRelease, /Refusing to publish an unsigned/);
-  assert.match(otaRelease, /OTA_ED25519_PRIVATE_KEY is not configured/);
-  assert.match(otaRelease, /CAPGO_PUBLIC_KEY is not configured/);
-  assert.match(otaRelease, /OTA_ED25519_PUBLIC_KEY is not configured/);
+test('publishing fails closed when signing key material is missing or invalid', () => {
+  assert.match(otaRelease, /CAPGO_PUBLIC_KEY must be a complete PKCS#1 RSA public key/);
+  assert.match(otaRelease, /OTA_ED25519_PUBLIC_KEY must be canonical Base64 for 32 bytes/);
+  assert.match(otaRelease, /RSA signing key pair is incomplete/);
+  assert.match(otaRelease, /Ed25519 signing key pair is incomplete/);
+  assert.match(otaRelease, /CAPGO_PRIVATE_KEY does not match CAPGO_PUBLIC_KEY/);
+  assert.match(otaRelease, /OTA_ED25519_PRIVATE_KEY does not match OTA_ED25519_PUBLIC_KEY/);
   assert.match(checkRelease, /OTA_ED25519_PRIVATE_KEY is not set/);
   assert.match(checkRelease, /OTA_PUBLISH_TOKEN is not set/);
 });

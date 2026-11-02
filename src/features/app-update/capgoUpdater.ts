@@ -6,6 +6,7 @@ import {
   OTA_POINTER_PUBLIC_KEY,
   OTA_REQUIRE_SIGNATURE,
 } from './config';
+import { diagnosticErrorDetails, recordOtaDiagnostic } from './diagnostics';
 import {
   blockedLatest,
   fetchChannelLatest,
@@ -134,8 +135,56 @@ export class CapgoUpdaterAdapter implements OtaUpdaterAdapter {
     checksum: string;
     sessionKey?: string;
   }): Promise<ProviderBundle> {
-    const result = await CapacitorUpdater.download(release);
-    return toProviderBundle(result);
+    recordOtaDiagnostic('info', 'native_download_call_started', {
+      version: release.version,
+      provider: 'CapacitorUpdater',
+    });
+    let failureHandle: { remove: () => Promise<void> } | null = null;
+    try {
+      try {
+        failureHandle = await CapacitorUpdater.addListener(
+          'downloadFailed',
+          (event) => {
+            if (event.version !== release.version) return;
+            recordOtaDiagnostic('error', 'native_download_failed_event', {
+              version: event.version,
+            });
+          }
+        );
+      } catch (error) {
+        // A diagnostic listener must never prevent the actual update attempt.
+        recordOtaDiagnostic(
+          'warning',
+          'native_download_listener_unavailable',
+          diagnosticErrorDetails(error)
+        );
+      }
+
+      const result = await CapacitorUpdater.download(release);
+      recordOtaDiagnostic('info', 'native_download_call_resolved', {
+        version: result.version,
+        status: result.status,
+        hasChecksum: Boolean(result.checksum),
+      });
+      return toProviderBundle(result);
+    } catch (error) {
+      recordOtaDiagnostic('error', 'native_download_call_rejected', {
+        requestedVersion: release.version,
+        provider: 'CapacitorUpdater',
+        ...diagnosticErrorDetails(error),
+      });
+      throw error;
+    } finally {
+      if (failureHandle) {
+        void failureHandle.remove().catch((error: unknown) => {
+          recordOtaDiagnostic(
+            'warning',
+            'native_download_listener_remove_failed',
+            diagnosticErrorDetails(error)
+          );
+        });
+      }
+    }
   }
 
   async deleteBundle(id: string): Promise<void> {
