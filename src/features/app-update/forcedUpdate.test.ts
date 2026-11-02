@@ -260,15 +260,42 @@ test('web: an invalid manifest is a server error, not an update', async () => {
   assert.equal(outcome.kind, 'server_error');
 });
 
-test('native OTA: up to date but a newer website build is reported honestly', async () => {
-  const { driver, calls } = fakeOta({ phase: { phase: 'up_to_date' } });
+test('native OTA: a newer website build does not imply an unpublished OTA update', async () => {
+  const installed =
+    '1.0.2-ota.production-android.r000120.nv1.0.1.db2';
+  const build = normalizeBuildInfo({
+    version: '1.0.2',
+    buildId: 'f940ad6',
+    channel: 'production-android',
+  });
+  const { driver, calls } = fakeOta({
+    phase: {
+      phase: 'up_to_date',
+      currentVersion: installed,
+      latestVersion: installed,
+    },
+  });
+  let manifestChecks = 0;
 
   const outcome = await runForcedUpdate(
-    baseDeps({ native: true, otaAvailable: true, ota: driver })
+    baseDeps({
+      build,
+      native: true,
+      otaAvailable: true,
+      ota: driver,
+      checkManifest: async () => {
+        manifestChecks += 1;
+        return {
+          ok: true,
+          manifest: { ...REMOTE, version: '1.0.2', buildId: 'new-website-build' },
+          sourceUrl: 'https://x/version.json',
+        };
+      },
+    })
   );
 
-  assert.equal(outcome.kind, 'up_to_date');
-  assert.equal(outcome.kind === 'up_to_date' && outcome.webAhead, true);
+  assert.deepEqual(outcome, { kind: 'up_to_date', build, remote: null });
+  assert.equal(manifestChecks, 0, 'Android OTA availability comes only from the channel pointer');
   assert.equal(calls.initialize, 1);
   assert.deepEqual(calls.checks, [true]);
 });

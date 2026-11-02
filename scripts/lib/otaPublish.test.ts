@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { generateKeyPairSync, sign } from 'node:crypto';
 
 import {
   PublishProblem,
@@ -16,6 +17,7 @@ import {
   releaseTag,
   sha256Sums,
   signatureDocument,
+  verifyChannelPointerSignature,
 } from './otaPublish.ts';
 import { parseChannelPointer, pointerPayload } from '../../src/features/app-update/githubManifest.ts';
 import type { ChannelPointer } from '../../src/features/app-update/githubManifest.ts';
@@ -126,6 +128,37 @@ test('the pointer generation only ever increases', () => {
   assert.equal(nextGeneration({ generation: 1 }), 2);
   assert.equal(nextGeneration({ generation: 41 }), 42);
   assert.throws(() => nextGeneration({ generation: -1 }), PublishProblem);
+  assert.throws(
+    () => nextGeneration({ generation: Number.MAX_SAFE_INTEGER }),
+    /cannot be incremented safely/
+  );
+});
+
+test('publisher verifies current and rollback pointers with a real Ed25519 signature', () => {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  const pointer = buildPointer(draft());
+  const signature = sign(
+    null,
+    Buffer.from(pointerPayload(pointer), 'utf8'),
+    privateKey
+  ).toString('base64');
+
+  assert.equal(
+    verifyChannelPointerSignature({ pointer, signature, publicKey }),
+    true
+  );
+  assert.equal(
+    verifyChannelPointerSignature({
+      pointer: { ...pointer, notes: 'tampered' },
+      signature,
+      publicKey,
+    }),
+    false
+  );
+  assert.equal(
+    verifyChannelPointerSignature({ pointer, signature: 'not-base64', publicKey }),
+    false
+  );
 });
 
 test('a pointer move must advance the generation', () => {

@@ -235,8 +235,6 @@ const bn = {
   'settings.updateActivating': 'নতুন সংস্করণ চালু হচ্ছে…',
   'settings.updateReloading': 'নতুন সংস্করণ লোড হচ্ছে…',
   'settings.upToDateTitle': 'আপনি সর্বশেষ সংস্করণে আছেন',
-  'settings.webAheadBody':
-    'ওয়েবসাইটে নতুন বিল্ড ({version}) আছে, কিন্তু সেটি এখনো অ্যাপের জন্য প্রকাশ করা হয়নি।',
   'settings.otaStagedTitle': 'আপডেট ডাউনলোড হয়েছে',
   'settings.otaStagedBody':
     'সংস্করণ {version} প্রস্তুত। চলমান পরীক্ষা বা সিঙ্ক না হওয়া উত্তর শেষ হলে এটি চালু হবে।',
@@ -1827,8 +1825,6 @@ const en: Record<AppMessageKey, string> = {
   'settings.updateActivating': 'Activating the new version…',
   'settings.updateReloading': 'Loading the new version…',
   'settings.upToDateTitle': 'You are on the latest version',
-  'settings.webAheadBody':
-    'The website has a newer build ({version}), but it has not been published for the app yet.',
   'settings.otaStagedTitle': 'Update downloaded',
   'settings.otaStagedBody':
     'Version {version} is ready. It will be applied once no exam or unsynced answer is pending.',

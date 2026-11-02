@@ -86,12 +86,7 @@ export const ForcedUpdateCard: React.FC = () => {
       ? decision.apkUrl
       : policy.apk_download_url || null;
 
-  /**
-   * The provider reports "no new version" without a version string, and in that
-   * case the running bundle *is* the latest release for this channel.
-   */
-  const latestOtaVersion =
-    ota.latestVersion ?? (ota.phase === 'up_to_date' ? ota.currentVersion : null);
+  const latestOtaVersion = ota.latestVersion;
 
   const checking = ota.phase === 'checking';
   const downloading = ota.phase === 'available' || ota.phase === 'downloading';
@@ -218,7 +213,9 @@ export const ForcedUpdateCard: React.FC = () => {
       <div className="mt-3 rounded-xl border border-border-color bg-surface-elevated p-3">
         {versionRow(t('settings.apkVersionLabel'), nativeVersion)}
         {versionRow(t('settings.otaInstalledLabel'), ota.currentVersion)}
-        {versionRow(t('settings.otaLatestLabel'), latestOtaVersion)}
+        {latestOtaVersion && latestOtaVersion !== ota.currentVersion
+          ? versionRow(t('settings.otaLatestLabel'), latestOtaVersion)
+          : null}
       </div>
 
       {decision.kind === 'mandatory_apk' ? (

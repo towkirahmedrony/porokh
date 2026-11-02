@@ -43,8 +43,6 @@ export type ForcedUpdateOutcome =
       kind: 'up_to_date';
       build: BuildInfo;
       remote: RemoteManifest | null;
-      /** The deployment is newer, but no app-usable bundle exists for it. */
-      webAhead: boolean;
     }
   | { kind: 'ota_staged'; version: string; progress: number }
   | { kind: 'ota_activated'; version: string; previousVersion: string | null }
@@ -209,13 +207,10 @@ const runOtaPath = async (
   switch (snapshot.phase) {
     case 'up_to_date':
     case 'idle': {
-      const manifest = await deps.checkManifest();
-      const remote = manifest.ok ? manifest.manifest : null;
-      const webAhead =
-        Boolean(remote) &&
-        compareBuilds(deps.build, remote as RemoteManifest).status ===
-          'update_available';
-      return { kind: 'up_to_date', build: deps.build, remote, webAhead };
+      // On Android, the signed channel pointer is the only OTA authority.
+      // A website deployment can move independently and cannot prove that an
+      // app bundle is available or that the channel pointer is stale.
+      return { kind: 'up_to_date', build: deps.build, remote: null };
     }
 
     case 'staged':
@@ -308,14 +303,10 @@ const runOtaPath = async (
     }
 
     default: {
-      const manifest = await deps.checkManifest();
       return {
         kind: 'up_to_date',
         build: deps.build,
-        remote: manifest.ok ? manifest.manifest : null,
-        webAhead:
-          manifest.ok &&
-          compareBuilds(deps.build, manifest.manifest).status === 'update_available',
+        remote: null,
       };
     }
   }
@@ -340,7 +331,6 @@ const runBundledPath = async (
       kind: 'up_to_date',
       build: deps.build,
       remote: manifest.manifest,
-      webAhead: false,
     };
   }
 
@@ -378,7 +368,6 @@ const runWebPath = async (
       kind: 'up_to_date',
       build: deps.build,
       remote: manifest.manifest,
-      webAhead: false,
     };
   }
 

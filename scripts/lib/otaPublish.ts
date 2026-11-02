@@ -4,9 +4,11 @@
  * Kept free of I/O so the naming, isolation and monotonicity rules can be
  * proven without a network or a repository.
  */
+import { verify as ed25519Verify, type KeyObject } from 'node:crypto';
 import { MAX_RELEASE_REVISION } from '../../src/features/app-update/version.ts';
 import {
   POINTER_SCHEMA,
+  pointerPayload,
   type ChannelPointer,
 } from '../../src/features/app-update/githubManifest.ts';
 
@@ -21,6 +23,26 @@ export class PublishProblem extends Error {
     this.name = 'PublishProblem';
   }
 }
+
+/** Verify canonical base64 Ed25519 signatures over the exact client payload. */
+export const verifyChannelPointerSignature = (input: {
+  pointer: ChannelPointer;
+  signature: string;
+  publicKey: KeyObject;
+}): boolean => {
+  const encoded = input.signature.trim();
+  const signature = Buffer.from(encoded, 'base64');
+  if (signature.length !== 64 || signature.toString('base64') !== encoded) {
+    return false;
+  }
+
+  return ed25519Verify(
+    null,
+    Buffer.from(pointerPayload(input.pointer), 'utf8'),
+    input.publicKey,
+    signature
+  );
+};
 
 /** Reject anything that cannot be a channel name, before it becomes a path. */
 export const assertChannel = (value: string): OtaChannel => {
@@ -109,6 +131,9 @@ export const nextGeneration = (
   const previous = current?.generation ?? 0;
   if (!Number.isInteger(previous) || previous < 0) {
     throw new PublishProblem('current pointer has an invalid generation');
+  }
+  if (previous >= Number.MAX_SAFE_INTEGER) {
+    throw new PublishProblem('current pointer generation cannot be incremented safely');
   }
   return previous + 1;
 };

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -34,6 +35,7 @@ const Spinner = () => (
 
 export const UpdateBanner = () => {
   const { t } = useLanguage();
+  const location = useLocation();
   const {
     available,
     phase,
@@ -81,7 +83,9 @@ export const UpdateBanner = () => {
     };
   }, [notice, t]);
 
-  if (!available || examActive) return null;
+  // Settings renders the full OTA state and controls. Avoid stacking a second
+  // copy of the same staged/download status over that panel.
+  if (!available || examActive || location.pathname === '/settings') return null;
 
   if (notice && noticeContent) {
     return (

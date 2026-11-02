@@ -595,16 +595,16 @@ test('downgrades are rejected', async () => {
   assert.equal(adapter.downloadCalls.length, 0);
 });
 
-test('installed version is reported up to date without download', async () => {
+test('an already-installed latest OTA revision is up to date without download', async () => {
   const { controller, adapter } = harness();
   adapter.currentBundle = {
     id: 'bundle-1',
-    version: RELEASE,
+    version: releaseVersion('1.0.2', { revision: 120 }),
     checksum: CHECKSUM,
     status: 'success',
   };
   adapter.latest = {
-    version: RELEASE,
+    version: releaseVersion('1.0.2', { revision: 120 }),
     url: 'https://example.com/bundle.zip',
     checksum: CHECKSUM,
   };
@@ -614,6 +614,28 @@ test('installed version is reported up to date without download', async () => {
 
   assert.equal(controller.getSnapshot().phase, 'up_to_date');
   assert.equal(adapter.downloadCalls.length, 0);
+});
+
+test('a newer OTA revision is detected even when its base semver is unchanged', async () => {
+  const { controller, adapter } = harness();
+  const installed = releaseVersion('1.0.2', { revision: 120 });
+  const latest = releaseVersion('1.0.2', { revision: 121 });
+  adapter.currentBundle = {
+    id: 'bundle-r120',
+    version: installed,
+    checksum: CHECKSUM,
+    status: 'success',
+  };
+  adapter.builtin = '1.0.2';
+  setLatest(adapter, latest);
+
+  await controller.initialize();
+  await controller.checkForUpdate(true);
+
+  assert.equal(adapter.downloadCalls.length, 1);
+  assert.equal(adapter.downloadCalls[0].version, latest);
+  assert.equal(controller.getSnapshot().phase, 'staged');
+  assert.equal(controller.getSnapshot().stagedVersion, latest);
 });
 
 test('a Capgo up_to_date response is not treated as a failed check', async () => {

@@ -118,6 +118,8 @@ test('release metadata is signed, and a rollback verifies it before copying', ()
   // ...and the rollback path must verify it instead of trusting the asset.
   assert.match(publishScript, /ed25519Verify\(/);
   assert.match(publishScript, /manifest signature does not verify/);
+  assert.match(publishScript, /verifyChannelPointerSignature\(/);
+  assert.match(publishScript, /published channel pointer signature does not verify/);
 });
 
 test('the signing keys must match the keys baked into the installed apps', () => {
@@ -154,6 +156,20 @@ test('publishing is opt-in and a validation-only run is possible', () => {
   assert.match(otaRelease, /workflow_dispatch:/);
   const publishInput = /publish:\s*\n(?:.*\n)*?\s+default: false/.test(otaRelease);
   assert.equal(publishInput, true, 'dispatch must default to a dry run');
+});
+
+test('build-only and failed publisher runs are reported distinctly from verified publication', () => {
+  assert.match(otaRelease, /build\/validate only \(not published\)/);
+  assert.match(otaRelease, /PUBLISHED: \$\{\{ steps\.publish\.outputs\.published \|\| 'false' \}\}/);
+  assert.match(otaRelease, /Publish requested/);
+  assert.match(otaRelease, /Published/);
+
+  const publisherCall = otaRelease.indexOf('scripts/publish-ota-release.ts');
+  const publishedOutput = otaRelease.indexOf('echo "published=true" >> "$GITHUB_OUTPUT"');
+  assert.ok(publisherCall >= 0, 'the publisher must run before success is reported');
+  assert.ok(publishedOutput > publisherCall, 'Published may only be set after publisher verification exits successfully');
+  assert.match(otaRelease, /Publish step failed before verified success/);
+  assert.match(otaRelease, /Build and validation only; no OTA release was published/);
 });
 
 test('no manual version override can re-break native compatibility', () => {

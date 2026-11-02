@@ -50,6 +50,7 @@ import {
   releaseTag,
   sha256Sums,
   signatureDocument,
+  verifyChannelPointerSignature,
   type OtaChannel,
 } from './lib/otaPublish.ts';
 import {
@@ -275,6 +276,18 @@ const readCurrentPointer = async (): Promise<{
   if (!parsed.ok) {
     throw new PublishProblem(
       `the published pointer is not a valid document (${parsed.problem}); ` +
+        'refusing to replace it automatically'
+    );
+  }
+  if (
+    !verifyChannelPointerSignature({
+      pointer: parsed.pointer,
+      signature: parsed.signature,
+      publicKey: ed25519PublicKey,
+    })
+  ) {
+    throw new PublishProblem(
+      'the published channel pointer signature does not verify with OTA_ED25519_PRIVATE_KEY; ' +
         'refusing to replace it automatically'
     );
   }

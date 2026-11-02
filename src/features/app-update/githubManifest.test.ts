@@ -372,6 +372,21 @@ test('an HTTP error is a retryable failure', async () => {
   assert.equal(pointerProblemReason(result.problem), null);
 });
 
+test('a missing Production channel pointer is never treated as a published release', async () => {
+  const result = await fetchChannelLatest({
+    channel: 'production-android',
+    requireSignature: true,
+    publicKeyBase64: PUBLIC_KEY_BASE64,
+    verifier: nodeVerifier,
+    fetchImpl: respond('not found', { ok: false, status: 404 }).impl,
+  });
+
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.problem, 'http_error');
+  assert.equal(pointerProblemReason(result.problem), null);
+});
+
 test('non-JSON, oversized and unreachable responses never throw', async () => {
   const nonJson = await fetchChannelLatest({
     channel: CHANNEL,

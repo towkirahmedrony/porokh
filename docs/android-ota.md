@@ -1,47 +1,54 @@
 # Android + OTA updates
 
 Porokh ships as a Capacitor 8 Android shell. The web app is bundled inside the
-APK for first-run/offline use, and Capgo delivers web-only updates afterwards.
-Native code, plugins and permissions only change through a new APK/AAB.
+APK for first-run/offline use. Android OTA releases are immutable encrypted
+GitHub Releases selected by a signed channel pointer; a website deployment is
+not an Android update and never determines OTA availability. Native code,
+plugins and permissions only change through a new APK/AAB.
 
 ## Update flow
 
-1. **Check** – `getLatest()` runs 4 s after boot, when the app returns to the
-   foreground after 6 h, and on reconnect. Checks are skipped while a mounted
-   exam page is active or the retry backoff is active. Persisted attempts,
-   pending submissions and unsynced answers block activation instead of
-   blocking the download.
-2. **Verify authenticity and metadata** – a signed release must carry both the
+1. **Discover** – the native app fetches its configured signed channel pointer
+   (`channels/production-android.json` in production) on startup, foreground and
+   manual checks. The pointer—not the website `version.json`—is the source of
+   truth for Android OTA availability. Website build IDs and plain semver are
+   not compared to OTA bundle identities.
+2. **Check** – updates are not downloaded while a mounted exam page is active or
+   retry backoff is active. Persisted attempts, pending submissions and unsynced
+   answers block activation instead of blocking the download.
+3. **Verify authenticity and metadata** – a signed release must carry both the
    RSA-encrypted checksum and the encrypted AES session key; a release without
    them is rejected before any bytes are downloaded when the build enforces
    signatures. The version string then has to match channel, minimum native
    version and local DB schema (`version.ts`), and must not be a downgrade.
-3. **Download + verify** – the bundle is downloaded through Capgo, which
-   decrypts it with the embedded public key and compares the decrypted checksum
-   against the extracted files. A mismatch fails the download. The client then
+4. **Download + verify** – the encrypted asset is downloaded from the GitHub
+   Release selected by the pointer. The native Capacitor updater decrypts it
+   with the embedded RSA key-v2 public key and compares the decrypted checksum
+   against extracted files. A mismatch fails the download. The client then
    requires a real SHA-256 digest of the installed bundle and cross-checks the
    installed bundle list.
-4. **Stage** – the verified bundle is persisted as staged with the *local*
+5. **Stage** – the verified bundle is persisted as staged with the *local*
    digest. Nothing reloads.
-5. **Gate** – before activation, the staged bundle is checked against
+6. **Gate** – before activation, the staged bundle is checked against
    `list()` again and independent checks run:
    - runtime activity registered by exam, practice and group-battle pages,
    - persisted attempts/submissions/answers counted across **all** stored users
      (so signing out cannot hide queued work),
    - local schema health,
    - the current route as a last-resort guard.
-6. **Activate** – only when every check passes, `set({ id })` is called and a
+7. **Activate** – only when every check passes, `set({ id })` is called and a
    pending marker is written first. If `set()` fails, the bundle stays staged.
-7. **Confirm next boot** – `notifyAppReady()` runs only after the new bundle
+8. **Confirm next boot** – `notifyAppReady()` runs only after the new bundle
    starts and local storage opens against the expected schema. A schema the
    build provably cannot read triggers `reset({ toLastSuccessful: true })` and
    no confirmation. A *transient* storage outage is retried first and, if it
    persists, the bundle is still confirmed: the bundle booted, and rolling back
    cannot repair an unavailable database.
-8. **Rollback visibility** – an update that never became current is reported as
+9. **Rollback visibility** – an update that never became current is reported as
    `activation_failed`; its version is cooled down for 24 h.
 
-No OTA code runs on the website/PWA: `Capacitor.isNativePlatform()` is required.
+Browser/PWA deployments use the website manifest and reload path. Android OTA
+checks use only the signed channel pointer and its full OTA version/revision.
 
 ## Bundle retention and rollback
 
@@ -81,7 +88,7 @@ Four storage systems exist and must not be confused:
 4. **PWA service worker** — `public/firebase-messaging-sw.js` handles Firebase
    Cloud Messaging push only; it is not an app-shell cache and does not conflict
    with the exam store or OTA.
-5. **OTA (Capgo)** — native-Android-only web bundle updates; unrelated to any
+5. **OTA (GitHub Releases)** — native-Android-only web bundle updates; unrelated to any
    PWA asset update.
 
 **Wiring status:** the offline exam flow is wired into the admission exam path:
@@ -114,8 +121,8 @@ time, and offline cannot extend that deadline.
 1.0.0-ota.production-android.r000042.nv1.0.0.db2
 │     │   │                 │        │       └ local exam storage schema (exact match)
 │     │   │                 │        └ minimum installed native version
-│     │   │                 └ monotonic release revision, zero padded
-│     │   └ Capgo channel
+│     │   │                 └ monotonic OTA release revision, zero padded
+│     │   └ OTA channel
 │     └ OTA marker
 └ web base version
 ```
@@ -125,7 +132,7 @@ Each field has exactly one owner:
 | Field | Owner | Meaning |
 |---|---|---|
 | base version | `package.json` | Ordering and downgrade protection. Bumped for normal releases. |
-| revision | `git rev-list --count HEAD` (or `OTA_BUNDLE_REVISION`) | Uniqueness. Same commit → same version; later commit → higher version. |
+| revision | `git rev-list --count HEAD` (or `OTA_BUNDLE_REVISION`) | OTA release identity and ordering, including when the base version is unchanged. |
 | `nv` | `ota.config.json` → `minNativeVersion` | Oldest APK still supported. Independent of the base version. |
 | `db` | `src/features/exam/offline/schemaVersion.ts` | The store this build can read. |
 
@@ -174,7 +181,7 @@ which proves the data is readable before the label is corrected. A marker that
 names a schema the build cannot read is rejected **without opening** the
 database, so no accidental one-way upgrade runs.
 
-## Signing (Capgo key v2)
+## Signing (RSA key v2 + Ed25519 pointer)
 
 Capgo key v2 signs the bundle checksum with an RSA private key and encrypts the
 AES session key with it. The APK carries only the public key, so a successful
@@ -195,12 +202,14 @@ which is what the native parser requires. Then:
 |---|---|---|
 | `CAPGO_PRIVATE_KEY` | repository **secret** | entire contents of `.capgo_key_v2` |
 | `CAPGO_PUBLIC_KEY` | repository **variable** (not secret) | entire contents of `.capgo_key_v2.pub` |
-| `CAPGO_API_KEY` | repository **secret** | Capgo API key; the workflow exposes it as `CAPGO_TOKEN` |
+| `OTA_ED25519_PRIVATE_KEY` | repository **secret** | Ed25519 private key that signs channel pointers; never put it in the OTA repository |
+| `OTA_ED25519_PUBLIC_KEY` | repository **variable** | Base64 raw 32-byte Ed25519 public key baked into the app |
+| `OTA_PUBLISH_TOKEN` | repository **secret** | Token scoped to create releases/assets and update `towkirahmedrony/porokh-ota` contents |
 
-The private key never enters the repository, never appears on a command line
-(it is written to `$RUNNER_TEMP` with mode 600 and passed via `--key-v2`), and
-is removed in an `always()` step. The public key is embedded by `capacitor.config.ts`
-and asserted in the packaged `capacitor.config.json` by the Android workflow.
+The RSA private key is written to `$RUNNER_TEMP` with mode 600 for the native
+Capgo updater CLI and removed in an `always()` step. The Ed25519 private key is
+used in memory by the publisher. Neither key nor the publish token is placed in
+an artifact. Public keys are embedded in the app and checked by CI.
 
 Both workflows set `POROKH_OTA_REQUIRE_SIGNATURE=true` and
 `VITE_OTA_REQUIRE_SIGNATURE=true`. With that flag:
@@ -254,34 +263,52 @@ expected channel. It does **not** sign a release build.
 `.github/workflows/ota-release.yml` runs on push to `main` **and** on manual
 dispatch:
 
-- push → build + validate only; publishes only if `OTA_AUTO_PUBLISH` is `true`;
-- dispatch → publishes only when `publish` is ticked (default off).
+- push → build + validate only unless `OTA_AUTO_PUBLISH` is explicitly `true`;
+- dispatch on `main` → publishes only when the `publish` input is enabled
+  (default off), for the selected channel.
 
 Every run: typecheck, tests, build, manifest verification, then
 `scripts/check-release.ts`, which validates the version (uniqueness, ordering,
-`nv ≤ versionName`, schema consistency) and the signing configuration. With
-`publish` on it additionally requires the private key and the Capgo credential,
-asks Capgo whether the version already exists, uploads with `--key-v2` and
-`--fail-on-incompatible`, then reads the channel back to prove the bundle is
-retrievable. A failure at any step stops the release.
+`nv ≤ versionName`, schema consistency) and signing configuration. With
+`publish` on it additionally provisions and checks both signing-key pairs,
+encrypts/signs the bundle, creates an immutable GitHub Release with the
+encrypted bundle, signed manifest, detached signature and `SHA256SUMS`, then
+updates and reads back the signed channel pointer and verifies that the asset is
+publicly reachable. The workflow reports `Published=true` only after these
+checks pass. A build/validation success is not an OTA release.
 
 Required repository configuration:
 
-- secret `CAPGO_API_KEY`
 - secret `CAPGO_PRIVATE_KEY`
 - variable `CAPGO_PUBLIC_KEY`
+- secret `OTA_ED25519_PRIVATE_KEY`
+- variable `OTA_ED25519_PUBLIC_KEY`
+- secret `OTA_PUBLISH_TOKEN`
 - variable `OTA_AUTO_PUBLISH` (optional; only for push-triggered publishing)
-- the `production-android` GitHub environment (for protection rules)
+- protected `production-android` and `staging-android` GitHub Environments
+  (where configured)
 
 ## Operational checks
 
 - Verify a release on a **test Supabase project** and the staging channel first.
 - Keep the native APK installable: if OTA activation fails, the retained
   fallback bundle must still boot and local exam data must remain readable.
-- Capgo dashboard can roll a channel back; the client still re-checks channel,
-  native version and schema before activating, and refuses a lower revision.
+- The OTA publish workflow handles rollback by moving the signed pointer to an
+  existing immutable release; the client still checks channel, revision, native
+  version and schema before activating, and refuses a lower revision.
 - Never bump `OFFLINE_SCHEMA_VERSION` or add Android permissions as part of an
   OTA-only release.
 - A channel rollback cannot downgrade devices that already run a higher
   revision; recovering from a bad-but-confirmed bundle needs an APK or a new
   higher-revision bundle that fixes the regression.
+- To publish a production frontend-only update, push the reviewed source commit
+  to `main` and confirm the automatic OTA workflow is labelled build/validate
+  only unless auto-publishing was deliberately enabled. Then dispatch
+  **OTA release (GitHub Releases)** on `main`, select `production-android`, set
+  **Publish** to true, and approve the production environment if required. Wait
+  for `Published=true` and verify the release tag and signed
+  `channels/production-android.json` point to the new revision. On the device,
+  open **Settings → App Updates → Check now**; when the bundle is
+  downloaded, choose **Download and install**. Activation remains subject to the
+  exam/data safety gate. A website deployment alone never installs an Android
+  OTA.

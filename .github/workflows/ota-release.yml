@@ -1,5 +1,8 @@
 name: OTA release (GitHub Releases)
 
+run-name: >-
+  OTA ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true' || github.event_name == 'push' && vars.OTA_AUTO_PUBLISH == 'true') && 'publish attempt' || 'build/validate only (not published)' }} - ${{ github.ref_name }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -13,7 +16,7 @@ on:
           - staging-android
 
       publish:
-        description: Publish to porokh-ota (off = build + validate only)
+        description: Create the GitHub Release, upload signed assets, and update the channel pointer (off = build/validate only)
         required: true
         default: false
         type: boolean
@@ -206,7 +209,7 @@ jobs:
           printf '%s\n' "$summary" | tee -a "$GITHUB_OUTPUT"
 
           {
-            echo "### OTA release"
+            echo "### OTA build and validation"
             echo ""
             printf '%s\n' "$summary" | sed 's/^/    /'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -223,12 +226,12 @@ jobs:
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
             case "${DISPATCH_PUBLISH:-false}" in
               true)
+                echo "publish=true" >> "$GITHUB_OUTPUT"
+
                 if [ "${OTA_TOKEN_CONFIGURED}" != "true" ]; then
                   echo "::error::OTA_PUBLISH_TOKEN is missing. Cannot publish."
                   exit 1
                 fi
-
-                echo "publish=true" >> "$GITHUB_OUTPUT"
                 ;;
 
               false|"")
@@ -243,12 +246,12 @@ jobs:
             esac
 
           elif [ "${AUTO_PUBLISH}" = "true" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+
             if [ "${OTA_TOKEN_CONFIGURED}" != "true" ]; then
               echo "::error::OTA_AUTO_PUBLISH is true but OTA_PUBLISH_TOKEN is missing."
               exit 1
             fi
-
-            echo "publish=true" >> "$GITHUB_OUTPUT"
 
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"
@@ -459,9 +462,17 @@ jobs:
           PUBLISH_REQUESTED: ${{ steps.intent.outputs.publish }}
           PUBLISHED: ${{ steps.publish.outputs.published || 'false' }}
         run: |
+          if [ "${PUBLISHED}" = "true" ]; then
+            OUTCOME="Published and verified: the signed channel pointer and release asset read-back passed."
+          elif [ "${PUBLISH_REQUESTED}" = "true" ]; then
+            OUTCOME="Publish step failed before verified success; inspect the release assets and channel pointer before retrying."
+          else
+            OUTCOME="Build and validation only; no OTA release was published."
+          fi
+
           {
             echo ""
-            echo "### OTA Publish Summary"
+            echo "### OTA run outcome"
             echo ""
             echo "| Item | Value |"
             echo "|---|---|"
@@ -474,4 +485,5 @@ jobs:
             echo "| Signature required | ${SIGNATURE:-?} |"
             echo "| Publish requested | ${PUBLISH_REQUESTED:-false} |"
             echo "| Published | ${PUBLISHED} |"
+            echo "| Outcome | ${OUTCOME} |"
           } >> "$GITHUB_STEP_SUMMARY"
