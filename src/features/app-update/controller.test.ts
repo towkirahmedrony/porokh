@@ -890,6 +890,36 @@ test('a downloaded pending bundle is verified, staged, and activatable', async (
   assert.deepEqual(adapter.setCalls, ['bundle-pending']);
 });
 
+test('manual checks bypass persisted download backoff while automatic checks wait', async () => {
+  const seedBackoff = (kv: OtaKeyValue): void => {
+    kv.setItem(
+      OTA_STORAGE_KEYS.downloadRetry,
+      JSON.stringify({
+        key: RELEASE,
+        attempts: 3,
+        nextAt: Date.now() + 60 * 60 * 1000,
+      })
+    );
+  };
+
+  const automatic = harness();
+  setLatest(automatic.adapter);
+  seedBackoff(automatic.kv);
+  await automatic.controller.initialize();
+  await automatic.controller.checkForUpdate(false);
+  assert.equal(automatic.adapter.downloadCalls.length, 0);
+  assert.equal(automatic.controller.getSnapshot().phase, 'download_failed');
+
+  const manual = harness();
+  setLatest(manual.adapter);
+  seedBackoff(manual.kv);
+  await manual.controller.initialize();
+  await manual.controller.checkForUpdate(true);
+  assert.equal(manual.adapter.downloadCalls.length, 1);
+  assert.equal(manual.controller.getSnapshot().phase, 'staged');
+  assert.equal(manual.kv.getItem(OTA_STORAGE_KEYS.downloadRetry), null);
+});
+
 test('a signed release whose extracted digest is not a digest is rejected', async () => {
   const { controller, adapter } = harness({ requireSignature: true });
   setLatest(adapter, RELEASE, SIGNED_CHECKSUM, SESSION_KEY);

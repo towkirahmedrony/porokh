@@ -647,7 +647,7 @@ export const createOtaController = (
     });
   };
 
-  const performCheck = async (): Promise<void> => {
+  const performCheck = async (manual = false): Promise<void> => {
     recordOtaDiagnostic('info', 'update_check_started', {
       channel,
       currentVersion: snapshot.currentVersion,
@@ -789,11 +789,25 @@ export const createOtaController = (
     }
 
     if (isDownloadBackedOff(latest.version)) {
-      patch({
-        phase: 'download_failed',
-        error: 'Waiting before retrying this download',
-      });
-      return;
+      const retry = readRetryState(kv, OTA_STORAGE_KEYS.downloadRetry);
+      if (manual) {
+        clearRetryState(kv, OTA_STORAGE_KEYS.downloadRetry);
+        recordOtaDiagnostic('info', 'manual_retry_cleared_backoff', {
+          version: latest.version,
+          previousAttempts: retry?.attempts ?? null,
+        });
+      } else {
+        recordOtaDiagnostic('warning', 'download_retry_deferred', {
+          version: latest.version,
+          attempts: retry?.attempts ?? null,
+          retryInMs: Math.max(0, (retry?.nextAt ?? now()) - now()),
+        });
+        patch({
+          phase: 'download_failed',
+          error: 'Waiting before retrying this download',
+        });
+        return;
+      }
     }
 
     if (staged && staged.version === latest.version) {
@@ -1354,7 +1368,7 @@ export const createOtaController = (
       if (isCheckBackedOff()) return;
     }
 
-    checkPromise = performCheck()
+    checkPromise = performCheck(manual)
       .catch((error) => {
         recordCheckFailure(error);
       })
