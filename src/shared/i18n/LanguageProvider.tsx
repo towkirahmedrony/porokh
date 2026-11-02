@@ -43,7 +43,9 @@ export interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-const HOMEPAGE_PATHS = new Set(['/', '/dashboard', '/dashboard/home']);
+// "/" is the public marketing homepage, which owns its own metadata through
+// `usePageMeta`. Only the signed-in home screens use the dictionary defaults.
+const HOMEPAGE_PATHS = new Set(['/dashboard', '/dashboard/home']);
 
 export const isHomepagePath = (pathname: string): boolean => {
   if (!pathname) return false;
@@ -85,7 +87,6 @@ const applyHomepageMetadata = (language: AppLanguage): void => {
   document.title = messages['meta.title'];
 
   upsertMetaTag('name', 'description', messages['meta.description']);
-  upsertMetaTag('name', 'keywords', messages['meta.keywords']);
   upsertMetaTag('property', 'og:title', messages['meta.title']);
   upsertMetaTag('property', 'og:description', messages['meta.description']);
   upsertMetaTag('property', 'og:locale', messages['meta.ogLocale']);

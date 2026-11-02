@@ -13,8 +13,10 @@ export default function Login() {
         {/* Logo, Title and Subtitle */}
         <div className="mb-8 flex flex-col items-center">
           <img 
-            src="https://res.cloudinary.com/dqpv45947/image/upload/v1776877967/parapoth_media/qovc0qtol9p0taeuc2bu.png" 
-            alt="Porokh logo" 
+            src="/icons/header.webp" 
+            alt="Porokh (পরোখ) logo" 
+            width={720}
+            height={240}
             className="h-12 w-auto object-contain drop-shadow-sm mb-2"
           />
           <h1 className="text-2xl font-bold tracking-tight mb-0.5 text-text-primary">

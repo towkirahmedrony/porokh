@@ -110,6 +110,12 @@ const CookiePolicy = lazy(() => import('@/features/legal/pages/CookiePolicy'));
 const FAQ = lazy(() => import('@/features/legal/pages/FAQ'));
 const DataDeletion = lazy(() => import('@/features/legal/pages/DataDeletion'));
 
+// Public marketing site (no session required)
+const PublicLayout = lazy(
+  () => import('@/features/marketing/components/PublicLayout')
+);
+const LandingPage = lazy(() => import('@/features/marketing/pages/LandingPage'));
+
 // Subscription Pages (Lazy Loaded)
 const Plans = lazy(() => import('@/features/subscription/pages/Plans'));
 const Checkout = lazy(() => import('@/features/subscription/pages/Checkout'));
@@ -234,14 +240,25 @@ const AppRoutes: React.FC = () => {
         */}
         <Route path="/change-password" element={<ChangePassword />} />
 
-        {/* --- Public legal/support routes --- */}
-        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/terms-conditions" element={<TermsConditions />} />
-        <Route path="/about" element={<AboutUs />} />
-        <Route path="/cookie-policy" element={<CookiePolicy />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/data-deletion" element={<DataDeletion />} />
+        {/*
+          --- Public marketing routes ---
+          These pages are reachable without a session: no guard, no app shell
+          and no authenticated request. Search crawlers and anonymous visitors
+          get the same markup; the app routes below stay behind PermissionGuard.
+        */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/data-deletion" element={<DataDeletion />} />
+
+          {/* Public 404: a lost visitor keeps the site navigation. */}
+          <Route path="*" element={<NotFound />} />
+        </Route>
 
         {/* --- Post-verification onboarding (outside the app shell) --- */}
         <Route
@@ -437,90 +454,90 @@ const AppRoutes: React.FC = () => {
         {/* Public group preview; authenticated users see the full group. */}
         <Route path="/groups/:groupId" element={<GroupRoute />} />
 
-        {/* --- Main Layout Routes (With Sidebar & Header & BottomNav) --- */}
+        {/*
+          --- Authenticated application shell (With Sidebar & Header & BottomNav) ---
+          The parent is pathless and guarded, so every child keeps its existing
+          absolute URL (deep links, bookmarks and the Android WebView routes
+          stay valid) while "/" belongs to the public marketing site.
+        */}
         <Route
-          path="/"
           element={
             <PermissionGuard>
               <MainLayout />
             </PermissionGuard>
           }
         >
-          <Route index element={<Navigate to="/dashboard/home" replace />} />
-
-          <Route path="dashboard" element={<Navigate to="/dashboard/home" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
 
           {/* Dashboard & Gamification */}
-          <Route path="dashboard/home" element={<Home />} />
-          <Route path="dashboard/streak" element={<Streak />} />
-          <Route path="dashboard/leaderboard" element={<Leaderboard />} />
-          <Route path="dashboard/marketplace" element={<Marketplace />} />
-          <Route path="progress" element={<Progress />} />
+          <Route path="/dashboard/home" element={<Home />} />
+          <Route path="/dashboard/streak" element={<Streak />} />
+          <Route path="/dashboard/leaderboard" element={<Leaderboard />} />
+          <Route path="/dashboard/marketplace" element={<Marketplace />} />
+          <Route path="/progress" element={<Progress />} />
 
-          <Route path="quests" element={<Placeholder title={t('placeholder.quests')} />} />
+          <Route path="/quests" element={<Placeholder title={t('placeholder.quests')} />} />
 
           {/* History & Analytics */}
-          <Route path="history" element={<History />} />
+          <Route path="/history" element={<History />} />
 
           {/* User Profile & Economy */}
-          <Route path="profile" element={<UserProfile />} />
-          <Route path="referral" element={<Referral />} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/referral" element={<Referral />} />
 
           {/* Premium Showcase */}
-          <Route path="premium" element={<Plans />} />
+          <Route path="/premium" element={<Plans />} />
 
           {/* Group & Social */}
-          <Route path="groups" element={<GroupsHub />} />
-          <Route path="groups/new" element={<CreateSquad />} />
-          <Route path="groups/leaderboard" element={<GroupLeaderboard />} />
-          <Route path="groups/:groupId/battles/:battleId" element={<GroupBattle />} />
-          <Route path="group" element={<Navigate to="/groups" replace />} />
-          <Route path="group/:groupId/battle" element={<Navigate to="/groups" replace />} />
-          <Route path="group/:groupId/focus" element={<Placeholder title={t('placeholder.focusSession')} />} />
+          <Route path="/groups" element={<GroupsHub />} />
+          <Route path="/groups/new" element={<CreateSquad />} />
+          <Route path="/groups/leaderboard" element={<GroupLeaderboard />} />
+          <Route path="/groups/:groupId/battles/:battleId" element={<GroupBattle />} />
+          <Route path="/group" element={<Navigate to="/groups" replace />} />
+          <Route path="/group/:groupId/battle" element={<Navigate to="/groups" replace />} />
+          <Route path="/group/:groupId/focus" element={<Placeholder title={t('placeholder.focusSession')} />} />
 
           {/* Admission — unit-first flow: Admission → University → Unit.
               Static segments outrank the legacy group routes below, which stay
               in place for existing links. */}
-          <Route path="admission" element={<AdmissionUniversitiesPage />} />
+          <Route path="/admission" element={<AdmissionUniversitiesPage />} />
           <Route
-            path="admission/university/:universityId"
+            path="/admission/university/:universityId"
             element={<AdmissionUnitListPage />}
           />
           <Route
-            path="admission/university/:universityId/unit/:unitId"
+            path="/admission/university/:universityId/unit/:unitId"
             element={<AdmissionUnitPage />}
           />
 
           {/* Legacy group-first admission routes (kept for backward compatibility) */}
-          <Route path="admission/:groupSlug" element={<AdmissionGroupPage />} />
+          <Route path="/admission/:groupSlug" element={<AdmissionGroupPage />} />
           <Route
-            path="admission/:groupSlug/:examType"
+            path="/admission/:groupSlug/:examType"
             element={<AdmissionUniversityListPage />}
           />
           <Route
-            path="admission/:groupSlug/:examType/:universitySlug"
+            path="/admission/:groupSlug/:examType/:universitySlug"
             element={<AdmissionUniversityPage />}
           />
           <Route
-            path="admission/:groupSlug/:examType/:universitySlug/exams"
+            path="/admission/:groupSlug/:examType/:universitySlug/exams"
             element={<AdmissionExamListPage />}
           />
 
           {/* Academic & Materials */}
-          <Route path="suggestion" element={<Placeholder title={t('placeholder.suggestion')} />} />
-          <Route path="bank" element={<LegacyQuestionBankRedirect />} />
-          <Route path="question-bank" element={<QuestionBank />} />
-          <Route path="materials" element={<Placeholder title={t('placeholder.materials')} />} />
+          <Route path="/suggestion" element={<Placeholder title={t('placeholder.suggestion')} />} />
+          <Route path="/bank" element={<LegacyQuestionBankRedirect />} />
+          <Route path="/question-bank" element={<QuestionBank />} />
+          <Route path="/materials" element={<Placeholder title={t('placeholder.materials')} />} />
 
           {/* Support & Moderation */}
-          <Route path="support" element={<Placeholder title={t('placeholder.support')} />} />
+          <Route path="/support" element={<Placeholder title={t('placeholder.support')} />} />
 
-          {/* 404 Fallback inside protected layout */}
-          <Route path="*" element={<NotFound />} />
+          {/* 404 inside the app shell, so a signed-in user keeps the navigation */}
+          <Route path="/dashboard/*" element={<NotFound />} />
         </Route>
 
-        {/* Public 404 fallback */}
-        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );

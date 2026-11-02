@@ -1,0 +1,20 @@
+{
+  "name": "Porokh — Exam Practice (পরোখ)",
+  "short_name": "Porokh",
+  "description": "Porokh (পরোখ) is an exam practice platform for SSC, HSC and university admission tests in Bangladesh.",
+  "lang": "bn",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2563EB",
+  "icons": [
+    {
+      "src": "/icons/porokh-icon.webp",
+      "sizes": "1024x1024",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
+}

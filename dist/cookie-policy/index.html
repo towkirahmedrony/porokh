@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/webp" href="/icons/porokh-icon.webp" />
+    <link rel="apple-touch-icon" href="/icons/porokh-icon.webp" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <meta
+      name="google-site-verification"
+      content="QMb64RIDO5ZrVY6kRDoAnvqyhWDyi6pD-P8g2T8URhE"
+    />
+
+    <meta name="author" content="Porokh" />
+    <meta name="application-name" content="Porokh" />
+    <meta name="apple-mobile-web-app-title" content="Porokh" />
+    <meta name="theme-color" content="#2563EB" />
+
+    <!--
+      Per-page SEO. The homepage tags below are the defaults served for application
+      routes; `vite.config.ts` replaces this block for every public route so the
+      HTML a crawler receives matches the URL it requested. `src/app/seo/usePageMeta.ts`
+      re-applies the same values after a client-side navigation.
+    -->
+    <!-- seo:start -->
+    <title>Porokh Cookie Policy — Cookies and Storage</title>
+    <meta name="description" content="Which cookies and browser storage Porokh (পরোখ) uses, why they are needed for sign-in, language and exam progress, and how to control them." />
+    <link rel="canonical" href="https://porokhbd.vercel.app/cookie-policy" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Porokh" />
+    <meta property="og:locale" content="bn_BD" />
+    <meta property="og:url" content="https://porokhbd.vercel.app/cookie-policy" />
+    <meta property="og:title" content="Porokh Cookie Policy — Cookies and Storage" />
+    <meta property="og:description" content="Which cookies and browser storage Porokh (পরোখ) uses, why they are needed for sign-in, language and exam progress, and how to control them." />
+    <meta property="og:image" content="https://porokhbd.vercel.app/icons/header.webp" />
+    <meta property="og:image:alt" content="Porokh (পরোখ) — Bangladesh exam preparation platform" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Porokh Cookie Policy — Cookies and Storage" />
+    <meta name="twitter:description" content="Which cookies and browser storage Porokh (পরোখ) uses, why they are needed for sign-in, language and exam progress, and how to control them." />
+    <meta name="twitter:image" content="https://porokhbd.vercel.app/icons/header.webp" />
+
+    <script type="application/ld+json" data-seo="page">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://porokhbd.vercel.app/#organization",
+          "name": "Porokh",
+          "alternateName": "পরোখ",
+          "url": "https://porokhbd.vercel.app/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://porokhbd.vercel.app/icons/porokh-icon.webp"
+          },
+          "description": "Porokh (পরোখ) is a Bangladesh-focused educational technology platform where students prepare for SSC, HSC, board and university admission examinations.",
+          "areaServed": {
+            "@type": "Country",
+            "name": "Bangladesh"
+          },
+          "email": "info.parapoth@gmail.com",
+          "sameAs": [
+            "https://facebook.com/parapoth"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://porokhbd.vercel.app/#website",
+          "name": "Porokh",
+          "alternateName": "পরোখ",
+          "url": "https://porokhbd.vercel.app/",
+          "inLanguage": [
+            "bn",
+            "en"
+          ],
+          "publisher": {
+            "@id": "https://porokhbd.vercel.app/#organization"
+          }
+        },
+        {
+          "@type": "WebPage",
+          "@id": "https://porokhbd.vercel.app/cookie-policy#webpage",
+          "url": "https://porokhbd.vercel.app/cookie-policy",
+          "name": "Porokh Cookie Policy — Cookies and Storage",
+          "description": "Which cookies and browser storage Porokh (পরোখ) uses, why they are needed for sign-in, language and exam progress, and how to control them.",
+          "isPartOf": {
+            "@id": "https://porokhbd.vercel.app/#website"
+          },
+          "inLanguage": "bn"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://porokhbd.vercel.app/cookie-policy#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://porokhbd.vercel.app/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Cookie Policy",
+              "item": "https://porokhbd.vercel.app/cookie-policy"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+    <!-- seo:end -->
+
+    <script>
+      (function () {
+        try {
+          const root = document.documentElement;
+          const rawMode = localStorage.getItem('app_theme');
+          const rawDynamicTheme = localStorage.getItem('dyn_theme');
+
+          const normalizedMode =
+            rawMode === '"dark"' || rawMode === 'dark'
+              ? 'dark'
+              : rawMode === '"light"' || rawMode === 'light'
+                ? 'light'
+                : 'system';
+
+          const prefersDark =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+          const isDark =
+            normalizedMode === 'dark' ||
+            (normalizedMode === 'system' && prefersDark);
+
+          const fallbackTheme = isDark
+            ? {
+                bg: '#0F172A',
+                card: '#1E293B',
+                text: '#F8FAFC',
+                primary: '#3B82F6',
+                accent: '#6366F1',
+              }
+            : {
+                bg: '#F8FAFC',
+                card: '#FFFFFF',
+                text: '#0F172A',
+                primary: '#2563EB',
+                accent: '#4F46E5',
+              };
+
+          root.classList.remove('light', 'dark');
+          root.classList.add(isDark ? 'dark' : 'light');
+          root.style.colorScheme = isDark ? 'dark' : 'light';
+
+          root.style.setProperty('--dyn-bg', fallbackTheme.bg);
+          root.style.setProperty('--dyn-card', fallbackTheme.card);
+          root.style.setProperty('--dyn-text', fallbackTheme.text);
+          root.style.setProperty('--dyn-primary', fallbackTheme.primary);
+          root.style.setProperty('--dyn-accent', fallbackTheme.accent);
+          root.style.backgroundColor = fallbackTheme.bg;
+
+          if (rawDynamicTheme) {
+            try {
+              const parsed = JSON.parse(rawDynamicTheme);
+
+              if (parsed && typeof parsed === 'object') {
+                if (
+                  typeof parsed.primaryBackground === 'string' &&
+                  parsed.primaryBackground.trim()
+                ) {
+                  root.style.setProperty('--dyn-bg', parsed.primaryBackground);
+                  root.style.backgroundColor = parsed.primaryBackground;
+                }
+
+                if (
+                  typeof parsed.cardBackground === 'string' &&
+                  parsed.cardBackground.trim()
+                ) {
+                  root.style.setProperty('--dyn-card', parsed.cardBackground);
+                }
+
+                if (
+                  typeof parsed.textColor === 'string' &&
+                  parsed.textColor.trim()
+                ) {
+                  root.style.setProperty('--dyn-text', parsed.textColor);
+                }
+
+                if (
+                  typeof parsed.buttonColor === 'string' &&
+                  parsed.buttonColor.trim()
+                ) {
+                  root.style.setProperty('--dyn-primary', parsed.buttonColor);
+                }
+
+                if (
+                  typeof parsed.accentColor === 'string' &&
+                  parsed.accentColor.trim()
+                ) {
+                  root.style.setProperty('--dyn-accent', parsed.accentColor);
+                }
+              }
+            } catch (_) {
+              // Ignore corrupted cached theme and keep safe fallback values.
+            }
+          }
+
+          const applyResolvedBodyTheme = function () {
+            const computed = getComputedStyle(root);
+            const resolvedBg =
+              computed.getPropertyValue('--dyn-bg').trim() || fallbackTheme.bg;
+            const resolvedText =
+              computed.getPropertyValue('--dyn-text').trim() ||
+              fallbackTheme.text;
+
+            root.style.backgroundColor = resolvedBg;
+
+            if (document.body) {
+              document.body.style.backgroundColor = resolvedBg;
+              document.body.style.color = resolvedText;
+            }
+          };
+
+          if (document.body) {
+            applyResolvedBodyTheme();
+          } else {
+            document.addEventListener('DOMContentLoaded', applyResolvedBodyTheme, {
+              once: true,
+            });
+          }
+        } catch (_) {
+          const root = document.documentElement;
+          root.classList.remove('dark');
+          root.classList.add('light');
+          root.style.colorScheme = 'light';
+          root.style.backgroundColor = '#F8FAFC';
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-CvBtNg5v.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-Bh4Q7a3k.js">
+    <link rel="modulepreload" crossorigin href="/assets/query-vendor-DN9oo5i3.js">
+    <link rel="modulepreload" crossorigin href="/assets/supabase-vendor-ClVc2H6D.js">
+    <link rel="modulepreload" crossorigin href="/assets/firebase-vendor-slmyC3m8.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CtnQQnOs.css">
+  </head>
+
+  <body>
+    <noscript>
+      Porokh (পরোখ) ব্যবহার করতে JavaScript চালু করুন। এটি SSC, HSC, MCQ practice,
+      CQ exam, model test, question bank এবং board exam preparation-এর জন্য
+      একটি online learning platform।
+    </noscript>
+
+    <div id="root"></div>
+    <script>
+      // If a module fails before React mounts (for example a missing build-time
+      // environment variable), the WebView would otherwise stay completely
+      // blank. Surface the failure instead of hiding it; detailed errors are
+      // still written to the console by the browser.
+      window.addEventListener('error', function () {
+        var root = document.getElementById('root');
+        if (!root || root.childElementCount > 0) return;
+
+        root.innerHTML =
+          '<div style="display:flex;min-height:100vh;align-items:center;justify-content:center;padding:2rem;font-family:system-ui,sans-serif;text-align:center;">' +
+          '<div>' +
+          '<h1 style="font-size:1.25rem;margin:0 0 0.75rem;">App could not start</h1>' +
+          '<p style="margin:0 0 1rem;color:#475569;">A required build configuration is missing. Please update to the latest version or try again.</p>' +
+          '<button type="button" onclick="window.location.reload()" style="padding:0.65rem 1.25rem;border:0;border-radius:0.5rem;background:#2563EB;color:#fff;font-weight:600;">Reload</button>' +
+          '</div></div>';
+      });
+    </script>
+  </body>
+</html>

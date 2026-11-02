@@ -48,18 +48,15 @@ const updateSeoMeta = (
 
   document.title = title;
 
+  // Every route inside the app shell is behind auth and holds personal data,
+  // so it must never be indexed. Public pages reset this in `usePageMeta`.
+  updateMetaTag('meta[name="robots"]', 'name', 'robots', 'noindex, nofollow');
+
   updateMetaTag(
     'meta[name="description"]',
     'name',
     'description',
     t('meta.description')
-  );
-
-  updateMetaTag(
-    'meta[name="keywords"]',
-    'name',
-    'keywords',
-    t('meta.keywords')
   );
 
   updateMetaTag('meta[property="og:title"]', 'property', 'og:title', title);
@@ -69,13 +66,6 @@ const updateSeoMeta = (
     'property',
     'og:description',
     t('meta.description')
-  );
-
-  updateMetaTag(
-    'meta[property="og:url"]',
-    'property',
-    'og:url',
-    `https://parapothexam.web.app${pathname === '/dashboard/home' ? '/' : pathname}`
   );
 
   updateMetaTag('meta[name="twitter:title"]', 'name', 'twitter:title', title);

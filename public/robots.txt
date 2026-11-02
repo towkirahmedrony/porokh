@@ -1,23 +1,68 @@
+/**
+ * Robots policy for the public site.
+ *
+ * robots.txt is crawl guidance, not access control: signed-in surfaces are
+ * protected by the API's auth middleware and Supabase RLS, never by this file.
+ *
+ * Policy
+ * - Public marketing pages and the assets they need are crawlable.
+ * - Signed-in application routes are excluded so crawl budget is not spent on
+ *   URLs that only redirect to the login screen.
+ * - Answer engines (Googlebot, Bingbot, OAI-SearchBot, PerplexityBot,
+ *   Claude-SearchBot and others without their own group) follow the rules
+ *   below: they may read the public site, which is the only way the product can
+ *   be cited in AI answers.
+ * - Bulk training crawlers that send no referral traffic are opted out.
+ */
+
 User-agent: *
 Allow: /
 
-# Public static assets needed for Google rendering
 Allow: /assets/
 Allow: /icons/
 Allow: /grids/
 Allow: /avatars/
 
-# Keep private/app-only areas out of crawl budget
-Disallow: /dashboard/
-Disallow: /notifications/
-Disallow: /settings/
-Disallow: /profile/
-Disallow: /edit-profile/
-Disallow: /checkout/
-Disallow: /change-password/
-Disallow: /forgot-password/
+# Signed-in application surfaces
+Disallow: /dashboard
+Disallow: /progress
+Disallow: /history
+Disallow: /profile
+Disallow: /edit-profile
+Disallow: /settings
+Disallow: /notifications
+Disallow: /notices
+Disallow: /referral
+Disallow: /premium
+Disallow: /groups
+Disallow: /group
+Disallow: /quests
+Disallow: /suggestion
+Disallow: /materials
+Disallow: /support
+Disallow: /parasathi
+Disallow: /question-bank
+Disallow: /bank
+Disallow: /exams
+Disallow: /exam/
+Disallow: /admission
+Disallow: /onboarding
+Disallow: /auth/
+Disallow: /change-password
 
-# Avoid duplicate crawl URLs with query parameters
+# The public site has no canonical URLs with query strings
 Disallow: /*?*
 
-Sitemap: https://parapothexam.web.app/sitemap.xml
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+Sitemap: https://porokhbd.vercel.app/sitemap.xml
