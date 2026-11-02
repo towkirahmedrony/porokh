@@ -1,6 +1,7 @@
 import axios, { InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
 import { supabase } from './supabase';
 import { getDeviceId } from '../utils/device';
+import { getNativeVersion } from '../utils/nativeVersion';
 import { API_BASE_URL } from './apiConfig';
 import { formatNetworkDiagnostic } from './networkDiagnostics';
 
@@ -23,6 +24,10 @@ apiClient.interceptors.request.use(
     try {
       if (config.headers) {
         config.headers['x-device-id'] = getDeviceId();
+        // Only present inside the Android shell; lets the API enforce the
+        // minimum supported APK version server-side as well.
+        const nativeVersion = await getNativeVersion();
+        if (nativeVersion) config.headers['x-native-version'] = nativeVersion;
       }
 
       const { data: { session }, error } = await supabase.auth.getSession();

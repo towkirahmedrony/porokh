@@ -1286,6 +1286,14 @@ const bn = {
 
   'system.forceUpdateTitle': 'নতুন আপডেট এভেইলেবল!',
   'system.updateNow': 'আপডেট করুন',
+  'system.downloadApk': 'APK ডাউনলোড করুন',
+  'system.requiredUpdateTitle': 'আপডেট প্রয়োজন',
+  'system.requiredUpdateBody': 'অ্যাপটি চালিয়ে যেতে নতুন সংস্করণ ইনস্টল করুন।',
+  'system.otaRequiredBody':
+    'অ্যাপটি চালিয়ে যেতে নতুন আপডেট ডাউনলোড ও ইনস্টল করুন।',
+  'system.requiredVersion': 'প্রয়োজনীয় সংস্করণ: {version}',
+  'system.optionalUpdateTitle': 'নতুন আপডেট পাওয়া গেছে',
+  'system.optionalUpdateBody': 'সংস্করণ {version} এখনই ডাউনলোড করা যায়।',
   'system.noticeDetails': 'বিস্তারিত',
 
   // -------------------------------- Report ----------------------------------
@@ -2858,6 +2866,14 @@ const en: Record<AppMessageKey, string> = {
 
   'system.forceUpdateTitle': 'A new update is available!',
   'system.updateNow': 'Update now',
+  'system.downloadApk': 'Download APK',
+  'system.requiredUpdateTitle': 'Update required',
+  'system.requiredUpdateBody': 'Install the new version to keep using the app.',
+  'system.otaRequiredBody':
+    'Download and install the latest update to keep using the app.',
+  'system.requiredVersion': 'Required version: {version}',
+  'system.optionalUpdateTitle': 'An update is available',
+  'system.optionalUpdateBody': 'Version {version} is ready to download.',
   'system.noticeDetails': 'Read more',
 
   // -------------------------------- Report ----------------------------------
