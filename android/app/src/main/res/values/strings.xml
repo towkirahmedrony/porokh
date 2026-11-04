@@ -4,4 +4,7 @@
     <string name="title_activity_main">Porokh</string>
     <string name="package_name">net.porokh.app</string>
     <string name="custom_url_scheme">net.porokh.app</string>
+    <string name="default_notification_channel_id">porokh_default</string>
+    <string name="notification_channel_name">Porokh updates</string>
+    <string name="notification_channel_description">Exam reminders, results, streak and account updates</string>
 </resources>

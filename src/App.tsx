@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 // Hooks & Services
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { requestNotificationPermission, listenForForegroundMessages } from '@/features/notifications/services/notificationService';
+import { NativePushProvider } from '@/features/notifications/native/NativePushProvider';
 
 // Layout & Guards
 import { SystemGuard } from '@/shared/components/layout/SystemGuard';
@@ -55,13 +56,17 @@ const App: React.FC = () => {
         <AndroidBackButton />
         <UpdateProvider>
           <PaywallProvider>
-            {/* Runs above the guard so a recovery link is honoured even while the
-                maintenance check is still resolving. */}
-            <PasswordRecoveryRedirect />
-            <NativeAuthCallback />
-            <SystemGuard>
-              <AppRoutes />
-            </SystemGuard>
+            {/* Native push lives above the routes so a tap from a cold start can
+                navigate once the router is ready. Web Push is untouched. */}
+            <NativePushProvider>
+              {/* Runs above the guard so a recovery link is honoured even while the
+                  maintenance check is still resolving. */}
+              <PasswordRecoveryRedirect />
+              <NativeAuthCallback />
+              <SystemGuard>
+                <AppRoutes />
+              </SystemGuard>
+            </NativePushProvider>
           </PaywallProvider>
           <UpdateBanner />
         </UpdateProvider>

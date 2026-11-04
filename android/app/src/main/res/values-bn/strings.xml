@@ -1,0 +1,5 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="notification_channel_name">পরোখ আপডেট</string>
+    <string name="notification_channel_description">পরীক্ষার রিমাইন্ডার, ফলাফল, স্ট্রিক ও অ্যাকাউন্টের আপডেট</string>
+</resources>

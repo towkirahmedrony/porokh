@@ -283,6 +283,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Best effort: Supabase sign-out still runs if the API is unavailable.
         }
       }
+      // A native installation must stop receiving this account's pushes before
+      // the session disappears: the deactivation call needs the bearer token.
+      try {
+        const { unregisterNativePushOnSignOut } = await import(
+          '@/features/notifications/native/nativePush'
+        );
+        await unregisterNativePushOnSignOut();
+      } catch {
+        // Best effort: cleanup must never block signing out.
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 

@@ -9,6 +9,16 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- Android 8+ requires an existing channel for system-tray pushes. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/default_notification_channel_id" />
+        <!-- Monochrome small icon; a colored launcher icon would render as a
+             white square in the status bar. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
@@ -48,4 +58,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+ runtime permission for notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

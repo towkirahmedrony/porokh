@@ -14,6 +14,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { LANGUAGE_OPTION_LABELS } from '@/shared/i18n/messages';
 import { ForcedUpdateCard } from '@/features/app-update/ForcedUpdateCard';
 import NotificationPreferencesCard from '@/features/notifications/components/NotificationPreferencesCard';
+import NativeNotificationSettingsCard from '@/features/notifications/components/NativeNotificationSettingsCard';
 import { Capacitor } from '@capacitor/core';
 
 // --------------------------------- Pieces ---------------------------------
@@ -276,6 +277,7 @@ export const Settings: React.FC = () => {
             description={t('settings.notificationsDescription')}
             onClick={() => navigate('/notifications')}
           />
+          {user?.id && <NativeNotificationSettingsCard />}
           {user?.id && (
             <div className="pt-2">
               <p className="text-sm font-semibold text-text-primary">

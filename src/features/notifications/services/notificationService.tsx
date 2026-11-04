@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { messaging } from '@/shared/lib/firebase';
 import { getToken, onMessage, MessagePayload, Unsubscribe } from 'firebase/messaging';
 import toast from 'react-hot-toast';
@@ -34,7 +35,8 @@ const getDeviceName = (): string => {
 
 export const saveDeviceTokenToAPI = async (
   deviceId: string,
-  token: string | null
+  token: string | null,
+  platform: 'web' | 'android' = 'web'
 ): Promise<void> => {
   try {
     const userAgent = navigator.userAgent;
@@ -44,6 +46,7 @@ export const saveDeviceTokenToAPI = async (
       device_name: getDeviceName(),
       os_or_browser: userAgent,
       fcm_token: token,
+      platform,
     });
 
     console.log('[NotificationService] Device token synced:', response.data);
@@ -53,6 +56,13 @@ export const saveDeviceTokenToAPI = async (
 };
 
 export const requestNotificationPermission = async (): Promise<string | null> => {
+  // Inside the Android shell the native plugin owns the token. Requesting a Web
+  // Push token here would overwrite the native registration for the same
+  // installation (both share one device id).
+  if (Capacitor.isNativePlatform()) {
+    return null;
+  }
+
   if (!messaging) {
     console.warn('[NotificationService] Firebase messaging is not supported or initialized.');
     return null;

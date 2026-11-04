@@ -15,6 +15,9 @@ export const STORAGE_KEYS = {
   DYN_THEME_CONFIG: 'dyn_theme_config',
   DYN_THEME: 'dyn_theme',
   DISMISSED_NOTICE: 'dismissed_global_notice',
+  // In-app "disable on this device" choice; survives a restart so the next
+  // launch does not silently re-register the phone.
+  NATIVE_PUSH_DISABLED: 'porokh_native_push_disabled',
   // Optional update prompt, dismissed per target version.
   DISMISSED_UPDATE: 'dismissed_optional_update',
   HOME_GRIDS_DATA: 'home_grids_data',

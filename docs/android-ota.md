@@ -312,3 +312,13 @@ Required repository configuration:
   downloaded, choose **Download and install**. Activation remains subject to the
   exam/data safety gate. A website deployment alone never installs an Android
   OTA.
+
+## Native notifications and OTA
+
+Native push (`@capacitor/push-notifications`, Firebase Messaging, POST_NOTIFICATIONS)
+is native code and only ships with a new APK (1.0.3+). `minNativeVersion` stays
+`1.0.1`, and every JS entry point is guarded by
+`Capacitor.isPluginAvailable('PushNotifications')`, so an OTA bundle on an older
+APK keeps Web Push and simply skips native registration. Notification content,
+routing and settings UI are JS and remain OTA-deliverable. See
+[android-notifications.md](./android-notifications.md).
