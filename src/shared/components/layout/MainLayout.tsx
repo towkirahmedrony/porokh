@@ -3,8 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
-import { requestNotificationPermission } from '@/features/notifications/services/notificationService';
-import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import type { AppMessageKey } from '@/shared/i18n/messages';
 
@@ -79,7 +77,6 @@ const updateSeoMeta = (
 };
 
 export const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
   const location = useLocation();
   const { language, t } = useLanguage();
 
@@ -87,11 +84,6 @@ export const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => 
     updateSeoMeta(location.pathname, t);
   }, [location.pathname, language, t]);
 
-  useEffect(() => {
-    if (user?.id) {
-      requestNotificationPermission().catch(() => undefined);
-    }
-  }, [user?.id]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-app text-text-primary transition-colors duration-500">

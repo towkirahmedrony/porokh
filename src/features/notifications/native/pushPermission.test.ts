@@ -1,15 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { toNativePushStatus, canRequestNativePermission, shouldRegisterNativePush } from './pushPermission.ts';
+import {
+  toNativePushStatus,
+  canRequestNativePermission,
+  shouldLinkPushToUser,
+} from './pushPermission.ts';
 
-test('Google Play permission states map to the four UI states', () => {
-  assert.equal(toNativePushStatus('granted'), 'granted');
-  assert.equal(toNativePushStatus('denied'), 'denied');
-  assert.equal(toNativePushStatus('prompt'), 'prompt');
-  assert.equal(toNativePushStatus('prompt-with-rationale'), 'prompt');
-  assert.equal(toNativePushStatus(undefined), 'unsupported');
-  assert.equal(toNativePushStatus('something-else'), 'unsupported');
+test('OneSignal permission answers map to the four UI states', () => {
+  assert.equal(toNativePushStatus({ granted: true, canAsk: false }), 'granted');
+  // Android 13+ before the dialog has been shown.
+  assert.equal(toNativePushStatus({ granted: false, canAsk: true }), 'prompt');
+  // Denied once: Android will not show the dialog again.
+  assert.equal(toNativePushStatus({ granted: false, canAsk: false }), 'denied');
+  assert.equal(toNativePushStatus({}), 'unsupported');
+  assert.equal(toNativePushStatus({ granted: 'yes' }), 'unsupported');
 });
 
 test('a denied user is never asked again', () => {
@@ -18,8 +23,8 @@ test('a denied user is never asked again', () => {
   assert.equal(canRequestNativePermission('granted'), false);
 });
 
-test('the token is only registered when permission and a session both exist', () => {
-  assert.equal(shouldRegisterNativePush('granted', 'user-1'), true);
-  assert.equal(shouldRegisterNativePush('granted', null), false);
-  assert.equal(shouldRegisterNativePush('denied', 'user-1'), false);
+test('a device is only linked to a user when permission and a session both exist', () => {
+  assert.equal(shouldLinkPushToUser('granted', 'user-1'), true);
+  assert.equal(shouldLinkPushToUser('granted', null), false);
+  assert.equal(shouldLinkPushToUser('denied', 'user-1'), false);
 });

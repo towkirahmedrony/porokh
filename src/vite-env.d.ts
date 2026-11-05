@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_APP_VERSION: string;
+  /** Public OneSignal app id for the Android push transport. */
+  readonly VITE_ONESIGNAL_APP_ID?: string;
   // ভবিষ্যতে যদি Firebase বা Supabase এর কোনো env ভেরিয়েবল থাকে, সেগুলো এখানে অ্যাড করতে পারবেন
   // readonly VITE_API_KEY: string;
 }

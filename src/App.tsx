@@ -1,9 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Toaster } from 'react-hot-toast';
 
-// Hooks & Services
-import { useAuth } from '@/features/auth/hooks/useAuth';
-import { requestNotificationPermission, listenForForegroundMessages } from '@/features/notifications/services/notificationService';
+// Components & Providers
 import { NativePushProvider } from '@/features/notifications/native/NativePushProvider';
 
 // Layout & Guards
@@ -19,60 +17,39 @@ import { AndroidBackButton } from '@/app/navigation/AndroidBackButton';
 // Routes
 import AppRoutes from '@/app/routes/AppRoutes';
 
-const App: React.FC = () => {
-  const { user } = useAuth();
-  const userId = user?.id; // Extracting primitive value for stable dependency
-
-  useEffect(() => {
-    // Listen for in-app notifications while app is open
-    const unsubscribe = listenForForegroundMessages();
-
-    // Request permission if user is logged in
-    if (userId) {
-      requestNotificationPermission();
-    }
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [userId]); 
-
-  return (
-    <>
-      <Toaster 
-        position="top-right" 
-        toastOptions={{
-          style: {
-            backgroundColor: 'var(--dyn-card, #ffffff)',
-            color: 'var(--dyn-text, #000000)',
-            border: '1px solid color-mix(in srgb, var(--dyn-text, #000000) 10%, transparent)',
-          },
-        }}
-      />
-      <LanguageProvider>
-        {/* Single owner of Android hardware/gesture Back for the whole app. */}
-        <AndroidBackButton />
-        <UpdateProvider>
-          <PaywallProvider>
-            {/* Native push lives above the routes so a tap from a cold start can
-                navigate once the router is ready. Web Push is untouched. */}
-            <NativePushProvider>
-              {/* Runs above the guard so a recovery link is honoured even while the
-                  maintenance check is still resolving. */}
-              <PasswordRecoveryRedirect />
-              <NativeAuthCallback />
-              <SystemGuard>
-                <AppRoutes />
-              </SystemGuard>
-            </NativePushProvider>
-          </PaywallProvider>
-          <UpdateBanner />
-        </UpdateProvider>
-      </LanguageProvider>
-    </>
-  );
-};
+const App: React.FC = () => (
+  <>
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        style: {
+          backgroundColor: 'var(--dyn-card, #ffffff)',
+          color: 'var(--dyn-text, #000000)',
+          border: '1px solid color-mix(in srgb, var(--dyn-text, #000000) 10%, transparent)',
+        },
+      }}
+    />
+    <LanguageProvider>
+      {/* Single owner of Android hardware/gesture Back for the whole app. */}
+      <AndroidBackButton />
+      <UpdateProvider>
+        <PaywallProvider>
+          {/* OneSignal lives above the routes so a tap from a cold start can
+              navigate once the router is ready. */}
+          <NativePushProvider>
+            {/* Runs above the guard so a recovery link is honoured even while the
+                maintenance check is still resolving. */}
+            <PasswordRecoveryRedirect />
+            <NativeAuthCallback />
+            <SystemGuard>
+              <AppRoutes />
+            </SystemGuard>
+          </NativePushProvider>
+        </PaywallProvider>
+        <UpdateBanner />
+      </UpdateProvider>
+    </LanguageProvider>
+  </>
+);
 
 export default App;

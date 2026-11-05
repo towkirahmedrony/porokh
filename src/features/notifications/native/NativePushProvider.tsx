@@ -11,11 +11,11 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import type { PluginListenerHandle } from '@capacitor/core';
-import {
-  PushNotifications,
-  type ActionPerformed,
-  type PushNotificationSchema,
-} from '@capacitor/push-notifications';
+import OneSignal, {
+  type NotificationClickEvent,
+  type NotificationWillDisplayEvent,
+  type PushSubscriptionChangedState,
+} from '@onesignal/capacitor-plugin';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
@@ -23,17 +23,20 @@ import { STORAGE_KEYS } from '@/shared/constants/storageKeys';
 import { StorageUtils } from '@/shared/utils/storage';
 import {
   checkNativePushPermission,
-  deactivateNativePushToken,
+  deactivateNativePushDevice,
+  initializeNativePush,
   isNativePushAvailable,
+  isNativePushOptedIn,
+  linkNativePushToUser,
   openNativeNotificationSettings,
-  registerNativePush,
+  optInNativePush,
+  optOutNativePush,
   requestNativePushPermission,
-  syncNativePushToken,
-  unregisterNativePush,
+  syncNativePushDevice,
+  unlinkNativePushFromUser,
 } from './nativePush';
 import {
   canRequestNativePermission,
-  shouldRegisterNativePush,
   type NativePushStatus,
 } from './pushPermission';
 import {
@@ -60,9 +63,12 @@ const NativePushContext = createContext<NativePushContextValue | null>(null);
 const messageOf = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message ? error.message : fallback;
 
+const readPayload = (notification: { additionalData?: object } | null | undefined) =>
+  (notification?.additionalData ?? {}) as Record<string, unknown>;
+
 /**
  * An in-app disable is a user decision, not a transient state: it must survive
- * a restart and must not be undone by the resume/registration effect.
+ * a restart and must not be undone by the resume or login effects.
  */
 const isDeviceNotificationsDisabled = (): boolean =>
   StorageUtils.get<boolean>(STORAGE_KEYS.NATIVE_PUSH_DISABLED) === true;
@@ -72,22 +78,25 @@ const setDeviceNotificationsDisabled = (disabled: boolean): void => {
 };
 
 /**
- * Owns the native push lifecycle for the whole app:
+ * Owns the OneSignal lifecycle for the whole app:
  *
- * - registration / token refresh → existing `/notifications/device-token`
- * - foreground delivery → in-app toast (the tray is owned by Android)
- * - taps → React Router, exactly once per message id
+ * - External ID = the signed-in Supabase user, so an account switch re-targets
+ *   the device and a sign-out detaches it
+ * - foreground delivery → in-app toast (the tray is Android's job)
+ * - taps → React Router, exactly once per notification id
  *
  * It never requests permission on its own. Permission is requested from the
- * Settings card (or a deliberate action), so a fresh install is not greeted by
- * a system dialog before the user knows what it is for.
+ * Settings card, so a fresh install is not greeted by a system dialog before
+ * the user knows what it is for.
  */
 export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const available = isNativePushAvailable();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  // `loading` is true until Supabase finishes restoring the stored session.
+  // Without it the provider would detach a restored user on the first render.
+  const { user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const userId = user?.id ?? null;
 
@@ -106,68 +115,29 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
   tRef.current = t;
   userIdRef.current = userId;
 
-  const syncToken = useCallback(async (token: string) => {
-    try {
-      await syncNativePushToken(token);
-      setRegistered(true);
-      setError(null);
-    } catch (syncError) {
-      setError(messageOf(syncError, 'token sync failed'));
-    }
-  }, []);
-
-  const registerWhenReady = useCallback(
-    async (nextStatus: NativePushStatus, nextUserId: string | null) => {
-      if (!shouldRegisterNativePush(nextStatus, nextUserId)) return;
-
-      try {
-        await registerNativePush();
-      } catch (registerError) {
-        setError(messageOf(registerError, 'registration failed'));
-      }
-    },
-    []
-  );
-
-  // Initial permission read and silent (re)registration for users who already
-  // granted it. Runs again per user so an account switch re-attaches the token.
-  useEffect(() => {
-    if (!available) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      const next = await checkNativePushPermission();
-      if (cancelled) return;
-
-      setStatus(next);
+  const refreshPermission = useCallback(async (): Promise<NativePushStatus> => {
+    if (!available) {
       setChecking(false);
+      return 'unsupported';
+    }
 
-      if (!isDeviceNotificationsDisabled()) {
-        await registerWhenReady(next, userId);
-      }
-    })();
+    const next = await checkNativePushPermission();
+    const optedIn = await isNativePushOptedIn();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [available, registerWhenReady, userId]);
+    setStatus(next);
+    setRegistered(next === 'granted' && optedIn);
+    setChecking(false);
+    return next;
+  }, [available]);
 
-  // Native listeners live for the app lifetime; handlers read refs so a
-  // navigation never re-binds them.
+  // Listeners live for the app lifetime; handlers read refs so a navigation or
+  // language change never re-binds them. Initialisation runs first because
+  // OneSignal replays a tap that launched the app once the SDK is ready.
   useEffect(() => {
     if (!available) return;
 
     let cancelled = false;
-    const handles: PluginListenerHandle[] = [];
-
-    const keep = (handle: PluginListenerHandle) => {
-      if (cancelled) {
-        void handle.remove();
-        return;
-      }
-      handles.push(handle);
-    };
+    let bound = false;
 
     const showForegroundNotification = (
       title: string,
@@ -215,52 +185,110 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
       );
     };
 
+    const handleClick = (event: NotificationClickEvent) => {
+      const notification = event?.notification;
+      if (!acceptTapRef.current(notification?.notificationId)) return;
+
+      const target = resolvePushTarget(readPayload(notification).action_link);
+      navigateRef.current(target || DEFAULT_PUSH_TARGET);
+    };
+
+    const handleForeground = (event: NotificationWillDisplayEvent) => {
+      const notification = event.getNotification();
+      showForegroundNotification(
+        notification?.title || tRef.current('notification.title'),
+        notification?.body || '',
+        resolvePushTarget(readPayload(notification).action_link)
+      );
+    };
+
+    const handlePermissionChange = () => {
+      void refreshPermission();
+    };
+
+    const handleSubscriptionChange = (state: PushSubscriptionChangedState) => {
+      setRegistered(state.current?.optedIn === true);
+    };
+
     void (async () => {
-      keep(
-        await PushNotifications.addListener('registration', ({ value }) => {
-          void syncToken(value);
-        })
-      );
+      const ready = await initializeNativePush();
+      if (!ready || cancelled) return;
 
-      keep(
-        await PushNotifications.addListener('registrationError', ({ error: message }) => {
-          setError(message || 'registration failed');
-        })
+      OneSignal.Notifications.addEventListener('click', handleClick);
+      OneSignal.Notifications.addEventListener(
+        'foregroundWillDisplay',
+        handleForeground
       );
-
-      keep(
-        await PushNotifications.addListener(
-          'pushNotificationReceived',
-          (notification: PushNotificationSchema) => {
-            const title = notification.title || tRef.current('notification.title');
-            const body = notification.body || '';
-            const target = resolvePushTarget(notification.data?.action_link);
-            showForegroundNotification(title, body, target);
-          }
-        )
+      OneSignal.Notifications.addEventListener(
+        'permissionChange',
+        handlePermissionChange
       );
-
-      keep(
-        await PushNotifications.addListener(
-          'pushNotificationActionPerformed',
-          (action: ActionPerformed) => {
-            const notification = action.notification;
-            if (!acceptTapRef.current(notification?.id)) return;
-
-            const target = resolvePushTarget(notification?.data?.action_link);
-            navigateRef.current(target || DEFAULT_PUSH_TARGET);
-          }
-        )
+      OneSignal.User.pushSubscription.addEventListener(
+        'change',
+        handleSubscriptionChange
       );
+      bound = true;
     })();
 
     return () => {
       cancelled = true;
-      handles.forEach((handle) => {
-        void handle.remove();
-      });
+      if (!bound) return;
+
+      try {
+        OneSignal.Notifications.removeEventListener('click', handleClick);
+        OneSignal.Notifications.removeEventListener(
+          'foregroundWillDisplay',
+          handleForeground
+        );
+        OneSignal.Notifications.removeEventListener(
+          'permissionChange',
+          handlePermissionChange
+        );
+        OneSignal.User.pushSubscription.removeEventListener(
+          'change',
+          handleSubscriptionChange
+        );
+      } catch (error) {
+        console.warn('[onesignal] listener cleanup failed:', error);
+      }
     };
-  }, [available, syncToken]);
+  }, [available, refreshPermission]);
+
+  // External ID lifecycle. It waits for `authLoading` to clear so the initial
+  // session restoration is never mistaken for a sign-out.
+  useEffect(() => {
+    if (!available || authLoading) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      const ready = await initializeNativePush();
+      if (!ready || cancelled) return;
+
+      if (userId) {
+        await linkNativePushToUser(userId);
+        if (cancelled) return;
+
+        const next = await refreshPermission();
+        if (cancelled || next !== 'granted') return;
+        if (isDeviceNotificationsDisabled()) return;
+
+        try {
+          await syncNativePushDevice();
+          setError(null);
+        } catch (syncError) {
+          setError(messageOf(syncError, 'device registration failed'));
+        }
+        return;
+      }
+
+      await unlinkNativePushFromUser();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [available, authLoading, refreshPermission, userId]);
 
   // Returning from Android settings must reflect the new permission state.
   useEffect(() => {
@@ -271,17 +299,7 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
 
     void CapacitorApp.addListener('appStateChange', ({ isActive }) => {
       if (!isActive) return;
-
-      void (async () => {
-        const next = await checkNativePushPermission();
-        if (cancelled) return;
-
-        setStatus(next);
-
-        if (!isDeviceNotificationsDisabled()) {
-          await registerWhenReady(next, userIdRef.current);
-        }
-      })();
+      void refreshPermission();
     }).then((registeredHandle) => {
       if (cancelled) {
         void registeredHandle.remove();
@@ -294,7 +312,7 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
       cancelled = true;
       if (handle) void handle.remove();
     };
-  }, [available, registerWhenReady]);
+  }, [available, refreshPermission]);
 
   const enable = useCallback(async () => {
     if (!available) return;
@@ -310,9 +328,23 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
 
       setStatus(next);
 
-      if (next === 'granted') {
-        await registerNativePush();
+      if (next !== 'granted') {
+        setRegistered(false);
+        return;
       }
+
+      await optInNativePush();
+
+      const currentUserId = userIdRef.current;
+      if (currentUserId) await linkNativePushToUser(currentUserId);
+
+      try {
+        await syncNativePushDevice();
+      } catch (syncError) {
+        setError(messageOf(syncError, 'device registration failed'));
+      }
+
+      setRegistered(true);
     } catch (enableError) {
       setError(messageOf(enableError, 'could not enable notifications'));
     } finally {
@@ -327,10 +359,15 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
     setError(null);
 
     try {
-      // Deactivate first: the session is still valid, so the API can clear the
-      // token before the local FCM registration is dropped.
-      await deactivateNativePushToken();
-      await unregisterNativePush();
+      // Deactivate first: the session is still valid, so the API can clear this
+      // installation before the device stops receiving pushes.
+      try {
+        await deactivateNativePushDevice();
+      } catch (deactivateError) {
+        console.warn('[onesignal] device deactivation failed:', deactivateError);
+      }
+
+      await optOutNativePush();
       setDeviceNotificationsDisabled(true);
       setRegistered(false);
     } catch (disableError) {
