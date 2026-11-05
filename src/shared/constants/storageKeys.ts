@@ -18,6 +18,9 @@ export const STORAGE_KEYS = {
   // In-app "disable on this device" choice; survives a restart so the next
   // launch does not silently re-register the phone.
   NATIVE_PUSH_DISABLED: 'porokh_native_push_disabled',
+  // The first-launch permission dialog is asked once per install, not on every
+  // launch, so an ignored prompt never becomes a recurring modal.
+  NATIVE_PUSH_ASKED: 'porokh_native_push_asked',
   // Optional update prompt, dismissed per target version.
   DISMISSED_UPDATE: 'dismissed_optional_update',
   HOME_GRIDS_DATA: 'home_grids_data',
