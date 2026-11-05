@@ -92,7 +92,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
+          ONESIGNAL_APP_ID: ${{ secrets.VITE_ONESIGNAL_APP_ID }}
         run: |
           set -euo pipefail
           if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
@@ -100,7 +100,7 @@ jobs:
             exit 1
           fi
           if [ -z "${ONESIGNAL_APP_ID:-}" ]; then
-            echo "::error::ONESIGNAL_APP_ID repository variable is required; without it the APK ships with push disabled."
+            echo "::error::VITE_ONESIGNAL_APP_ID repository secret is required; without it the APK ships with push disabled."
             exit 1
           fi
           {
@@ -183,7 +183,7 @@ jobs:
 
       - name: Verify OneSignal configuration
         env:
-          ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
+          ONESIGNAL_APP_ID: ${{ secrets.VITE_ONESIGNAL_APP_ID }}
         run: |
           set -euo pipefail
           if ! grep -rqF "$ONESIGNAL_APP_ID" android/app/src/main/assets/public/assets; then
