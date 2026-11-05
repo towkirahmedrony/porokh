@@ -138,9 +138,13 @@ const FullPageLoader = () => (
  * Startup screen of the Android app while the persisted session is restored.
  * It reuses the splash branding so the hand-off from the native splash does not
  * jump through a marketing page or a login form.
+ *
+ * `pk-start` is the exact background of the in-app splash
+ * (src/splash/appSplash.ts) and of the Android launch theme, so the splash can
+ * fade out over it without a colour jump.
  */
 const AppStartLoader = () => (
-  <div className="flex min-h-screen items-center justify-center bg-app">
+  <div className="pk-start flex min-h-screen items-center justify-center">
     <img
       src="/icons/porokh-logo.svg"
       alt="Porokh (পরোখ)"
@@ -150,13 +154,15 @@ const AppStartLoader = () => (
 );
 
 /**
- * Root entry.
+ * Root entry of the Android app.
  *
- * The website keeps the public marketing homepage. The Android app starts on
- * the app itself: the dashboard when the stored session was restored, the login
- * page when there is none, and a loader while the session is still loading.
- * Deciding here (instead of a global "/" redirect) keeps the marketing site and
- * its SEO pages untouched for browsers.
+ * The website keeps the public marketing homepage at "/". The Android app
+ * starts on the app itself: the dashboard when the stored session was restored,
+ * the login page when there is none, and a loader while the session is still
+ * loading.
+ *
+ * This component is rendered by the native-only `"*"` route, never inside
+ * <PublicLayout>, so no marketing markup can mount before the decision is made.
  */
 const NativeStartRoute = () => {
   const { loading, user } = useAuth();
@@ -241,6 +247,9 @@ const AppRoutes: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const userId = user?.id;
+  // The Android shell is the app only; the public marketing site exists solely
+  // on the website. Read per render so it follows the bridge's actual platform.
+  const nativeShell = Capacitor.isNativePlatform();
 
   useEffect(() => {
     if (!userId) return;
@@ -287,13 +296,17 @@ const AppRoutes: React.FC = () => {
         <Route path="/change-password" element={<ChangePassword />} />
 
         {/*
-          --- Public marketing routes ---
+          --- Public information routes ---
           These pages are reachable without a session: no guard, no app shell
           and no authenticated request. Search crawlers and anonymous visitors
           get the same markup; the app routes below stay behind PermissionGuard.
+
+          The homepage is website-only: inside the Android app "/" belongs to
+          the app itself, so it must not be declared here at all. The legal and
+          informational pages stay routable because the app links to them too.
         */}
         <Route element={<PublicLayout />}>
-          <Route path="/" element={<NativeStartRoute />} />
+          {!nativeShell && <Route path="/" element={<LandingPage />} />}
           <Route path="/about" element={<AboutUs />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/contact" element={<Contact />} />
@@ -303,8 +316,17 @@ const AppRoutes: React.FC = () => {
           <Route path="/data-deletion" element={<DataDeletion />} />
 
           {/* Public 404: a lost visitor keeps the site navigation. */}
-          <Route path="*" element={<NotFound />} />
+          {!nativeShell && <Route path="*" element={<NotFound />} />}
         </Route>
+
+        {/*
+          Android entry point. It is declared outside <PublicLayout>, so no
+          marketing header, footer or homepage can paint while the persisted
+          session is still being restored. In the app "/" and every path this
+          build does not serve resolve to the app's own first screen; the
+          website keeps the marketing homepage declared above.
+        */}
+        {nativeShell && <Route path="*" element={<NativeStartRoute />} />}
 
         {/* --- Post-verification onboarding (outside the app shell) --- */}
         <Route

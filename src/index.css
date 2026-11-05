@@ -73,6 +73,21 @@
   }
 }
 
+/*
+ * Startup background of the Android app (src/app/routes/AppRoutes.tsx).
+ * Mirrors the in-app splash and the Android launch theme, which both pick their
+ * colour from prefers-color-scheme: white in light, near-black in dark.
+ */
+.pk-start {
+  background-color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pk-start {
+    background-color: #0a0a0b;
+  }
+}
+
 @layer components {
   /* Shared Base Helpers */
   .page-title {

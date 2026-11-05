@@ -13,12 +13,34 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!--
+            Visible behind the WebView until the web build paints. It must be the
+            launch-splash colour (values / values-night), otherwise the gap
+            between the system splash and the in-app splash shows as a white or
+            black frame.
+        -->
+        <item name="android:windowBackground">@color/splash_background</item>
     </style>
 
+    <!--
+        Launch (system) splash.
 
+        Android 12+ always draws a splash screen for a cold start, so it cannot be
+        removed. It is reduced to the branded background here: the animated icon
+        is a fully transparent drawable, so the launch screen never shows a second
+        logo, and the in-app splash (src/splash/appSplash.ts) draws Porokh's own
+        logo and tagline on the same colour.
+    -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_launch_icon</item>
+        <!--
+            Pre-Android 12 the compat library paints the window background, so a
+            plain colour replaces its default oversized icon there too.
+        -->
+        <item name="android:windowBackground">@color/splash_background</item>
         <item name="android:background">@color/splash_background</item>
+        <!-- Theme applied once the splash window is gone (BridgeActivity). -->
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
