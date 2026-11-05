@@ -8,6 +8,8 @@ import { DBNotificationItem } from '../types/notificationTypes';
 import NotificationHeader from '../components/NotificationHeader';
 import NotificationItem from '../components/NotificationItem';
 import NotificationEmptyState from '../components/NotificationEmptyState';
+import NotificationDetailSheet from '../components/NotificationDetailSheet';
+import { resolvePushTarget } from '../native/pushRouting';
 import NoticeList from '@/features/notices/components/NoticeList';
 import { useNotices } from '@/features/notices/hooks/useNotices';
 import PullToRefresh from '../../groups/components/PullToRefresh';
@@ -34,6 +36,7 @@ const Notifications: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'notifications' | 'notices'>('notifications');
+  const [selected, setSelected] = useState<DBNotificationItem | null>(null);
 
   const queryKey = useMemo(() => ['notifications', user?.id], [user?.id]);
   const unreadKey = useMemo(() => ['notifications', 'unreadCount', user?.id], [user?.id]);
@@ -139,15 +142,19 @@ const Notifications: React.FC = () => {
         });
       }
 
-      if (!item.action_link) return;
-
-      if (item.action_link.startsWith('http') || item.action_link.startsWith('www')) {
-        window.open(item.action_link, '_blank', 'noopener,noreferrer');
-      } else {
-        navigate(item.action_link);
-      }
+      // The detail sheet validates the stored link before it can navigate, so a
+      // notification can never push the app to an arbitrary destination.
+      setSelected(item);
     },
-    [user, markAsReadMutation, navigate]
+    [user, markAsReadMutation]
+  );
+
+  const handleOpenTarget = useCallback(
+    (target: string) => {
+      setSelected(null);
+      navigate(resolvePushTarget(target));
+    },
+    [navigate]
   );
 
   const handleRefresh = useCallback(async () => {
@@ -232,6 +239,12 @@ const Notifications: React.FC = () => {
           )}
         </div>
       </PullToRefresh>
+
+      <NotificationDetailSheet
+        item={selected}
+        onClose={() => setSelected(null)}
+        onOpen={handleOpenTarget}
+      />
     </div>
   );
 };
