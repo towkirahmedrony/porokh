@@ -111,6 +111,17 @@ jobs:
       - run: npm run build
       - run: npm run native:sync
 
+      - name: Inject google-services.json
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON repository secret is missing. Push notifications will fail to compile."
+            exit 1
+          fi
+          mkdir -p android/app
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+          echo "google-services.json injected successfully."
+
       - name: Verify the packaged build manifest
         run: |
           set -euo pipefail
