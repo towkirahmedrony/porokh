@@ -89,6 +89,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
         run: |
           set -euo pipefail
 
@@ -97,9 +98,15 @@ jobs:
             exit 1
           fi
 
+          if [ -z "${ONESIGNAL_APP_ID:-}" ]; then
+            echo "::error::ONESIGNAL_APP_ID is required; an OTA bundle without it disables push for every installed app."
+            exit 1
+          fi
+
           {
             printf 'VITE_SUPABASE_URL=%s\n' "$SUPABASE_URL"
             printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY"
+            printf 'VITE_ONESIGNAL_APP_ID=%s\n' "$ONESIGNAL_APP_ID"
           } > .env.local
 
       - name: Validate public signing keys
@@ -164,6 +171,19 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Verify OneSignal configuration
+        env:
+          ONESIGNAL_APP_ID: ${{ vars.ONESIGNAL_APP_ID }}
+        run: |
+          set -euo pipefail
+
+          if ! grep -rqF "$ONESIGNAL_APP_ID" dist/assets; then
+            echo "::error::The OTA bundle does not contain ONESIGNAL_APP_ID; push would be disabled after the update."
+            exit 1
+          fi
+
+          echo "OneSignal app id present in the OTA bundle"
 
       - name: Verify build manifest
         run: |

@@ -3,10 +3,12 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/shared/lib/supabase";
 import { buildApiUrl } from "@/shared/lib/apiConfig";
 import { useLanguage } from "@/shared/i18n/LanguageProvider";
 import type { AppMessageKey } from "@/shared/i18n/messages";
+import { getDeviceId } from "@/shared/utils/device";
 import { rememberPendingVerificationEmail } from "../utils/pendingVerification";
 
 type LoginFormData = {
@@ -121,7 +123,8 @@ export default function LoginForm() {
               Authorization: `Bearer ${data.session.access_token}`,
             },
             body: JSON.stringify({
-              user_id: data.session.user.id,
+              device_id: getDeviceId(),
+              platform: Capacitor.isNativePlatform() ? 'android' : 'web',
               device_name: /Mobile|Android|iP(hone|od|ad)/.test(navigator.userAgent) ? 'Mobile Device' : 'Desktop/Laptop',
               os_or_browser: navigator.userAgent
             })

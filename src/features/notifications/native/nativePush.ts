@@ -2,7 +2,12 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import OneSignal from '@onesignal/capacitor-plugin';
 import { apiClient } from '@/shared/lib/apiClient';
 import { getDeviceId } from '@/shared/utils/device';
-import { toNativePushStatus, type NativePushStatus } from './pushPermission';
+import {
+  toNativePushStatus,
+  type NativePushStatus,
+  type OneSignalInitState,
+  type PushSubscriptionSnapshot,
+} from './pushPermission';
 
 /**
  * OneSignal bridge for the Android shell.
@@ -27,15 +32,29 @@ interface NotificationSettingsPlugin {
 const AppNotificationSettings =
   registerPlugin<NotificationSettingsPlugin>('NotificationSettings');
 
-export const isNativePushAvailable = (): boolean =>
+/** Native shell with the plugin linked, regardless of build-time config. */
+export const isNativePushSupported = (): boolean =>
   Capacitor.isNativePlatform() &&
-  Boolean(ONESIGNAL_APP_ID) &&
   Capacitor.isPluginAvailable('OneSignalCapacitor');
+
+/** Usable push transport: native shell, plugin and a bundled app id. */
+export const isNativePushAvailable = (): boolean =>
+  isNativePushSupported() && Boolean(ONESIGNAL_APP_ID);
 
 const getNativeDeviceLabel = (): string => {
   const match = /Android\s+([\d.]+)/i.exec(navigator.userAgent);
   return match ? `Android ${match[1]}` : 'Android app';
 };
+
+const initialInitState = (): OneSignalInitState => {
+  if (!isNativePushSupported()) return 'sdk_unavailable';
+  return ONESIGNAL_APP_ID ? 'pending' : 'missing_app_id';
+};
+
+let initState: OneSignalInitState = initialInitState();
+
+/** Exposed for diagnostics, never for routing decisions. */
+export const getOneSignalInitState = (): OneSignalInitState => initState;
 
 /**
  * Initialisation runs exactly once per page load: a second call reuses the
@@ -45,12 +64,20 @@ const getNativeDeviceLabel = (): string => {
 let initialization: Promise<boolean> | null = null;
 
 export const initializeNativePush = (): Promise<boolean> => {
-  if (!isNativePushAvailable()) return Promise.resolve(false);
+  if (!isNativePushAvailable()) {
+    initState = initialInitState();
+    return Promise.resolve(false);
+  }
 
   if (!initialization) {
+    initState = 'pending';
     initialization = OneSignal.initialize(ONESIGNAL_APP_ID)
-      .then(() => true)
+      .then(() => {
+        initState = 'initialized';
+        return true;
+      })
       .catch((error) => {
+        initState = 'failed';
         console.warn('[onesignal] initialization failed:', error);
         // A later attempt (next app start) may succeed, so the cache is cleared.
         initialization = null;
@@ -87,18 +114,52 @@ export const requestNativePushPermission = async (): Promise<NativePushStatus> =
   if (!isNativePushAvailable()) return 'unsupported';
   if (!(await initializeNativePush())) return 'unsupported';
 
-  await OneSignal.Notifications.requestPermission(false);
+  try {
+    await OneSignal.Notifications.requestPermission(false);
+  } catch (error) {
+    console.warn('[onesignal] permission request failed:', error);
+  }
+
   return checkNativePushPermission();
 };
 
-export const isNativePushOptedIn = async (): Promise<boolean> => {
-  if (!isNativePushAvailable()) return false;
+/**
+ * The three values that prove OneSignal can actually reach this installation.
+ * A permission grant alone is not enough: the subscription id and FCM token can
+ * arrive seconds later, and the token may never arrive if Firebase is broken.
+ */
+export const readNativePushSubscription =
+  async (): Promise<PushSubscriptionSnapshot | null> => {
+    if (!isNativePushAvailable()) return null;
+    if (!(await initializeNativePush())) return null;
+
+    try {
+      const [subscriptionId, pushToken, optedIn] = await Promise.all([
+        OneSignal.User.pushSubscription.getIdAsync(),
+        OneSignal.User.pushSubscription.getTokenAsync(),
+        OneSignal.User.pushSubscription.getOptedInAsync(),
+      ]);
+
+      return {
+        subscriptionId: subscriptionId ? String(subscriptionId) : null,
+        hasPushToken: Boolean(String(pushToken ?? '').trim()),
+        optedIn: optedIn === true,
+      };
+    } catch (error) {
+      console.warn('[onesignal] subscription state unavailable:', error);
+      return null;
+    }
+  };
+
+export const getNativePushExternalId = async (): Promise<string | null> => {
+  if (!isNativePushAvailable()) return null;
 
   try {
-    return (await OneSignal.User.pushSubscription.getOptedInAsync()) === true;
+    const externalId = await OneSignal.User.getExternalId();
+    return externalId ? String(externalId) : null;
   } catch (error) {
-    console.warn('[onesignal] subscription state unavailable:', error);
-    return false;
+    console.warn('[onesignal] external id unavailable:', error);
+    return null;
   }
 };
 
@@ -133,6 +194,19 @@ export const deactivateNativePushDevice = async (): Promise<void> => {
 };
 
 /**
+ * Identity calls are serialised. Two effects can race during an account switch
+ * (login for the new user, logout for the old one); without a queue the last
+ * network answer would win instead of the last requested state.
+ */
+let identityQueue: Promise<void> = Promise.resolve();
+
+const runIdentityTask = (task: () => Promise<void>): Promise<void> => {
+  const run = identityQueue.then(task);
+  identityQueue = run.catch(() => undefined);
+  return run;
+};
+
+/**
  * Associates this device with the signed-in Supabase user. The external id is
  * always the session's UUID, never a value from storage or a deep link, so a
  * device can only ever receive the pushes of the account that is signed in.
@@ -142,7 +216,11 @@ export const linkNativePushToUser = async (userId: string): Promise<void> => {
   if (!externalId || !isNativePushAvailable()) return;
   if (!(await initializeNativePush())) return;
 
-  await OneSignal.login(externalId);
+  await runIdentityTask(async () => {
+    const current = await getNativePushExternalId();
+    if (current === externalId) return;
+    await OneSignal.login(externalId);
+  });
 };
 
 /**
@@ -152,7 +230,12 @@ export const linkNativePushToUser = async (userId: string): Promise<void> => {
  */
 export const unlinkNativePushFromUser = async (): Promise<void> => {
   if (!isNativePushAvailable()) return;
-  await OneSignal.logout();
+
+  await runIdentityTask(async () => {
+    const current = await getNativePushExternalId();
+    if (!current) return;
+    await OneSignal.logout();
+  });
 };
 
 /**
