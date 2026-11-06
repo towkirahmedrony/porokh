@@ -98,6 +98,33 @@
   }
 }
 
+.logo{
+  font-family:"Anek Bangla","Hind Siliguri","Noto Sans Bengali",sans-serif;
+  font-weight:800;
+  font-size:32px;
+  line-height:1.25;   /* keep: prevents Bengali matra/vowel marks from being clipped */
+  padding:0 .04em;    /* keep: same reason */
+  display:inline-block;
+  margin:0;
+  --logo-g1:#1E3FBF;
+  --logo-g2:#3B82F6;
+  background:linear-gradient(100deg,var(--logo-g1) 0%,var(--logo-g2) 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  color:transparent;
+}
+
+.dark .logo{
+  --logo-g1:#4F83F5;
+  --logo-g2:#8EC5FF;
+}
+
+.logo:lang(en){
+  letter-spacing:-0.01em;
+  line-height:1.2;
+}
+
 /* Utilities */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

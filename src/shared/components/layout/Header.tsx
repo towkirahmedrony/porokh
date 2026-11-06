@@ -13,7 +13,7 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const isDashboardHome =
     location.pathname === '/dashboard' ||
@@ -82,11 +82,9 @@ const Header: React.FC = () => {
           title={t('header.logoTitle')}
           className="flex items-center"
         >
-          <img
-            src="/icons/header.webp"
-            alt={t('header.logoAlt')}
-            className="h-10 w-auto object-contain drop-shadow-sm"
-          />
+          <span className="logo" lang={language}>
+            {t('appName')}
+          </span>
         </Link>
 
         <nav
