@@ -2,6 +2,9 @@
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
 
+include ':capacitor-firebase-messaging'
+project(':capacitor-firebase-messaging').projectDir = new File('../node_modules/@capacitor-firebase/messaging/android')
+
 include ':capacitor-app'
 project(':capacitor-app').projectDir = new File('../node_modules/@capacitor/app/android')
 
@@ -10,6 +13,3 @@ project(':capacitor-browser').projectDir = new File('../node_modules/@capacitor/
 
 include ':capgo-capacitor-updater'
 project(':capgo-capacitor-updater').projectDir = new File('../node_modules/@capgo/capacitor-updater/android')
-
-include ':onesignal-capacitor-plugin'
-project(':onesignal-capacitor-plugin').projectDir = new File('../node_modules/@onesignal/capacitor-plugin/android')

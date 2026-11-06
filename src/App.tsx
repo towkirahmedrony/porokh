@@ -34,7 +34,7 @@ const App: React.FC = () => (
       <AndroidBackButton />
       <UpdateProvider>
         <PaywallProvider>
-          {/* OneSignal lives above the routes so a tap from a cold start can
+          {/* Native push lives above the routes so a tap from a cold start can
               navigate once the router is ready. */}
           <NativePushProvider>
             {/* Runs above the guard so a recovery link is honoured even while the

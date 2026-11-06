@@ -39,9 +39,13 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Creates the channel before the first message can arrive. The name comes
-     * from the device locale, so it stays localized; the JS side recreating the
-     * same id later is a no-op for the user-visible name.
+     * Creates both channels before the first message can arrive. The backend
+     * addresses `porokh_default` for normal notifications and `porokh_urgent`
+     * for high-priority ones; an Android 8+ notification naming a channel that
+     * does not exist is dropped, so both must exist up front.
+     *
+     * The names come from the device locale, so they stay localized. Android
+     * never renames an existing channel, which is why the id is the stable key.
      */
     private void ensureNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
@@ -49,15 +53,34 @@ public class MainActivity extends BridgeActivity {
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager == null) return;
 
-        String channelId = getString(R.string.default_notification_channel_id);
+        createChannel(
+            manager,
+            getString(R.string.default_notification_channel_id),
+            getString(R.string.notification_channel_name),
+            getString(R.string.notification_channel_description)
+        );
+        createChannel(
+            manager,
+            getString(R.string.urgent_notification_channel_id),
+            getString(R.string.urgent_notification_channel_name),
+            getString(R.string.urgent_notification_channel_description)
+        );
+    }
+
+    private void createChannel(
+        NotificationManager manager,
+        String channelId,
+        String name,
+        String description
+    ) {
         if (manager.getNotificationChannel(channelId) != null) return;
 
         NotificationChannel channel = new NotificationChannel(
             channelId,
-            getString(R.string.notification_channel_name),
+            name,
             NotificationManager.IMPORTANCE_HIGH
         );
-        channel.setDescription(getString(R.string.notification_channel_description));
+        channel.setDescription(description);
         channel.enableVibration(true);
         manager.createNotificationChannel(channel);
     }

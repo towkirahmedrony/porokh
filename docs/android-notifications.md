@@ -1,53 +1,49 @@
-# Native Android notifications (FCM)
+# Android push notifications (FCM)
 
-Porokh runs Web Push in the browser and FCM push in the Android shell. Both use
-the same notification tables, templates, preferences and targeting; only the
-transport differs. Adding native push did **not** create a second notification
-system.
+Push runs on Firebase Cloud Messaging end to end. The Android shell uses
+`@capacitor-firebase/messaging` to obtain an FCM token, the backend sends through
+the Firebase Admin SDK, and both sides share the existing notification tables,
+templates, preferences and targeting. There is no third-party push provider.
 
 ## Architecture
 
-| Piece | Web (browser/PWA) | Android (Capacitor shell) |
-| --- | --- | --- |
-| Token source | Firebase JS SDK + `public/firebase-messaging-sw.js` | `@capacitor/push-notifications` (FCM Android SDK) |
-| Registration | `POST /api/v1/notifications/device-token`, `platform: 'web'` | Same endpoint, `platform: 'android'` |
-| Backend payload | data-only (service worker displays it) | `notification` + `data`, high priority (system tray displays it) |
-| Tap handling | `firebase-messaging-sw.js` `notificationclick` | `pushNotificationActionPerformed` → React Router |
-| Permission | Browser `Notification.requestPermission()` | Android 13+ `POST_NOTIFICATIONS` runtime permission |
+| Piece | Android (Capacitor shell) |
+| --- | --- |
+| Token source | `@capacitor-firebase/messaging` → FCM registration token |
+| Registration | `POST /api/v1/notifications/device-token` with `fcm_token` + `platform: 'android'` |
+| Backend transport | Firebase Admin SDK, HTTP v1, batches of 500 tokens |
+| Payload | `notification` + `data` (system tray renders it, even when the app is terminated) |
+| Tap handling | `notificationActionPerformed` → React Router |
+| Permission | Android 13+ `POST_NOTIFICATIONS` runtime permission |
 
-The backend groups registered tokens by `user_devices.platform` before sending,
-because one multicast message can only carry one payload shape. Web delivery is
-byte-for-byte the existing data-only contract.
+The backend loads tokens from `user_devices` for the resolved accounts only, so
+recipient choice never comes from the client. Payloads are built per platform and
+per language, because Android needs a system notification block and the text
+follows `profiles.language_preference`.
+
+Web Push is **not** implemented in this app: browsers are served in-app
+notifications only. A `web` platform row can only exist if a future web client
+registers a token.
 
 Tap routing is allowlisted in `src/features/notifications/native/pushRouting.ts`:
 only known in-app paths are opened, everything else lands on `/notifications`.
 The message id is de-duplicated so a cold-start replay cannot navigate twice.
 
-## Firebase Console requirements
+## Token lifecycle
 
-1. Open the existing Firebase project (`parapothexam`, sender id `597075104838`).
-2. **Project settings → Your apps → Add app → Android**
-   - package name: `net.porokh.app` (do **not** change the application id)
-   - nickname: `Porokh Android`
-   - SHA-1/SHA-256: optional for FCM; add the release signing certificate if you
-     also use Firebase features that require it.
-3. Download `google-services.json` (it must contain a client entry whose
-   `package_name` is `net.porokh.app`).
-4. No server key is needed in the console: the backend already authenticates with
-   `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
-   Service-account credentials never reach the app.
+| Event | Behaviour |
+| --- | --- |
+| First launch | One non-blocking permission prompt; the "asked" marker is written first so the dialog cannot repeat. |
+| Permission granted | Token read, posted to the backend, `registered` becomes true. |
+| Token rotated | `tokenReceived` listener re-registers immediately; the old address is released by the unique `fcm_token` index. |
+| Backend moved the token | A retry is scheduled once (2s) if the token is not ready when the dialog closes. |
+| Network failure | Registration is retried on the next resume instead of looping. |
+| Account switch | The new user's token is registered; the unique index moves the token off the previous account's row. |
+| Sign-out | `DELETE /notifications/device-token` before the session is cleared, then `deleteToken()`. |
+| In-app disable | Device deactivated + token deleted; the disabled flag survives a restart. |
+| Invalid token | FCM `registration-token-not-registered` / `invalid-argument` → backend clears `fcm_token`. |
 
-### Where `google-services.json` lives
-
-- Local build: place it at `android/app/google-services.json` (git-ignored).
-- CI: stored as the `GOOGLE_SERVICES_JSON` repository secret; the Android
-  workflow writes it before Gradle and fails if it is missing or targets another
-  package name.
-
-Without the file the Gradle plugin is not applied, `PushNotifications.register()`
-fails with `registrationError`, and no token is ever registered.
-
-## Android configuration that shipped
+## Android configuration
 
 - `android/app/src/main/AndroidManifest.xml`
   - `<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />`
@@ -55,72 +51,107 @@ fails with `registrationError`, and no token is ever registered.
     `@string/default_notification_channel_id` (`porokh_default`)
   - `com.google.firebase.messaging.default_notification_icon` →
     `@drawable/ic_notification` (monochrome)
-- `MainActivity` creates the channel before the first message arrives, using
-  localized strings (`values/`, `values-bn/`).
-- `NotificationSettingsPlugin` (custom, ~35 lines) opens
-  `ACTION_APP_NOTIFICATION_SETTINGS`, because a denied Android 13 permission can
-  only be re-enabled from system settings.
-- `android/app/build.gradle` still applies `com.google.gms.google-services`
-  only when the JSON file exists; CI now guarantees it exists.
+- `MainActivity` creates both channels before the first message arrives:
+  `porokh_default` (normal) and `porokh_urgent` (high priority). Android 8+ drops
+  a notification that names a channel which does not exist.
+- `NotificationSettingsPlugin` opens `ACTION_APP_NOTIFICATION_SETTINGS`, because a
+  denied Android 13 permission can only be re-enabled from system settings.
+- `android/app/build.gradle` applies `com.google.gms.google-services` only when
+  `google-services.json` exists.
 
-## APK and OTA compatibility
+## Firebase console setup
 
-| Installed APK | Native push | Web Push | OTA bundles |
-| --- | --- | --- | --- |
-| 1.0.0 / 1.0.1 / 1.0.2 | not available | unchanged | still accepted |
-| 1.0.3+ (this change) | available | unchanged | accepted |
+1. Open the Firebase project that owns the Android app.
+2. **Project settings → Your apps → Add app → Android**
+   - package name: `net.porokh.app` (do **not** change the application id)
+3. Download `google-services.json`; it must contain a client whose
+   `package_name` is `net.porokh.app`.
+4. **Project settings → Service accounts → Generate new private key** and use the
+   values for `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL` and
+   `FIREBASE_PRIVATE_KEY` on the backend (Render). Never ship them to the app.
 
-- **A new APK is mandatory** for native push. The plugin, the Firebase Messaging
-  service, `POST_NOTIFICATIONS` and the settings intent are native code; they
-  cannot be delivered by a Capgo OTA bundle.
-- `minNativeVersion` in `ota.config.json` stays `1.0.1` on purpose: older APKs
-  keep receiving JS updates instead of being cut off.
-- Every JS entry point is guarded by
-  `Capacitor.isPluginAvailable('PushNotifications')`, so an OTA bundle running on
-  a 1.0.2 APK simply does not register native push and keeps Web Push.
-- Notification **content, routing, copy, preferences and settings UI** are JS and
-  can be changed through OTA. Anything that needs a new plugin, permission,
-  manifest entry, channel or Firebase config needs a new APK.
+### Where `google-services.json` lives
 
-## Database migration
+- Local build: `android/app/google-services.json` (git-ignored).
+- CI: the `GOOGLE_SERVICES_JSON` repository secret; the Android workflow writes
+  it before Gradle and fails when it is missing or targets another package.
 
-`supabase/migrations/20261104080000_native_push_devices.sql`
+## Payload contract
 
-- `user_devices.platform` (`web` | `android`, default `web`)
-- unique index on `fcm_token` (one active installation per token)
-- index on `platform`
-- RLS stays enabled; direct client access is limited to the caller's own rows,
-  writes and delivery use the service role.
+Backend → client `data` (all values strings):
 
-The backend also releases a token from previous rows before re-registering it,
-so an account switch on a shared phone cannot leave the old account receiving
-this device's pushes.
+| Key | Meaning |
+| --- | --- |
+| `type` | `exam`, `reward`, `streak`, `social`, `billing` or `security`. |
+| `notification_id` | `notifications.id`; used for read/click acknowledgement and tap dedupe. |
+| `action_link` | In-app path, validated server-side and again on the device. |
+| `title_bn` / `title_en` / `body_bn` / `body_en` | Both languages, so the client can re-render after a language switch. |
+| `image_url` | Optional banner. |
+
+Android also receives `notification.title` / `notification.body` for the system
+tray, on channel `porokh_default` or `porokh_urgent` with priority `high`.
+
+## Database
+
+`supabase/migrations/20261106120000_fcm_push_migration.sql`
+
+- `notifications.onesignal_message_id` → `fcm_message_id` (guarded rename; history
+  preserved).
+- unique index on `(user_id, device_id)` for `user_devices`.
+- index on `user_devices (user_id) where fcm_token is not null` for token fan-out.
+- RLS stays enabled: a signed-in user can only touch their own device rows, and
+  push reads use the service role.
+
+The backend releases a token from other rows before re-registering it, so an
+account switch on a shared phone cannot leave the old account receiving this
+device's pushes.
 
 ## Observable behaviour
 
 | App state | What happens |
 | --- | --- |
-| Foreground | `pushNotificationReceived` → in-app toast; tap navigates. No duplicate tray entry (no `presentationOptions` configured). |
-| Background / terminated | Android shows the tray notification from the `notification` block; tap launches/resumes the app and navigates once. |
-| Permission denied | No prompt loop; Settings card explains the state and offers the system settings shortcut. |
-| Sign-out / account switch | Token deactivated through `DELETE /notifications/device-token` before the session is cleared; a new sign-in re-registers. |
-| Token refresh | `registration` listener re-posts the token to the same endpoint (upsert on user + device id). |
-| Invalid/expired token | FCM `registration-token-not-registered` / `invalid-argument` responses delete the stale row. |
+| Foreground | `notificationReceived` → in-app toast; no duplicate tray entry. |
+| Background / terminated | Android shows the tray notification from the `notification` block; tap launches or resumes the app and navigates once. |
+| Permission denied | No prompt loop; the Settings card explains the state and offers the system settings shortcut. |
+| Sign-out / account switch | Token deactivated through `DELETE /notifications/device-token`; a new sign-in re-registers. |
 
-## Manual verification (physical Android device)
+## Build and verification
 
-1. Fresh install of the 1.0.3 APK.
-2. Sign in, open **Settings → Device notifications**; no prompt before that.
-3. Toggle on: Android 13+ permission dialog appears once; status becomes On.
-4. Deny: status Off, guidance + "Open system settings" appears; no repeated prompt.
-5. Send a test notification from Admin or the exam/streak cron.
-6. Foreground: in-app toast; no duplicate from the tray.
-7. Background: tray notification with title/body/icon; tap opens the target route.
-8. Terminated: same tray notification; tap cold-starts into the target route once.
-9. Check `user_devices`: one row for the installation, `platform = 'android'`, the
-   same `device_id` used by `x-device-id`.
-10. Sign out: `fcm_token` becomes `NULL` for that row; sign back in: token returns.
-11. Sign in as another account on the same phone: only the new account's options
-    deliver to this device.
-12. Web Push in a desktop browser still prompts and delivers exactly as before.
-13. Publish/activate an OTA bundle: it must boot and push must keep working.
+A new APK is required: the plugin, the Firebase Messaging service, the permission
+and the channels are native code and cannot be delivered by a Capgo OTA bundle.
+JS-only changes (routing, copy, settings UI) can still ship over OTA.
+
+```bash
+cd porokh
+npm run native:sync     # regenerates android/ plugin wiring from package.json
+npm run typecheck
+npm test
+npm run build
+```
+
+Manual verification on a physical device:
+
+1. Install the new APK with `google-services.json` baked in.
+2. Sign in; open **Settings → Device notifications** and enable.
+3. Deny first: the card must show the denial and the system-settings shortcut,
+   with no second dialog.
+4. Send a notification from the admin panel.
+5. Foreground: toast only. Background/terminated: tray entry; tap opens the
+   target route exactly once.
+6. Check `user_devices`: one row for the installation, `platform = 'android'`,
+   `fcm_token` set.
+7. Sign out: `fcm_token` becomes `NULL`. Sign in as another account: the token
+   moves to that account's row.
+8. Admin history shows `sent` with a device count; a send with no registered
+   tokens shows `failed` with `no_registered_devices`.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| No token, `push_error = fcm_not_configured` | Backend Firebase env vars missing or malformed. |
+| Token issued, nothing arrives | `google-services.json` package name mismatch, or the token belongs to another Firebase project. |
+| Notification in foreground only | Missing `notification` block (Android needs it for tray display). |
+| Notification never displayed | Channel id in the payload does not exist on the device. |
+| `total_sent = 0` | No tokens for the resolved audience, or every token was invalid. |
+| Duplicate tray entries | Both `notification` and `webpush` blocks sent to the same Android token. |
