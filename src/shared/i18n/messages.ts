@@ -1274,7 +1274,10 @@ const bn = {
   'system.maintenanceTitle': 'সিস্টেম আপডেট চলছে',
   'system.maintenanceFallback':
     'পরোখ-এর সার্ভারে কিছু গুরুত্বপূর্ণ কাজ চলছে।',
-  'update.availableTitle': 'আপডেট প্রস্তুত',
+  'update.availableTitle': 'নতুন আপডেট এসেছে!',
+  'update.availableDescription':
+    'Porokh-এর নতুন সংস্করণ ব্যবহার করতে এখনই আপডেট করে নাও।',
+  'update.availableVersion': 'সংস্করণ {version}',
   'update.availableBody': 'সংস্করণ {version} ডাউনলোড হয়েছে। পরীক্ষা জমা দেওয়ার পর এটি চালু হবে।',
   'update.applyNow': 'এখনই আপডেট করুন',
   'update.later': 'পরে',
@@ -1282,6 +1285,7 @@ const bn = {
   'update.downloading': 'আপডেট ডাউনলোড হচ্ছে… {percent}%',
   'update.activating': 'নতুন সংস্করণ চালু হচ্ছে…',
   'update.activated': 'সংস্করণ {version} চালু হয়েছে',
+  'update.applied': 'Porokh আপডেট সম্পন্ন হয়েছে!',
   'update.blockedTitle': 'আপডেট আপাতত বন্ধ',
   'update.blockedExam': 'পরীক্ষা চলছে। জমা দেওয়ার পর আপডেট চালু হবে।',
   'update.blockedPractice': 'অনুশীলন চলছে। জমা দেওয়ার পর আপডেট চালু হবে।',
@@ -2873,7 +2877,10 @@ const en: Record<AppMessageKey, string> = {
   'system.maintenanceTitle': 'System update in progress',
   'system.maintenanceFallback':
     'We are carrying out important maintenance on the Porokh servers.',
-  'update.availableTitle': 'Update ready',
+  'update.availableTitle': 'A new update is available!',
+  'update.availableDescription':
+    'Update now to use the latest version of Porokh.',
+  'update.availableVersion': 'Version {version}',
   'update.availableBody': 'Version {version} is downloaded. It will be applied after your exam is submitted.',
   'update.applyNow': 'Update now',
   'update.later': 'Later',
@@ -2881,6 +2888,7 @@ const en: Record<AppMessageKey, string> = {
   'update.downloading': 'Downloading update… {percent}%',
   'update.activating': 'Restarting with the new version…',
   'update.activated': 'Updated to version {version}',
+  'update.applied': 'Porokh has been updated!',
   'update.blockedTitle': 'Update paused',
   'update.blockedExam': 'An exam is in progress. The update will be applied after submission.',
   'update.blockedPractice': 'Practice is in progress. The update will be applied after you submit.',

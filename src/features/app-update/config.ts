@@ -70,6 +70,14 @@ export const OTA_MAX_DOWNLOAD_ATTEMPTS = 3;
 export const OTA_ACTIVATION_GRACE_MS = 30_000;
 
 /**
+ * How long the ephemeral "update applied" success toast stays on screen
+ * before it dismisses itself. Success is never persisted to storage, so this
+ * in-memory timer is the only mechanism that can hide it — it must survive
+ * unmounts and still fire after the WebView reload that confirms the boot.
+ */
+export const OTA_ACTIVATED_NOTICE_TTL_MS = 3_500;
+
+/**
  * How long a startup health check may be deferred because local storage is
  * temporarily unavailable (as opposed to provably incompatible).
  */
