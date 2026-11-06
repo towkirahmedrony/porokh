@@ -6,6 +6,7 @@ import {
   type ActivationStorage,
 } from './activationGate';
 import {
+  OTA_ACTIVATED_NOTICE_TTL_MS,
   OTA_ACTIVATION_GRACE_MS,
   OTA_BOOT_HEALTH_RETRY_DELAYS_MS,
   OTA_CHANNEL,
@@ -222,10 +223,29 @@ export const createOtaController = (
       timers.delete(timer);
       if (!disposed) callback();
     }, delay);
+    (timer as unknown as { unref?: () => void }).unref?.();
     timers.add(timer);
   };
 
   const publishNotice = (notice: OtaBootNotice): void => {
+    // A persisted "activated" notice is what used to make the success toast
+    // reappear on every launch until a manual dismiss: the boot after a
+    // successful activation writes it to localStorage, the next launch
+    // restores it verbatim, and nothing expires it. Success is therefore
+    // published in-memory only and dismissed by a short timer, while
+    // recovery/failure notices that must survive an automatic rollback
+    // reload keep the persisted path.
+    if (notice.phase === 'activated') {
+      clearBootNotice(kv);
+      patch({ notice });
+      scheduleTimer(() => {
+        if (snapshot.notice?.phase === 'activated') {
+          clearBootNotice(kv);
+          patch({ notice: null });
+        }
+      }, OTA_ACTIVATED_NOTICE_TTL_MS);
+      return;
+    }
     writeBootNotice(kv, notice);
     patch({ notice });
   };
@@ -1318,7 +1338,14 @@ export const createOtaController = (
     const previousNotice = readBootNotice(kv);
     if (previousNotice) {
       clearBootNotice(kv);
-      patch({ notice: previousNotice });
+      // A persisted "activated" notice from an older build can only be
+      // stale — it was already shown in the previous session, so restoring
+      // it would show an old success message on every restart. Only
+      // recovery/failure notices that straddle a rollback reload are
+      // restored.
+      if (previousNotice.phase !== 'activated') {
+        patch({ notice: previousNotice });
+      }
     }
 
     await readCurrentVersion();
