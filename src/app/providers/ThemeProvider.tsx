@@ -4,6 +4,7 @@ import {
   useCallback,
   useMemo,
   useLayoutEffect,
+  useState,
   type ReactNode,
 } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -13,8 +14,17 @@ import apiClient from '@/shared/lib/apiClient';
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage';
 import { StorageUtils } from '@/shared/utils/storage';
 import { STORAGE_KEYS } from '@/shared/constants/storageKeys';
+import {
+  DEFAULT_THEME_PREFERENCE,
+  getNextThemePreference,
+  normalizeThemePreference,
+  resolveTheme,
+  type ResolvedTheme,
+  type ThemePreference,
+} from '@/shared/utils/themePreference';
 
-export type Theme = 'dark' | 'light' | 'system';
+export type Theme = ThemePreference;
+export type { ResolvedTheme };
 
 export type ThemeColors = {
   bgApp?: string;
@@ -55,6 +65,7 @@ type GlobalThemeConfig = {
 
 type ThemeProviderState = {
   theme: Theme;
+  resolvedTheme: ResolvedTheme;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
   globalConfig: GlobalThemeConfig | null;
@@ -62,6 +73,7 @@ type ThemeProviderState = {
 
 const initialState: ThemeProviderState = {
   theme: 'system',
+  resolvedTheme: 'light',
   setTheme: () => undefined,
   toggleTheme: () => undefined,
   globalConfig: null,
@@ -69,17 +81,16 @@ const initialState: ThemeProviderState = {
 
 export const ThemeContext = createContext<ThemeProviderState>(initialState);
 
-function getResolvedMode(theme: Theme): 'light' | 'dark' {
-  if (theme === 'dark') return 'dark';
-  if (theme === 'light') return 'light';
-  if (
+function prefersDarkMode(): boolean {
+  return (
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-color-scheme: dark)').matches
-  ) {
-    return 'dark';
-  }
-  return 'light';
+  );
+}
+
+function getResolvedMode(theme: Theme): ResolvedTheme {
+  return resolveTheme(theme, prefersDarkMode());
 }
 
 function getFallbackSemanticColors(mode: 'light' | 'dark'): Required<ThemeColors> {
@@ -197,7 +208,16 @@ function applyResolvedThemeToDom(theme: Theme, config?: GlobalThemeConfig | null
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const [theme, setThemeState] = useLocalStorage<Theme>(STORAGE_KEYS.THEME, 'system');
+  const [storedTheme, setThemeState] = useLocalStorage<Theme>(
+    STORAGE_KEYS.THEME,
+    DEFAULT_THEME_PREFERENCE
+  );
+  // A missing or invalid stored value falls back to the system preference,
+  // matching the inline bootstrap script in `index.html`.
+  const theme: Theme =
+    normalizeThemePreference(storedTheme) ?? DEFAULT_THEME_PREFERENCE;
+  const [systemDark, setSystemDark] = useState<boolean>(prefersDarkMode);
+  const resolvedTheme = resolveTheme(theme, systemDark);
 
   const { data: globalConfig = null } = useQuery<GlobalThemeConfig | null>({
     queryKey: ['theme-config'],
@@ -221,9 +241,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (!session?.user) return;
       const { data } = await supabase.from('profiles').select('settings').eq('id', session.user.id).single();
       if (data?.settings && typeof data.settings === 'object') {
-        const dbTheme = (data.settings as Record<string, unknown>).theme;
-        if (['light', 'dark', 'system'].includes(dbTheme as string)) {
-          setThemeState(dbTheme as Theme);
+        const dbTheme = normalizeThemePreference(
+          (data.settings as Record<string, unknown>).theme
+        );
+        if (dbTheme) {
+          setThemeState(dbTheme);
         }
       }
     };
@@ -237,15 +259,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useLayoutEffect(() => {
     syncThemeToDom(theme);
-  }, [theme, location.key, syncThemeToDom]);
+  }, [theme, resolvedTheme, location.key, syncThemeToDom]);
 
+  // Track the device system theme so the app follows it live (web and the
+  // Capacitor Android WebView both expose it via `prefers-color-scheme`)
+  // without a restart. `addListener` is the legacy fallback for media
+  // queries that predate `addEventListener`.
   useEffect(() => {
-    if (typeof window === 'undefined' || theme !== 'system') return;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => syncThemeToDom('system');
-    mq.addEventListener('change', handleChange);
-    return () => mq.removeEventListener('change', handleChange);
-  }, [theme, syncThemeToDom]);
+    const handleChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);
+    setSystemDark(mq.matches);
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', handleChange);
+      return () => mq.removeEventListener('change', handleChange);
+    }
+    mq.addListener(handleChange);
+    return () => mq.removeListener(handleChange);
+  }, []);
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
@@ -259,8 +290,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     })();
   }, [setThemeState, syncThemeToDom]);
 
-  const toggleTheme = useCallback(() => setTheme(theme === 'dark' ? 'light' : 'dark'), [setTheme, theme]);
-  const value = useMemo(() => ({ theme, setTheme, toggleTheme, globalConfig }), [theme, setTheme, toggleTheme, globalConfig]);
+  // Flip the resolved theme, not the raw preference: with the `system`
+  // default, `theme === 'dark'` is false even when the device is dark, so
+  // toggling would otherwise appear to do nothing.
+  const toggleTheme = useCallback(
+    () => setTheme(getNextThemePreference(resolvedTheme)),
+    [setTheme, resolvedTheme]
+  );
+  const value = useMemo(
+    () => ({ theme, resolvedTheme, setTheme, toggleTheme, globalConfig }),
+    [theme, resolvedTheme, setTheme, toggleTheme, globalConfig]
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

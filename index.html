@@ -193,11 +193,16 @@
             });
           }
         } catch (_) {
+          // Never force light on failure: a device in dark mode must not
+          // flash the light theme before React takes over.
           const root = document.documentElement;
-          root.classList.remove('dark');
-          root.classList.add('light');
-          root.style.colorScheme = 'light';
-          root.style.backgroundColor = '#F8FAFC';
+          const prefersDark =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+          root.classList.remove('light', 'dark');
+          root.classList.add(prefersDark ? 'dark' : 'light');
+          root.style.colorScheme = prefersDark ? 'dark' : 'light';
+          root.style.backgroundColor = prefersDark ? '#0F172A' : '#F8FAFC';
         }
       })();
     </script>
