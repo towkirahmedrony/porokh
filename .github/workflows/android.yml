@@ -92,21 +92,15 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          ONESIGNAL_APP_ID: ${{ secrets.VITE_ONESIGNAL_APP_ID }}
         run: |
           set -euo pipefail
           if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
             echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY repository secrets are required; without them the app crashes on startup with a white screen."
             exit 1
           fi
-          if [ -z "${ONESIGNAL_APP_ID:-}" ]; then
-            echo "::error::VITE_ONESIGNAL_APP_ID repository secret is required; without it the APK ships with push disabled."
-            exit 1
-          fi
           {
             printf 'VITE_SUPABASE_URL=%s\n' "$SUPABASE_URL"
             printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY"
-            printf 'VITE_ONESIGNAL_APP_ID=%s\n' "$ONESIGNAL_APP_ID"
           } > .env.local
 
       - name: Require the signing public key
@@ -181,20 +175,18 @@ jobs:
           fi
           echo "packaged pointer verification key present"
 
-      - name: Verify OneSignal configuration
-        env:
-          ONESIGNAL_APP_ID: ${{ secrets.VITE_ONESIGNAL_APP_ID }}
+      - name: Verify Firebase Messaging configuration
         run: |
           set -euo pipefail
-          if ! grep -rqF "$ONESIGNAL_APP_ID" android/app/src/main/assets/public/assets; then
-            echo "::error::The packaged bundle does not contain ONESIGNAL_APP_ID; push would be disabled on the device."
+          if ! grep -qF '@capacitor-firebase/messaging' android/app/src/main/assets/capacitor.plugins.json; then
+            echo "::error::The Firebase Messaging Capacitor plugin is missing from the native build; the app could never obtain an FCM token."
             exit 1
           fi
-          if ! grep -qF '@onesignal/capacitor-plugin' android/app/src/main/assets/capacitor.plugins.json; then
-            echo "::error::The OneSignal Capacitor plugin is missing from the native build."
+          if [ ! -f android/app/google-services.json ]; then
+            echo "::error::android/app/google-services.json is missing; FCM cannot initialise on the device."
             exit 1
           fi
-          echo "OneSignal app id and native plugin present"
+          echo "Firebase Messaging plugin and google-services.json present"
 
       - name: Verify the native OTA configuration
         run: |

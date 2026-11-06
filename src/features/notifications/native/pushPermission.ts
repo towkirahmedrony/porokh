@@ -1,32 +1,34 @@
 /**
- * Maps OneSignal's permission answers to the states the UI understands.
+ * Maps Firebase Messaging permission answers to the states the UI understands.
  *
- * OneSignal reports two booleans instead of a single status: whether push is
- * granted and whether asking would still show the system dialog. Android 12 and
- * below always report granted (no runtime permission exists), so `prompt` only
- * ever appears on 13+.
+ * The plugin reports one status instead of two booleans, so `prompt` covers both
+ * "never asked" and "Android can still show the dialog", and `denied` means the
+ * system screen is the only way back.
  */
 export type NativePushStatus = 'unsupported' | 'prompt' | 'granted' | 'denied';
 
 /**
- * Why the SDK is or is not running. Distinguishing "no app id" from "failed"
- * matters: a build that lost its VITE_ONESIGNAL_APP_ID looks exactly like a
- * working app until a push never arrives.
+ * Why the plugin is or is not running. Distinguishing "no plugin" from "failed"
+ * matters: an APK built before the plugin existed looks identical to a working
+ * app until a push never arrives.
  */
-export type OneSignalInitState =
-  | 'sdk_unavailable'
-  | 'missing_app_id'
+export type FcmInitState =
+  | 'plugin_unavailable'
   | 'pending'
   | 'initialized'
   | 'failed';
 
 export const toNativePushStatus = (state: {
-  granted?: unknown;
-  canAsk?: unknown;
+  receive?: unknown;
 }): NativePushStatus => {
-  if (state.granted === true) return 'granted';
-  if (state.canAsk === true) return 'prompt';
-  if (state.granted === false) return 'denied';
+  const receive = String(state.receive ?? '').trim();
+
+  if (receive === 'granted') return 'granted';
+  if (receive === 'denied') return 'denied';
+  if (receive === 'prompt' || receive === 'prompt-with-rationale') {
+    return 'prompt';
+  }
+
   return 'unsupported';
 };
 
@@ -45,9 +47,9 @@ export const shouldLinkPushToUser = (
 ): boolean => status === 'granted' && Boolean(userId);
 
 /**
- * The one-time first-launch prompt. It is skipped when the user already
- * answered on a previous launch or deliberately turned notifications off, so
- * a reinstall is not required to make the dialog stop appearing.
+ * The one-time first-launch prompt. It is skipped when the user already answered
+ * on a previous launch or deliberately turned notifications off, so a reinstall
+ * is not required to make the dialog stop appearing.
  */
 export const shouldAskOnFirstLaunch = (
   status: NativePushStatus,
@@ -55,47 +57,35 @@ export const shouldAskOnFirstLaunch = (
   userDisabled: boolean
 ): boolean => status === 'prompt' && !alreadyAsked && !userDisabled;
 
-/** What the SDK says about this installation right now. */
-export interface PushSubscriptionSnapshot {
-  subscriptionId: string | null;
-  hasPushToken: boolean;
-  optedIn: boolean;
+/** What the device reports about this installation right now. */
+export interface PushRegistrationSnapshot {
+  token: string | null;
 }
 
 /**
- * Granted permission is not the same as a registered device: the SDK still has
- * to assign a subscription id and receive the FCM token, and both can arrive
- * seconds after the permission dialog closes.
+ * Granted permission is not a registered device: without an FCM token the
+ * backend has no address to deliver to, and the token can arrive seconds after
+ * the permission dialog closes.
  */
 export const isNativePushRegistered = (
-  snapshot: PushSubscriptionSnapshot | null
-): boolean =>
-  Boolean(
-    snapshot &&
-      snapshot.optedIn &&
-      snapshot.subscriptionId &&
-      snapshot.hasPushToken
-  );
+  snapshot: PushRegistrationSnapshot | null
+): boolean => Boolean(snapshot?.token?.trim());
 
-export interface PushDiagnosticsInput extends PushSubscriptionSnapshot {
-  initState: OneSignalInitState;
-  externalId: string | null;
-  userId: string | null;
+export interface PushDiagnosticsInput {
+  initState: FcmInitState;
+  hasToken: boolean;
   permissionGranted: boolean;
 }
 
 /**
- * Diagnostics describe state, never the state's contents: the subscription id
- * and push token identify a device and must not end up in a log, a crash report
- * or a support screenshot.
+ * Diagnostics describe state, never the state's contents: the FCM token is a
+ * credential that identifies a device, so it must not end up in a log, a crash
+ * report or a support screenshot.
  */
 export interface PushDiagnostics {
-  initState: OneSignalInitState;
+  initState: FcmInitState;
   initialized: boolean;
-  externalIdMatchesUser: boolean;
-  subscriptionIdAvailable: boolean;
-  hasPushToken: boolean;
-  optedIn: boolean;
+  hasToken: boolean;
   permissionGranted: boolean;
 }
 
@@ -104,14 +94,9 @@ export const buildPushDiagnostics = (
 ): PushDiagnostics => ({
   initState: input.initState,
   initialized: input.initState === 'initialized',
-  externalIdMatchesUser: Boolean(
-    input.userId && input.externalId === input.userId
-  ),
-  subscriptionIdAvailable: Boolean(input.subscriptionId),
-  hasPushToken: input.hasPushToken === true,
-  optedIn: input.optedIn === true,
+  hasToken: input.hasToken === true,
   permissionGranted: input.permissionGranted === true,
 });
 
 export const formatPushDiagnostics = (diagnostics: PushDiagnostics): string =>
-  `[onesignal:diag] ${JSON.stringify(diagnostics)}`;
+  `[fcm:diag] ${JSON.stringify(diagnostics)}`;

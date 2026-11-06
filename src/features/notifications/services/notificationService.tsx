@@ -3,8 +3,8 @@ import { DBNotificationItem } from '../types/notificationTypes';
 
 // === API Functions (Typed & Hardened) ===
 //
-// Notification delivery is owned by OneSignal on Android (see native/nativePush),
-// and the records themselves are always read from Supabase through the API.
+// Notification delivery is owned by FCM on Android (see native/nativePush), and
+// the records themselves are always read from Supabase through the API.
 
 type NotificationApiResponse = DBNotificationItem[] | { data: DBNotificationItem[] };
 

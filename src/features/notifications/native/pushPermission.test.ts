@@ -11,14 +11,15 @@ import {
   formatPushDiagnostics,
 } from './pushPermission.ts';
 
-test('OneSignal permission answers map to the four UI states', () => {
-  assert.equal(toNativePushStatus({ granted: true, canAsk: false }), 'granted');
+test('Firebase Messaging permission answers map to the four UI states', () => {
+  assert.equal(toNativePushStatus({ receive: 'granted' }), 'granted');
   // Android 13+ before the dialog has been shown.
-  assert.equal(toNativePushStatus({ granted: false, canAsk: true }), 'prompt');
+  assert.equal(toNativePushStatus({ receive: 'prompt' }), 'prompt');
+  assert.equal(toNativePushStatus({ receive: 'prompt-with-rationale' }), 'prompt');
   // Denied once: Android will not show the dialog again.
-  assert.equal(toNativePushStatus({ granted: false, canAsk: false }), 'denied');
+  assert.equal(toNativePushStatus({ receive: 'denied' }), 'denied');
   assert.equal(toNativePushStatus({}), 'unsupported');
-  assert.equal(toNativePushStatus({ granted: 'yes' }), 'unsupported');
+  assert.equal(toNativePushStatus({ receive: 'yes' }), 'unsupported');
 });
 
 test('a denied user is never asked again', () => {
@@ -44,70 +45,37 @@ test('the first-launch prompt runs once and never overrides a user choice', () =
 });
 
 test('permission alone does not count as a registered device', () => {
-  const registered = {
-    subscriptionId: 'sub-1',
-    hasPushToken: true,
-    optedIn: true,
-  };
-
-  assert.equal(isNativePushRegistered(registered), true);
-  // Token has not arrived yet: OneSignal cannot deliver to this subscription.
-  assert.equal(isNativePushRegistered({ ...registered, hasPushToken: false }), false);
-  assert.equal(isNativePushRegistered({ ...registered, subscriptionId: null }), false);
-  assert.equal(isNativePushRegistered({ ...registered, optedIn: false }), false);
+  assert.equal(isNativePushRegistered({ token: 'fcm-token' }), true);
+  // Token has not arrived yet: the backend has no address for this device.
+  assert.equal(isNativePushRegistered({ token: null }), false);
+  assert.equal(isNativePushRegistered({ token: '   ' }), false);
   assert.equal(isNativePushRegistered(null), false);
 });
 
-test('diagnostics report state without leaking the subscription or push token', () => {
-  const user = '11111111-1111-4111-8111-111111111111';
+test('diagnostics report state without leaking the FCM token', () => {
+  const token = 'fcm-secret-value-that-must-not-be-logged';
   const diagnostics = buildPushDiagnostics({
     initState: 'initialized',
-    externalId: user,
-    userId: user,
-    subscriptionId: 'sub-secret-value',
-    hasPushToken: true,
-    optedIn: true,
+    hasToken: true,
     permissionGranted: true,
   });
 
   assert.deepEqual(diagnostics, {
     initState: 'initialized',
     initialized: true,
-    externalIdMatchesUser: true,
-    subscriptionIdAvailable: true,
-    hasPushToken: true,
-    optedIn: true,
+    hasToken: true,
     permissionGranted: true,
   });
 
   const line = formatPushDiagnostics(diagnostics);
-  assert.ok(line.startsWith('[onesignal:diag] '));
-  assert.equal(line.includes('sub-secret-value'), false);
-  assert.equal(line.includes(user), false);
+  assert.ok(line.startsWith('[fcm:diag] '));
+  assert.equal(line.includes(token), false);
 
-  // A device logged in as another account must not report a match.
+  // A build without the plugin is distinguishable from a failed initialisation.
   assert.equal(
     buildPushDiagnostics({
-      initState: 'initialized',
-      externalId: 'someone-else',
-      userId: user,
-      subscriptionId: null,
-      hasPushToken: false,
-      optedIn: false,
-      permissionGranted: false,
-    }).externalIdMatchesUser,
-    false
-  );
-
-  // A build without an app id is distinguishable from a failed initialisation.
-  assert.equal(
-    buildPushDiagnostics({
-      initState: 'missing_app_id',
-      externalId: null,
-      userId: null,
-      subscriptionId: null,
-      hasPushToken: false,
-      optedIn: false,
+      initState: 'plugin_unavailable',
+      hasToken: false,
       permissionGranted: false,
     }).initialized,
     false

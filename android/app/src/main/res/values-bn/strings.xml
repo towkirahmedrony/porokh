@@ -2,4 +2,6 @@
 <resources>
     <string name="notification_channel_name">পরোখ আপডেট</string>
     <string name="notification_channel_description">পরীক্ষার রিমাইন্ডার, ফলাফল, স্ট্রিক ও অ্যাকাউন্টের আপডেট</string>
+    <string name="urgent_notification_channel_name">জরুরি সতর্কতা</string>
+    <string name="urgent_notification_channel_description">পরীক্ষা শুরুর রিমাইন্ডার ও সময়-sensitive সতর্কতা</string>
 </resources>

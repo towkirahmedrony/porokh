@@ -12,11 +12,12 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { App as CapacitorApp } from '@capacitor/app';
 import type { PluginListenerHandle } from '@capacitor/core';
-import OneSignal, {
-  type NotificationClickEvent,
-  type NotificationWillDisplayEvent,
-  type PushSubscriptionChangedState,
-} from '@onesignal/capacitor-plugin';
+import {
+  FirebaseMessaging,
+  type NotificationActionPerformedEvent,
+  type NotificationReceivedEvent,
+  type TokenReceivedEvent,
+} from '@capacitor-firebase/messaging';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
@@ -25,20 +26,15 @@ import { StorageUtils } from '@/shared/utils/storage';
 import { markNotificationAsRead } from '../services/notificationService';
 import {
   checkNativePushPermission,
+  clearNativePushToken,
   deactivateNativePushDevice,
-  getNativePushExternalId,
-  getOneSignalInitState,
+  getFcmInitState,
   initializeNativePush,
-  isNativePushAvailable,
   isNativePushSupported,
-  linkNativePushToUser,
   openNativeNotificationSettings,
-  optInNativePush,
-  optOutNativePush,
-  readNativePushSubscription,
+  readNativePushToken,
+  registerNativePushDevice,
   requestNativePushPermission,
-  syncNativePushDevice,
-  unlinkNativePushFromUser,
 } from './nativePush';
 import {
   buildPushDiagnostics,
@@ -47,7 +43,6 @@ import {
   isNativePushRegistered,
   shouldAskOnFirstLaunch,
   type NativePushStatus,
-  type PushSubscriptionSnapshot,
 } from './pushPermission';
 import {
   DEFAULT_PUSH_TARGET,
@@ -73,12 +68,26 @@ const NativePushContext = createContext<NativePushContextValue | null>(null);
 const messageOf = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message ? error.message : fallback;
 
-const readPayload = (notification: { additionalData?: object } | null | undefined) =>
-  (notification?.additionalData ?? {}) as Record<string, unknown>;
+/**
+ * FCM data arrives untyped. Only string values are kept, because the payload
+ * contract is string-only and anything else cannot be a route or an id.
+ */
+const readPayload = (
+  notification: { data?: unknown } | null | undefined
+): Record<string, string> => {
+  const data = notification?.data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+
+  const payload: Record<string, string> = {};
+  Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
+    if (typeof value === 'string') payload[key] = value;
+  });
+  return payload;
+};
 
 /**
- * An in-app disable is a user decision, not a transient state: it must survive
- * a restart and must not be undone by the resume or login effects.
+ * An in-app disable is a user decision, not a transient state: it must survive a
+ * restart and must not be undone by the resume or login effects.
  */
 const isDeviceNotificationsDisabled = (): boolean =>
   StorageUtils.get<boolean>(STORAGE_KEYS.NATIVE_PUSH_DISABLED) === true;
@@ -95,21 +104,22 @@ const markNativePushAsked = (): void => {
 };
 
 /**
- * Owns the OneSignal lifecycle for the whole app:
+ * Owns the FCM lifecycle for the whole app:
  *
- * - External ID = the signed-in Supabase user, so an account switch re-targets
- *   the device and a sign-out detaches it
+ * - the token is registered against the signed-in user, so an account switch
+ *   re-binds the device and a sign-out detaches it
+ * - a rotated token is re-registered instead of leaving a dead address behind
  * - foreground delivery → in-app toast (the tray is Android's job)
  * - taps → React Router, exactly once per notification id
  *
- * It asks once on first launch without blocking startup, then leaves every
- * later decision to the Settings card. A denial or an in-app disable is never
- * silently retried.
+ * It asks once on first launch without blocking startup, then leaves every later
+ * decision to the Settings card. A denial or an in-app disable is never silently
+ * retried.
  */
 export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const available = isNativePushAvailable();
+  const available = isNativePushSupported();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // `loading` is true until Supabase finishes restoring the stored session.
@@ -130,6 +140,8 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
   const acceptTapRef = useRef(createTapDeduper());
   const mountedRef = useRef(true);
   const retryTimerRef = useRef<number | null>(null);
+  /** Last token accepted by the API, so a listener storm cannot re-post it. */
+  const syncedTokenRef = useRef<string | null>(null);
 
   navigateRef.current = navigate;
   tRef.current = t;
@@ -153,20 +165,18 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   /**
-   * The subscription id and FCM token can arrive after the permission dialog
-   * closes. A short, single retry covers that window without polling forever;
-   * later subscription events still trigger their own verification.
+   * The token can arrive after the permission dialog closes. A short, single
+   * retry covers that window without polling forever; a rotation event still
+   * triggers its own verification.
    */
+  const syncRegistrationRef = useRef<() => Promise<void>>(async () => undefined);
+
   const scheduleRegistrationRetry = useCallback(() => {
     if (retryTimerRef.current !== null) return;
 
     retryTimerRef.current = window.setTimeout(() => {
       retryTimerRef.current = null;
-      void (async () => {
-        const snapshot = await readNativePushSubscription();
-        if (!mountedRef.current) return;
-        setRegistered(isNativePushRegistered(snapshot));
-      })();
+      void syncRegistrationRef.current();
     }, 2000);
   }, []);
 
@@ -177,23 +187,18 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
     }
 
     const next = await checkNativePushPermission();
-    const snapshot = await readNativePushSubscription();
+    const token = await readNativePushToken();
 
     setStatus(next);
-    setRegistered(isNativePushRegistered(snapshot));
+    setRegistered(isNativePushRegistered({ token }));
     setChecking(false);
 
     if (import.meta.env.DEV) {
-      const externalId = await getNativePushExternalId();
       console.info(
         formatPushDiagnostics(
           buildPushDiagnostics({
-            initState: getOneSignalInitState(),
-            externalId,
-            userId: userIdRef.current,
-            subscriptionId: snapshot?.subscriptionId ?? null,
-            hasPushToken: snapshot?.hasPushToken === true,
-            optedIn: snapshot?.optedIn === true,
+            initState: getFcmInitState(),
+            hasToken: Boolean(token),
             permissionGranted: next === 'granted',
           })
         )
@@ -203,6 +208,41 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
     return next;
   }, [available]);
 
+  /**
+   * Reads the current token and registers it. Skips the network call when the
+   * same token was already accepted, which keeps repeated listeners and resumes
+   * from creating duplicate rows or duplicate registrations.
+   */
+  const syncRegistration = useCallback(async () => {
+    const currentUserId = userIdRef.current;
+    if (!currentUserId || isDeviceNotificationsDisabled()) return;
+
+    const token = await readNativePushToken();
+    if (!mountedRef.current) return;
+
+    if (!token) {
+      setRegistered(false);
+      scheduleRegistrationRetry();
+      return;
+    }
+
+    setRegistered(true);
+    if (syncedTokenRef.current === token) return;
+
+    try {
+      await registerNativePushDevice(token);
+      syncedTokenRef.current = token;
+      if (mountedRef.current) setError(null);
+    } catch (syncError) {
+      if (!mountedRef.current) return;
+      // A dropped network is retried; the token itself is still valid.
+      setError(messageOf(syncError, 'device registration failed'));
+      scheduleRegistrationRetry();
+    }
+  }, [scheduleRegistrationRetry]);
+
+  syncRegistrationRef.current = syncRegistration;
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -211,14 +251,11 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
     };
   }, [clearRegistrationRetry]);
 
-  // A native build without VITE_ONESIGNAL_APP_ID is not a web build: push is
-  // silently unavailable. Say so once instead of leaving a mystery on device.
+  // An APK without the plugin is not a web build: push is silently unavailable.
   useEffect(() => {
     if (!isNativePushSupported()) return;
-    if (getOneSignalInitState() === 'missing_app_id') {
-      console.warn(
-        '[onesignal] VITE_ONESIGNAL_APP_ID is not configured in this build; push is disabled.'
-      );
+    if (getFcmInitState() === 'plugin_unavailable') {
+      console.warn('[fcm] the Firebase Messaging plugin is missing from this build; push is disabled.');
     }
   }, []);
 
@@ -261,8 +298,7 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
   }, [available, refreshPermission]);
 
   // Listeners live for the app lifetime; handlers read refs so a navigation or
-  // language change never re-binds them. Initialisation runs first because
-  // OneSignal replays a tap that launched the app once the SDK is ready.
+  // language change never re-binds them.
   useEffect(() => {
     if (!available) return;
 
@@ -322,15 +358,40 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
       );
     };
 
-    const handleClick = (event: NotificationClickEvent) => {
-      const notification = event?.notification;
-      if (!acceptTapRef.current(notification?.notificationId)) return;
+    const handleTokenReceived = ({ token }: TokenReceivedEvent) => {
+      const value = String(token ?? '').trim();
+      if (!value) return;
 
+      setRegistered(true);
+      if (!userIdRef.current || isDeviceNotificationsDisabled()) return;
+
+      // Rotated token: register it immediately so the old address is released.
+      if (syncedTokenRef.current !== value) void syncRegistrationRef.current();
+    };
+
+    const handleNotificationReceived = ({
+      notification,
+    }: NotificationReceivedEvent) => {
       const payload = readPayload(notification);
-      const notificationId =
-        typeof payload.notification_id === 'string'
-          ? payload.notification_id
-          : '';
+      const notificationId = payload.notification_id ?? '';
+      const target = resolvePushTarget(payload.action_link);
+
+      invalidateInbox();
+      showForegroundNotification(
+        payload.title || tRef.current('notification.title'),
+        payload.body || '',
+        target || DEFAULT_PUSH_TARGET,
+        notificationId
+      );
+    };
+
+    const handleNotificationActionPerformed = ({
+      notification,
+    }: NotificationActionPerformedEvent) => {
+      const payload = readPayload(notification);
+      const notificationId = payload.notification_id ?? '';
+
+      if (!acceptTapRef.current(notification?.id ?? notificationId)) return;
 
       if (notificationId) {
         void markNotificationAsRead(notificationId, true).catch(
@@ -339,62 +400,26 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
       }
       invalidateInbox();
 
-      const target = resolvePushTarget(payload.action_link);
-      navigateRef.current(target || DEFAULT_PUSH_TARGET);
-    };
-
-    const handleForeground = (event: NotificationWillDisplayEvent) => {
-      const notification = event.getNotification();
-      const payload = readPayload(notification);
-      const notificationId =
-        typeof payload.notification_id === 'string'
-          ? payload.notification_id
-          : '';
-
-      invalidateInbox();
-      showForegroundNotification(
-        notification?.title || tRef.current('notification.title'),
-        notification?.body || '',
-        resolvePushTarget(payload.action_link),
-        notificationId
+      navigateRef.current(
+        resolvePushTarget(payload.action_link) || DEFAULT_PUSH_TARGET
       );
-    };
-
-    const handlePermissionChange = () => {
-      void refreshPermission();
-    };
-
-    const handleSubscriptionChange = (state: PushSubscriptionChangedState) => {
-      const snapshot: PushSubscriptionSnapshot = {
-        subscriptionId: state.current?.id
-          ? String(state.current.id)
-          : null,
-        hasPushToken: Boolean(String(state.current?.token ?? '').trim()),
-        optedIn: state.current?.optedIn === true,
-      };
-      const nextRegistered = isNativePushRegistered(snapshot);
-
-      setRegistered(nextRegistered);
-      if (!nextRegistered && snapshot.optedIn) scheduleRegistrationRetry();
     };
 
     void (async () => {
       const ready = await initializeNativePush();
       if (!ready || cancelled) return;
 
-      OneSignal.Notifications.addEventListener('click', handleClick);
-      OneSignal.Notifications.addEventListener(
-        'foregroundWillDisplay',
-        handleForeground
-      );
-      OneSignal.Notifications.addEventListener(
-        'permissionChange',
-        handlePermissionChange
-      );
-      OneSignal.User.pushSubscription.addEventListener(
-        'change',
-        handleSubscriptionChange
-      );
+      await Promise.all([
+        FirebaseMessaging.addListener('tokenReceived', handleTokenReceived),
+        FirebaseMessaging.addListener(
+          'notificationReceived',
+          handleNotificationReceived
+        ),
+        FirebaseMessaging.addListener(
+          'notificationActionPerformed',
+          handleNotificationActionPerformed
+        ),
+      ]);
       bound = true;
     })();
 
@@ -403,34 +428,17 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
       clearRegistrationRetry();
       if (!bound) return;
 
-      try {
-        OneSignal.Notifications.removeEventListener('click', handleClick);
-        OneSignal.Notifications.removeEventListener(
-          'foregroundWillDisplay',
-          handleForeground
-        );
-        OneSignal.Notifications.removeEventListener(
-          'permissionChange',
-          handlePermissionChange
-        );
-        OneSignal.User.pushSubscription.removeEventListener(
-          'change',
-          handleSubscriptionChange
-        );
-      } catch (error) {
-        console.warn('[onesignal] listener cleanup failed:', error);
-      }
+      void Promise.all([
+        FirebaseMessaging.removeAllListeners(),
+      ]).catch((cleanupError) => {
+        console.warn('[fcm] listener cleanup failed:', cleanupError);
+      });
     };
-  }, [
-    available,
-    clearRegistrationRetry,
-    invalidateInbox,
-    refreshPermission,
-    scheduleRegistrationRetry,
-  ]);
+  }, [available, clearRegistrationRetry, invalidateInbox]);
 
-  // External ID lifecycle. It waits for `authLoading` to clear so the initial
-  // session restoration is never mistaken for a sign-out.
+  // Token lifecycle. It waits for `authLoading` to clear so the initial session
+  // restoration is never mistaken for a sign-out, and re-registers on every
+  // account change so a shared phone never keeps the previous account's address.
   useEffect(() => {
     if (!available || authLoading) return;
 
@@ -440,50 +448,37 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
       const ready = await initializeNativePush();
       if (!ready || cancelled) return;
 
-      if (userId) {
-        await linkNativePushToUser(userId);
-        if (cancelled) return;
-
+      if (!userId) {
+        clearRegistrationRetry();
+        syncedTokenRef.current = null;
+        setRegistered(false);
         await refreshPermission();
         return;
       }
 
-      clearRegistrationRetry();
-      setRegistered(false);
-      await unlinkNativePushFromUser();
-    })();
+      const permission = await refreshPermission();
+      if (cancelled) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [available, authLoading, clearRegistrationRetry, refreshPermission, userId]);
-
-  // Record the installation only once OneSignal has a subscription id and a
-  // push token. This keeps `user_devices` an audience of reachable devices and
-  // still stores no token now that delivery is addressed by Supabase UUID.
-  useEffect(() => {
-    if (!available || authLoading || !userId || !registered) return;
-    if (isDeviceNotificationsDisabled()) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        await syncNativePushDevice();
-        if (!cancelled) setError(null);
-      } catch (syncError) {
-        if (!cancelled) {
-          setError(messageOf(syncError, 'device registration failed'));
-        }
+      if (permission === 'granted') {
+        syncedTokenRef.current = null;
+        await syncRegistration();
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [available, authLoading, registered, userId]);
+  }, [
+    available,
+    authLoading,
+    clearRegistrationRetry,
+    refreshPermission,
+    syncRegistration,
+    userId,
+  ]);
 
-  // Returning from Android settings must reflect the new permission state.
+  // Returning from Android settings, or a token issued while the app was in the
+  // background, must both be reflected without a restart.
   useEffect(() => {
     if (!available) return;
 
@@ -492,7 +487,12 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
 
     void CapacitorApp.addListener('appStateChange', ({ isActive }) => {
       if (!isActive) return;
-      void refreshPermission();
+      void (async () => {
+        const permission = await refreshPermission();
+        if (permission === 'granted' && userIdRef.current) {
+          await syncRegistration();
+        }
+      })();
     }).then((registeredHandle) => {
       if (cancelled) {
         void registeredHandle.remove();
@@ -505,7 +505,7 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
       cancelled = true;
       if (handle) void handle.remove();
     };
-  }, [available, refreshPermission]);
+  }, [available, refreshPermission, syncRegistration]);
 
   const enable = useCallback(async () => {
     if (!available) return;
@@ -529,21 +529,14 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
         return;
       }
 
-      await optInNativePush();
-
-      const currentUserId = userIdRef.current;
-      if (currentUserId) await linkNativePushToUser(currentUserId);
-
-      const snapshot = await readNativePushSubscription();
-      const nextRegistered = isNativePushRegistered(snapshot);
-      setRegistered(nextRegistered);
-      if (!nextRegistered) scheduleRegistrationRetry();
+      syncedTokenRef.current = null;
+      await syncRegistration();
     } catch (enableError) {
       setError(messageOf(enableError, 'could not enable notifications'));
     } finally {
       setBusy(false);
     }
-  }, [available, scheduleRegistrationRetry, status, t]);
+  }, [available, status, syncRegistration, t]);
 
   const disable = useCallback(async () => {
     if (!available) return;
@@ -553,15 +546,16 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
 
     try {
       // Deactivate first: the session is still valid, so the API can clear this
-      // installation before the device stops receiving pushes.
+      // installation before the token is destroyed.
       try {
         await deactivateNativePushDevice();
       } catch (deactivateError) {
-        console.warn('[onesignal] device deactivation failed:', deactivateError);
+        console.warn('[fcm] device deactivation failed:', deactivateError);
       }
 
-      await optOutNativePush();
+      await clearNativePushToken();
       clearRegistrationRetry();
+      syncedTokenRef.current = null;
       setDeviceNotificationsDisabled(true);
       setRegistered(false);
     } catch (disableError) {
