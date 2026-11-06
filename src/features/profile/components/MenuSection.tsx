@@ -8,7 +8,7 @@ import { useTheme } from '@/shared/hooks/useTheme';
 const MenuSection: React.FC = memo(() => {
   const { t } = useLanguage();
   const { signOut } = useAuth(); 
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   
   const [isLegalOpen, setIsLegalOpen] = useState(() => {
@@ -31,7 +31,9 @@ const MenuSection: React.FC = memo(() => {
     }
   }, [signOut]);
 
-  const isDarkMode = theme === 'dark';
+  // The switch reflects the resolved theme, so it stays correct when the
+  // preference is `system` (the default) and the device is in dark mode.
+  const isDarkMode = resolvedTheme === 'dark';
 
   return (
     <div className="rounded-3xl overflow-hidden shadow-sm transition-all duration-300 bg-card-bg border border-card-border pb-2">
