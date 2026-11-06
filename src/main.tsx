@@ -19,6 +19,7 @@ import { queryClient, localStoragePersister } from '@/shared/lib/queryClient';
 import { APP_MESSAGES } from '@/shared/i18n/messages';
 import { readStoredLanguage, resolveInitialLanguage } from '@/shared/i18n/languagePreference';
 
+import '@fontsource/anek-bangla/800.css';
 import './index.css';
 
 // Enable VConsole only during development.

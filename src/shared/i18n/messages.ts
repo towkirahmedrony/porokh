@@ -95,6 +95,7 @@ const bn = {
   'notice.notFound': 'নোটিশটি পাওয়া যায়নি',
   'notice.backToBoard': 'নোটিশ বোর্ডে ফিরে যান',
   'brand.name': 'পরোখ',
+  'appName': 'পরোখ',
 
   'language.groupLabel': 'ভাষা নির্বাচন করুন',
 
@@ -1697,6 +1698,7 @@ const en: Record<AppMessageKey, string> = {
   'notice.notFound': 'This notice was not found',
   'notice.backToBoard': 'Back to notice board',
   'brand.name': 'Porokh',
+  'appName': 'Porokh',
 
   'language.groupLabel': 'Select language',
 
