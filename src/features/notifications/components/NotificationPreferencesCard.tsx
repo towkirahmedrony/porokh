@@ -1,6 +1,7 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { SettingsSwitch } from '@/features/profile/components/SettingsSwitch';
 import {
   fetchNotificationPreferences,
   updateNotificationPreferences,
@@ -26,31 +27,15 @@ const Toggle: React.FC<{
   onChange?: () => void;
 }> = ({ checked, disabled = false, label, hint, onChange }) => (
   <div
-    className={`flex items-center justify-between gap-3 py-2.5 ${
+    className={`flex min-h-[56px] items-center justify-between gap-4 py-2 ${
       disabled ? 'opacity-70' : ''
     }`}
   >
-    <span className="min-w-0">
-      <span className="block text-sm font-medium text-text-primary">{label}</span>
-      {hint && <span className="block text-[11px] text-text-secondary">{hint}</span>}
+    <span className="min-w-0 flex-1">
+      <span className="block text-[15px] leading-6 font-medium text-text-primary break-words">{label}</span>
+      {hint && <span className="mt-0.5 block text-[13px] leading-5 text-text-secondary break-words">{hint}</span>}
     </span>
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={onChange}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-        checked ? 'bg-primary' : 'bg-surface-elevated border border-border-color'
-      } ${disabled ? 'cursor-not-allowed' : ''}`}
-    >
-      <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-          checked ? 'left-[22px]' : 'left-0.5'
-        }`}
-      />
-    </button>
+    <SettingsSwitch checked={checked} disabled={disabled} label={label} onChange={onChange} />
   </div>
 );
 
@@ -93,14 +78,14 @@ const NotificationPreferencesCard: React.FC<{ userId: string }> = ({ userId }) =
     return (
       <div className="space-y-2 py-2">
         {[1, 2, 3].map((item) => (
-          <div key={item} className="h-9 animate-pulse rounded-lg bg-surface-elevated" />
+          <div key={item} className="h-12 animate-pulse rounded-lg bg-surface-elevated" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-border-color">
+    <div className="divide-y divide-border-color/60">
       <Toggle
         checked={data.in_app}
         label={t('notification.inApp')}

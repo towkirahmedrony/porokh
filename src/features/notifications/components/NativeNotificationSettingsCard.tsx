@@ -1,6 +1,7 @@
 import React from 'react';
 import { Bell, Settings2 } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { SettingsSwitch } from '@/features/profile/components/SettingsSwitch';
 import { useNativePush } from '../native/NativePushProvider';
 
 /**
@@ -50,82 +51,67 @@ const NativeNotificationSettingsCard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-3 border-b border-border-color bg-card-bg p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-primary">
-            <Bell size={18} aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-text-primary">
-              {t('notification.deviceTitle')}
-            </p>
-            <p className="mt-0.5 text-xs leading-5 text-text-secondary">
-              {t('notification.deviceDescription')}
-            </p>
-            <p
-              className="mt-1 text-xs font-semibold text-primary"
-              aria-live="polite"
-            >
-              {statusLabel}
-            </p>
-          </div>
+    <div className="flex flex-col gap-3 border-b border-border-color/60 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center text-text-secondary">
+          <Bell size={22} strokeWidth={1.75} aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] leading-6 font-medium text-text-primary">
+            {t('notification.deviceTitle')}
+          </p>
+          <p className="mt-0.5 text-[13px] leading-[1.5] text-text-secondary break-words">
+            {t('notification.deviceDescription')}
+          </p>
+          <p
+            className="mt-0.5 text-[13px] leading-5 font-medium text-primary"
+            aria-live="polite"
+          >
+            {statusLabel}
+          </p>
         </div>
 
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          aria-label={
+        <SettingsSwitch
+          checked={enabled}
+          label={
             enabled
               ? t('notification.deviceDisable')
               : t('notification.deviceEnable')
           }
-          aria-busy={busy}
-          disabled={busy || checking}
-          onClick={handleToggle}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-            enabled
-              ? 'bg-primary'
-              : 'border border-border-color bg-surface-elevated'
-          } ${busy || checking ? 'cursor-wait opacity-70' : ''}`}
-        >
-          <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-              enabled ? 'left-[22px]' : 'left-0.5'
-            }`}
-          />
-        </button>
+          busy={busy}
+          disabled={checking}
+          onChange={handleToggle}
+        />
       </div>
 
       {checking ? (
-        <div className="h-9 animate-pulse rounded-lg bg-surface-elevated" />
+        <div className="h-8 animate-pulse rounded-full bg-surface-elevated" />
       ) : null}
 
       {!enabled && !checking ? (
-        <p className="text-xs leading-5 text-text-secondary">
+        <p className="text-[13px] leading-[1.5] text-text-secondary break-words">
           {t('notification.deviceBenefits')}
         </p>
       ) : null}
 
       {permissionDenied ? (
         <>
-          <p className="text-xs leading-5 text-text-secondary">
+          <p className="text-[13px] leading-[1.5] text-text-secondary break-words">
             {t('notification.deviceDeniedHelp')}
           </p>
           <button
             type="button"
             onClick={() => void openSettings()}
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-border-color bg-surface-elevated px-3 py-1.5 text-xs font-semibold text-primary"
+            className="inline-flex min-h-[36px] w-fit items-center gap-2 rounded-full border border-border-color px-4 py-2 text-[13px] font-medium text-primary transition-colors active:bg-surface-elevated sm:hover:bg-surface-elevated/50"
           >
-            <Settings2 size={14} aria-hidden="true" />
+            <Settings2 size={16} aria-hidden="true" />
             {t('notification.deviceOpenSettings')}
           </button>
         </>
       ) : null}
 
       {error ? (
-        <p className="text-xs leading-5 text-red-500" role="alert">
+        <p className="text-[13px] leading-[1.5] text-red-500 break-words" role="alert">
           {t('notification.deviceError')}
         </p>
       ) : null}

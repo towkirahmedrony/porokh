@@ -1,17 +1,26 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
 import {
   Bell, ChevronRight, Globe, HelpCircle, Info, Lock, LogOut, Megaphone,
   Moon, MonitorSmartphone, Palette, Pencil, Puzzle, Shield, Sun, User,
-  Users, LucideIcon,
+  Users,
 } from 'lucide-react';
 import { BackButton } from '@/shared/components/ui/BackButton';
-import LanguageSwitcher from '@/shared/components/ui/LanguageSwitcher';
+import ConfirmModal from '@/shared/components/feedback/ConfirmModal';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { useTheme } from '@/shared/hooks/useTheme';
 import type { Theme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { LANGUAGE_OPTION_LABELS } from '@/shared/i18n/messages';
+import {
+  APP_LANGUAGES,
+  LANGUAGE_OPTION_LABELS,
+  type AppMessageKey,
+} from '@/shared/i18n/messages';
+import {
+  SettingsBottomSheet,
+  SheetRadioRow,
+} from '@/features/profile/components/SettingsBottomSheet';
 import { ForcedUpdateCard } from '@/features/app-update/ForcedUpdateCard';
 import NotificationPreferencesCard from '@/features/notifications/components/NotificationPreferencesCard';
 import NativeNotificationSettingsCard from '@/features/notifications/components/NativeNotificationSettingsCard';
@@ -45,48 +54,49 @@ const SettingRow: React.FC<SettingRowProps> = ({
 }) => {
   const content = (
     <>
-      <div className="flex items-center gap-3 min-w-0">
+      <span
+        className={`flex h-10 w-10 shrink-0 items-center justify-center ${
+          danger ? 'text-red-500' : 'text-text-secondary'
+        }`}
+      >
+        <Icon size={22} strokeWidth={1.75} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1 text-left">
         <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-elevated ${
-            danger ? 'text-red-500' : 'text-primary'
+          className={`block text-[15px] leading-6 font-medium break-words ${
+            danger ? 'text-red-500' : 'text-text-primary'
           }`}
         >
-          <Icon size={18} />
+          {title}
         </span>
-        <span className="min-w-0 text-left">
-          <span
-            className={`block truncate text-sm font-medium ${
-              danger ? 'text-red-500' : 'text-text-primary'
-            }`}
-          >
-            {title}
+        {description && (
+          <span className="mt-0.5 block text-[13px] leading-[1.5] text-text-secondary break-words">
+            {description}
           </span>
-          {description && (
-            <span className="mt-0.5 block text-xs leading-5 text-text-secondary">
-              {description}
-            </span>
-          )}
-        </span>
-      </div>
+        )}
+      </span>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <span className="flex shrink-0 items-center gap-1.5">
         {rightText && (
-          <span className="text-xs font-medium text-text-secondary">
+          <span className="max-w-[40vw] text-[13px] leading-5 font-medium text-text-secondary break-words">
             {rightText}
           </span>
         )}
         {onClick && (
           <ChevronRight
-            className={`w-4 h-4 ${danger ? 'text-red-500' : 'text-text-secondary'}`}
+            size={20}
+            strokeWidth={2}
+            className={danger ? 'text-red-500' : 'text-text-secondary'}
+            aria-hidden="true"
           />
         )}
-      </div>
+      </span>
     </>
   );
 
-  const baseClass = `flex w-full items-center justify-between gap-3 p-4 transition-colors bg-card-bg ${
-    onClick ? 'hover:bg-surface-elevated' : ''
-  } ${!isLast ? 'border-b border-border-color' : ''}`;
+  const baseClass = `flex min-h-[64px] w-full items-center gap-3 px-4 py-3 transition-colors bg-card-bg ${
+    onClick ? 'active:bg-surface-elevated/70 sm:hover:bg-surface-elevated/50' : ''
+  } ${!isLast ? 'border-b border-border-color/60' : ''}`;
 
   if (onClick) {
     return (
@@ -100,67 +110,41 @@ const SettingRow: React.FC<SettingRowProps> = ({
 };
 
 const SettingSection: React.FC<SettingSectionProps> = ({ title, children }) => (
-  <section className="mb-6">
-    <h2 className="px-1 mb-2 text-xs font-semibold uppercase tracking-wider text-text-secondary">
+  <section className="mb-7 last:mb-0">
+    <h2 className="px-4 mb-2 text-[13px] font-semibold text-primary">
       {title}
     </h2>
-    <div className="overflow-hidden rounded-xl border shadow-sm bg-card-bg border-border-color">
+    <div className="overflow-hidden rounded-2xl bg-card-bg">
       {children}
     </div>
   </section>
 );
 
-// ------------------------------- Theme picker -------------------------------
+// ------------------------------- Option sheets -------------------------------
 
-const THEME_OPTIONS: { value: Theme; labelKey: 'settings.themeSystem' | 'settings.themeLight' | 'settings.themeDark'; icon: LucideIcon }[] = [
+interface ThemeOption {
+  value: Theme;
+  labelKey: AppMessageKey;
+  icon: LucideIcon;
+}
+
+const THEME_OPTIONS: ThemeOption[] = [
   { value: 'system', labelKey: 'settings.themeSystem', icon: MonitorSmartphone },
   { value: 'light', labelKey: 'settings.themeLight', icon: Sun },
   { value: 'dark', labelKey: 'settings.themeDark', icon: Moon },
 ];
 
-const ThemePicker: React.FC = () => {
-  const { theme, setTheme } = useTheme();
-  const { t } = useLanguage();
-
-  return (
-    <div
-      role="group"
-      aria-label={t('settings.themeLabel')}
-      className="inline-flex shrink-0 items-center rounded-full border border-border-color bg-surface-elevated p-0.5"
-    >
-      {THEME_OPTIONS.map((option) => {
-        const isActive = theme === option.value;
-        const Icon = option.icon;
-
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => setTheme(option.value)}
-            aria-pressed={isActive}
-            title={t(option.labelKey)}
-            aria-label={t(option.labelKey)}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card-bg sm:px-3 sm:text-xs ${
-              isActive
-                ? 'bg-badge-bg text-badge-text shadow-sm'
-                : 'text-text-secondary hover:bg-secondary hover:text-text-primary'
-            }`}
-          >
-            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">{t(option.labelKey)}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-};
-
 // --------------------------------- Page -----------------------------------
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const { language, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const { signOut, user } = useAuth();
+
+  const [sheet, setSheet] = useState<'language' | 'theme' | null>(null);
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const textFontClass =
     language === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans';
@@ -170,74 +154,103 @@ export const Settings: React.FC = () => {
   const native = Capacitor.isNativePlatform();
 
   const handleLogout = useCallback(async () => {
+    setLoggingOut(true);
     try {
       if (signOut) await signOut();
     } catch (error) {
       console.error('Logout failed:', error);
+    } finally {
+      setLoggingOut(false);
+      setLogoutConfirm(false);
     }
   }, [signOut]);
 
+  const currentThemeLabel = (() => {
+    const option = THEME_OPTIONS.find((item) => item.value === theme);
+    return option ? t(option.labelKey) : theme;
+  })();
+
+  const displayName = user?.full_name || user?.username || user?.email || '';
+  const usernameLine = user?.username && user.email ? `@${user.username}` : user?.email || '';
+
   return (
-    <div className={`min-h-screen pb-20 bg-app ${textFontClass}`}>
-      <header className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 shadow-sm bg-card-bg">
-        <BackButton />
-        <h1 className="text-lg font-bold text-text-primary">
-          {t('settings.title')}
-        </h1>
+    <div className={`min-h-screen bg-app ${textFontClass}`}>
+      <header
+        className="sticky top-0 z-10 flex items-center gap-1 bg-app/95 backdrop-blur"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}
+      >
+        <div className="flex h-14 w-full items-center gap-2 px-4">
+          <BackButton />
+          <h1 className="text-xl font-semibold leading-7 text-text-primary">
+            {t('settings.title')}
+          </h1>
+        </div>
       </header>
 
-      <div className="p-4 max-w-2xl mx-auto">
-        {/* A. Language — the single language preference for the app */}
+      <div
+        className="mx-auto w-full max-w-[640px] px-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-2"
+      >
+        {user && (
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+            className="mb-7 flex w-full items-center gap-4 rounded-2xl bg-card-bg p-4 text-left transition-colors active:bg-surface-elevated/70 sm:hover:bg-surface-elevated/50"
+          >
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={displayName}
+                width={56}
+                height={56}
+                className="h-14 w-14 shrink-0 rounded-full bg-surface-elevated object-cover"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-badge-bg text-lg font-semibold text-badge-text"
+              >
+                {(displayName || user.email || '?').trim().charAt(0).toUpperCase()}
+              </span>
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[17px] leading-6 font-semibold text-text-primary">
+                {displayName}
+              </span>
+              {usernameLine && (
+                <span className="mt-0.5 block truncate text-[13px] leading-5 text-text-secondary">
+                  {usernameLine}
+                </span>
+              )}
+            </span>
+            <ChevronRight size={20} className="shrink-0 text-text-secondary" aria-hidden="true" />
+          </button>
+        )}
+
+        {/* A. Language, single app preference, chosen from a bottom sheet */}
         <SettingSection title={t('settings.sectionLanguage')}>
-          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3 min-w-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-primary">
-                <Globe size={18} aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text-primary">
-                  {t('settings.languageLabel')}
-                </p>
-                <p className="mt-0.5 text-xs leading-5 text-text-secondary">
-                  {t('settings.languageDescription')}
-                </p>
-                <p
-                  className="mt-1 text-xs font-semibold text-primary"
-                  aria-live="polite"
-                >
-                  {t('settings.languageCurrent', {
-                    language: LANGUAGE_OPTION_LABELS[language],
-                  })}
-                </p>
-              </div>
-            </div>
-
-            <LanguageSwitcher className="self-start sm:self-auto" />
-          </div>
+          <SettingRow
+            icon={Globe}
+            title={t('settings.languageLabel')}
+            description={t('settings.languageDescription')}
+            rightText={LANGUAGE_OPTION_LABELS[language]}
+            onClick={() => setSheet('language')}
+            isLast
+          />
         </SettingSection>
 
-        {/* B. Appearance — existing light/dark/system theme preference */}
+        {/* B. Appearance, existing light/dark/system theme preference */}
         <SettingSection title={t('settings.sectionAppearance')}>
-          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3 min-w-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-primary">
-                <Palette size={18} aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text-primary">
-                  {t('settings.themeLabel')}
-                </p>
-                <p className="mt-0.5 text-xs leading-5 text-text-secondary">
-                  {t('settings.themeDescription')}
-                </p>
-              </div>
-            </div>
-
-            <ThemePicker />
-          </div>
+          <SettingRow
+            icon={Palette}
+            title={t('settings.themeLabel')}
+            description={t('settings.themeDescription')}
+            rightText={currentThemeLabel}
+            onClick={() => setSheet('theme')}
+            isLast
+          />
         </SettingSection>
 
-        {/* C. Account — existing profile & auth routes only */}
+        {/* C. Account, existing profile and auth routes only */}
         <SettingSection title={t('settings.sectionAccount')}>
           <SettingRow
             icon={User}
@@ -257,13 +270,13 @@ export const Settings: React.FC = () => {
           <SettingRow
             icon={LogOut}
             title={t('settings.logout')}
-            onClick={handleLogout}
+            onClick={() => setLogoutConfirm(true)}
             danger
             isLast
           />
         </SettingSection>
 
-        {/* D. Preferences — genuinely supported notification settings */}
+        {/* D. Preferences, supported notification settings only */}
         <SettingSection title={t('settings.sectionPreferences')}>
           <SettingRow
             icon={Megaphone}
@@ -279,11 +292,11 @@ export const Settings: React.FC = () => {
           />
           {user?.id && <NativeNotificationSettingsCard />}
           {user?.id && (
-            <div className="pt-2">
-              <p className="text-sm font-semibold text-text-primary">
+            <div className="px-4 pb-4 pt-4">
+              <p className="text-[15px] leading-6 font-medium text-text-primary">
                 {t('notification.preferencesTitle')}
               </p>
-              <p className="mb-1 text-[11px] text-text-secondary">
+              <p className="mb-2 mt-0.5 text-[13px] leading-[1.5] text-text-secondary">
                 {t('notification.preferencesDescription')}
               </p>
               <NotificationPreferencesCard userId={user.id} />
@@ -291,7 +304,7 @@ export const Settings: React.FC = () => {
           )}
         </SettingSection>
 
-        {/* E. App updates — the single OTA/APK surface for the Android app */}
+        {/* E. App updates, the single OTA/APK surface for the Android app */}
         {native ? (
           <SettingSection title={t('settings.sectionUpdates')}>
             <ForcedUpdateCard />
@@ -324,6 +337,63 @@ export const Settings: React.FC = () => {
           />
         </SettingSection>
       </div>
+
+      <SettingsBottomSheet
+        open={sheet === 'language'}
+        title={t('settings.languageLabel')}
+        onClose={() => setSheet(null)}
+      >
+        <div role="radiogroup" aria-label={t('settings.languageLabel')}>
+          {APP_LANGUAGES.map((option) => (
+            <SheetRadioRow
+              key={option}
+              checked={language === option}
+              lang={option}
+              label={LANGUAGE_OPTION_LABELS[option]}
+              onSelect={() => {
+                setLanguage(option);
+                setSheet(null);
+              }}
+            />
+          ))}
+        </div>
+      </SettingsBottomSheet>
+
+      <SettingsBottomSheet
+        open={sheet === 'theme'}
+        title={t('settings.themeLabel')}
+        onClose={() => setSheet(null)}
+      >
+        <div role="radiogroup" aria-label={t('settings.themeLabel')}>
+          {THEME_OPTIONS.map((option) => {
+            const Icon = option.icon;
+            return (
+              <SheetRadioRow
+                key={option.value}
+                checked={theme === option.value}
+                label={t(option.labelKey)}
+                icon={<Icon size={20} strokeWidth={1.75} aria-hidden="true" />}
+                onSelect={() => {
+                  setTheme(option.value);
+                  setSheet(null);
+                }}
+              />
+            );
+          })}
+        </div>
+      </SettingsBottomSheet>
+
+      <ConfirmModal
+        isOpen={logoutConfirm}
+        title={t('settings.logoutConfirmTitle')}
+        message={t('settings.logoutConfirmBody')}
+        confirmText={t('settings.logout')}
+        cancelText={t('common.cancel')}
+        loadingText={t('settings.logout')}
+        isLoading={loggingOut}
+        onConfirm={() => void handleLogout()}
+        onCancel={() => setLogoutConfirm(false)}
+      />
     </div>
   );
 };
