@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Flame, Megaphone, Star } from 'lucide-react';
+import { Bell, Flame, Star } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -57,7 +57,7 @@ const Header: React.FC = () => {
     staleTime: 0,
   });
 
-  const { data: unreadCount = 0 } = useQuery({
+  const { data: notificationUnreadCount = 0 } = useQuery({
     queryKey: ['notifications', 'unreadCount', user?.id],
     queryFn: () => (user?.id ? fetchUnreadNotificationCount() : 0),
     enabled: !!user?.id,
@@ -66,7 +66,9 @@ const Header: React.FC = () => {
     refetchOnWindowFocus: true,
   });
 
-  const { data: unreadNoticeCount = 0 } = useUnreadNoticeCount();
+  const { data: noticeUnreadCount = 0 } = useUnreadNoticeCount();
+
+  const unreadCount = notificationUnreadCount + noticeUnreadCount;
 
   const currentStreak =
     profileData?.current_streak ?? user?.user_metadata?.current_streak ?? 0;
@@ -117,28 +119,6 @@ const Header: React.FC = () => {
             <span className="font-sans text-sm font-bold text-text-primary">
               {currentStreak}
             </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/notices')}
-            aria-label={
-              unreadNoticeCount > 0
-                ? t('header.unreadNotices', { count: unreadNoticeCount })
-                : t('header.noUnreadNotices')
-            }
-            title={t('header.noticesTitle')}
-            className="relative rounded-full bg-surface-elevated p-2 text-text-primary transition-all hover:scale-110"
-          >
-            <Megaphone size={22} />
-            {unreadNoticeCount > 0 && (
-              <span
-                className="absolute right-0 top-0 flex items-center justify-center rounded-full border-2 border-surface bg-red-500 text-[10px] font-bold text-white"
-                style={{ minWidth: '18px', height: '18px', padding: '0 4px' }}
-              >
-                {unreadNoticeCount > 99 ? '99+' : unreadNoticeCount}
-              </span>
-            )}
           </button>
 
           <button
