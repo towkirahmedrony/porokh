@@ -187,8 +187,8 @@ export const ForcedUpdateCard: React.FC = () => {
 
   const versionRow = (label: string, value: string | null) => (
     <div className="flex items-baseline justify-between gap-3 py-1">
-      <span className="text-xs text-text-secondary">{label}</span>
-      <span className="font-mono text-xs font-medium text-text-primary">
+      <span className="text-[13px] leading-5 text-text-secondary break-words">{label}</span>
+      <span className="shrink-0 text-[13px] leading-5 font-medium tabular-nums text-text-primary">
         {value || t('settings.unknownVersion')}
       </span>
     </div>
@@ -196,21 +196,21 @@ export const ForcedUpdateCard: React.FC = () => {
 
   return (
     <div className="p-4">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-primary">
-          <Smartphone size={18} aria-hidden="true" />
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center text-text-secondary">
+          <Smartphone size={22} strokeWidth={1.75} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-text-primary">
+          <p className="text-[15px] leading-6 font-medium text-text-primary">
             {t('settings.checkUpdates')}
           </p>
-          <p className="mt-0.5 text-xs leading-5 text-text-secondary">
+          <p className="mt-0.5 text-[13px] leading-[1.5] text-text-secondary break-words">
             {t('settings.checkUpdatesDescription')}
           </p>
         </div>
       </div>
 
-      <div className="mt-3 rounded-xl border border-border-color bg-surface-elevated p-3">
+      <div className="mt-3 rounded-xl bg-surface-elevated/50 px-3 py-1">
         {versionRow(t('settings.apkVersionLabel'), nativeVersion)}
         {versionRow(t('settings.otaInstalledLabel'), ota.currentVersion)}
         {latestOtaVersion && latestOtaVersion !== ota.currentVersion
@@ -232,7 +232,7 @@ export const ForcedUpdateCard: React.FC = () => {
                   href={apkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white"
+                  className="mt-2 inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground transition-opacity active:opacity-80 sm:hover:opacity-90"
                 >
                   <Download className="h-3.5 w-3.5" aria-hidden="true" />
                   {t('settings.downloadApk')}
@@ -243,7 +243,7 @@ export const ForcedUpdateCard: React.FC = () => {
         </div>
       ) : null}
 
-      <div className={`mt-3 rounded-xl border p-3 ${toneClasses[statusCopy.tone]}`} role="status" aria-live="polite">
+      <div className={`mt-3 rounded-2xl border p-3 ${toneClasses[statusCopy.tone]}`} role="status" aria-live="polite">
         <div className="flex items-start gap-2.5">
           <span className="mt-0.5 shrink-0">
             {running ? (
@@ -280,7 +280,7 @@ export const ForcedUpdateCard: React.FC = () => {
           type="button"
           onClick={() => void checkForUpdates()}
           disabled={!ota.available || running || ota.examActive || action !== null}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity active:opacity-80 sm:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {checking ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -295,7 +295,7 @@ export const ForcedUpdateCard: React.FC = () => {
             type="button"
             onClick={() => void installDownloaded()}
             disabled={running || blocked || ota.examActive || action !== null}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border-color px-3 py-2 text-sm font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full border border-border-color px-4 py-2 text-sm font-medium text-text-primary transition-colors active:bg-surface-elevated sm:hover:bg-surface-elevated/60 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {action === 'install' ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
