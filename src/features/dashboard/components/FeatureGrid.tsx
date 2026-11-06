@@ -55,12 +55,12 @@ const CardVisual: React.FC<CardVisualProps> = ({ item }) => {
           loading="lazy"
           decoding="async"
           draggable={false}
-          className="h-7 w-7 object-contain transition-transform duration-200 group-hover:scale-105"
+          className="h-7 w-7 object-contain"
           onError={() => setImageFailed(true)}
         />
       ) : (
         <Icon
-          className="h-6 w-6 transition-transform duration-200 group-hover:scale-105"
+          className="h-6 w-6"
           strokeWidth={2.2}
           aria-hidden="true"
         />
@@ -127,27 +127,25 @@ const FeatureGrid: React.FC<FeatureGridProps> = memo(
 
           const content = (
             <>
-              <div className="pointer-events-none absolute inset-x-4 top-3 h-12 rounded-[18px] bg-secondary opacity-50 blur-2xl" />
-
               <CardVisual item={item} />
 
               <div className="relative z-10 mt-3 flex flex-1 flex-col items-center justify-center">
                 <span
-                  className="line-clamp-2 font-['Hind_Siliguri'] text-base font-bold leading-snug tracking-tight text-text-primary"
+                  className="line-clamp-2 select-none font-['Hind_Siliguri'] text-[15px] font-semibold leading-snug text-pretty no-underline [text-decoration:none] text-text-primary"
                   style={color ? { color } : undefined}
                 >
                   {label}
                 </span>
               </div>
 
-              <div className="relative z-10 mt-3 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <div className="relative z-10 mt-3 flex h-8 w-8 items-center justify-center rounded-full bg-badge-bg text-badge-text">
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </div>
             </>
           );
 
           const baseClassName =
-            'group relative flex min-h-[148px] flex-col items-center justify-center overflow-hidden rounded-[22px] border border-card-border bg-card-bg px-3 py-4 text-center transition-all duration-200 active:scale-[0.985]';
+            'relative flex min-h-[148px] select-none touch-manipulation no-underline [-webkit-tap-highlight-color:transparent] flex-col items-center justify-center overflow-hidden rounded-[22px] border border-card-border bg-card-bg px-3 py-4 text-center transition-[transform,background-color,border-color] duration-150 motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring';
 
           const cardProps = {
             className: baseClassName,
