@@ -66,9 +66,11 @@ export const resolveQuestionReportText = (
  */
 export const buildQuestionReportData = (
   question: ReportQuestionLike,
-  language: string
+  language: string,
+  examId?: string | null
 ): QuestionMetaData => ({
   questionId: String(question.id),
+  ...(examId ? { examId } : {}),
   questionText: resolveQuestionReportText(question, language),
   questionOptions: (question.options ?? [])
     .map((option) => ({

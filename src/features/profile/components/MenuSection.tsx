@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useState } from 'react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { Gift, Settings as SettingsIcon, LogOut, ChevronRight, Lock, Moon, Sun, Shield, Store } from 'lucide-react';
+import { Gift, Settings as SettingsIcon, LogOut, ChevronRight, LifeBuoy, Lock, Moon, Sun, Shield, Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth'; 
 import { useTheme } from '@/shared/hooks/useTheme';
@@ -63,6 +63,7 @@ const MenuSection: React.FC = memo(() => {
       />
       
       <MenuItem icon={<SettingsIcon size={18} />} label={t('profile.settings')} onClick={() => navigate('/settings')} />
+      <MenuItem icon={<LifeBuoy size={18} />} label={t('profile.supportCenter')} onClick={() => navigate('/support')} />
 
       {/* Expandable Legal Section */}
       <div>

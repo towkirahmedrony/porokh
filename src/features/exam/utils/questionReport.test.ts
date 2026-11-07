@@ -65,6 +65,13 @@ test('report data carries localized options, rich text and the question image', 
   ]);
 });
 
+test('an exam context is carried into the support form', () => {
+  const data = buildQuestionReportData(question(), 'bn', 'exam-42');
+
+  assert.equal(data.examId, 'exam-42');
+  assert.equal(buildQuestionReportData(question(), 'bn').examId, undefined);
+});
+
 test('missing question content stays empty so the modal can show a safe fallback', () => {
   const data = buildQuestionReportData(question(), 'bn');
 

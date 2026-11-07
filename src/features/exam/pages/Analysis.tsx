@@ -272,7 +272,9 @@ const Analysis: React.FC = () => {
     );
 
     setReportQuestionData(
-      question ? buildQuestionReportData(question, language) : { questionId }
+      question
+        ? buildQuestionReportData(question, language, result?.exam_id ?? undefined)
+        : { questionId }
     );
     setIsReportModalOpen(true);
   }, [result, language]);

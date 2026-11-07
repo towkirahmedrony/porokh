@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, memo } from 'react';
-import { X, AlertTriangle, MessageSquare, CheckCircle, Bug, FileQuestion } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, AlertTriangle, MessageSquare, CheckCircle, Bug, FileQuestion, LifeBuoy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { useBackInterceptor } from '@/app/navigation/useBackInterceptor';
@@ -66,6 +67,7 @@ const ReportModal: React.FC<ReportModalProps> = memo(({
   onSubmit 
 }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [issueCategory, setIssueCategory] = useState<string>('');
   const [descriptionText, setDescriptionText] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -231,6 +233,30 @@ const ReportModal: React.FC<ReportModalProps> = memo(({
               ))}
             </select>
           </div>
+
+          {/* Full support ticket: the only flow that accepts screenshots and
+              keeps a trackable conversation with the team. */}
+          <button
+            type="button"
+            onClick={() => {
+              if (isSubmitting) return;
+              const params = new URLSearchParams({
+                category: isQuestion ? 'question' : 'bug',
+              });
+              if (questionData?.questionId) {
+                params.set('question_id', questionData.questionId);
+              }
+              if (questionData?.examId) params.set('exam_id', questionData.examId);
+              params.set('screen', window.location.pathname);
+              onClose();
+              navigate(`/support/new?${params.toString()}`);
+            }}
+            disabled={isSubmitting}
+            className="flex w-full items-center gap-2 rounded-xl border border-border-color bg-surface px-3 py-2.5 text-left text-xs leading-relaxed text-text-secondary transition-colors hover:text-text-primary disabled:opacity-60"
+          >
+            <LifeBuoy size={16} className="shrink-0 text-primary" aria-hidden="true" />
+            {t('report.openSupportTicket')}
+          </button>
 
           {/* Description Textarea */}
           <div className="space-y-2">
