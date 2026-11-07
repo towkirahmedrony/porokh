@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Bell, ChevronRight, Globe, HelpCircle, Info, Lock, LogOut, Megaphone,
+  Bell, ChevronRight, Globe, HelpCircle, Info, LifeBuoy, Lock, LogOut, Megaphone,
   Moon, MonitorSmartphone, Palette, Pencil, Puzzle, Shield, Sun, User,
   Users,
 } from 'lucide-react';
@@ -311,7 +311,18 @@ export const Settings: React.FC = () => {
           </SettingSection>
         ) : null}
 
-        {/* F. About */}
+        {/* F. Support */}
+        <SettingSection title={t('settings.sectionSupport')}>
+          <SettingRow
+            icon={LifeBuoy}
+            title={t('settings.supportCenter')}
+            description={t('settings.supportDescription')}
+            onClick={() => navigate('/support')}
+            isLast
+          />
+        </SettingSection>
+
+        {/* G. About */}
         <SettingSection title={t('settings.sectionAbout')}>
           <SettingRow icon={Info} title={t('settings.appName')} />
           <SettingRow

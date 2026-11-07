@@ -243,9 +243,9 @@ const Arena: React.FC = () => {
     );
 
     return question
-      ? buildQuestionReportData(question, language)
+      ? buildQuestionReportData(question, language, examId)
       : { questionId: reportingQuestionId };
-  }, [questions, reportingQuestionId, language]);
+  }, [questions, reportingQuestionId, language, examId]);
   const quizQuestion = questions[quizIndex] ?? questions[0];
   const quizReveal = quizQuestion ? quizReveals[quizQuestion.id] ?? null : null;
   const quizAllAnswered =

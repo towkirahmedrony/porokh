@@ -100,6 +100,11 @@ const Contact = lazy(() =>
 const Notifications = lazy(() => import('@/features/notifications/pages/Notifications'));
 const Notices = lazy(() => import('@/features/notices/pages/Notices'));
 const NoticeDetail = lazy(() => import('@/features/notices/pages/NoticeDetail'));
+const SupportCenter = lazy(() => import('@/features/support/pages/SupportCenter'));
+const NewSupportTicket = lazy(() => import('@/features/support/pages/NewSupportTicket'));
+const SupportTicketDetail = lazy(
+  () => import('@/features/support/pages/SupportTicketDetail')
+);
 const PublicProfile = lazy(() => import('@/features/profile/pages/PublicProfile'));
 const Settings = lazy(() => import('@/features/profile/pages/Settings'));
 const EditProfile = lazy(() => import('@/features/profile/pages/EditProfile'));
@@ -600,7 +605,9 @@ const AppRoutes: React.FC = () => {
           <Route path="/materials" element={<Placeholder title={t('placeholder.materials')} />} />
 
           {/* Support & Moderation */}
-          <Route path="/support" element={<Placeholder title={t('placeholder.support')} />} />
+          <Route path="/support" element={<SupportCenter />} />
+          <Route path="/support/new" element={<NewSupportTicket />} />
+          <Route path="/support/:ticketId" element={<SupportTicketDetail />} />
 
           {/* 404 inside the app shell, so a signed-in user keeps the navigation */}
           <Route path="/dashboard/*" element={<NotFound />} />
