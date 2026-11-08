@@ -15,9 +15,9 @@ const HomeSkeleton: React.FC = () => {
         </section>
 
         {/* Feature Grid Skeleton */}
-        <section className="grid grid-cols-2 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-[148px] rounded-[22px] bg-surface-elevated animate-pulse" />
+        <section className="grid grid-cols-3 gap-2.5">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-[112px] rounded-[18px] bg-surface-elevated animate-pulse" />
           ))}
         </section>
 

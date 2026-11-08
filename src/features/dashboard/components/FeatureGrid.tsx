@@ -1,6 +1,5 @@
 import React, { memo, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
 import { resolveHomeIcon } from '@/shared/utils/homeIcons';
 import { resolveHomeColor } from '@/shared/utils/homeColors';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
@@ -8,7 +7,7 @@ import type { GridItem } from '../hooks/useHomeGrids';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { pickLang } from '@/shared/i18n/localize';
 
-const SKELETON_COUNT = 4;
+const SKELETON_COUNT = 6;
 
 export interface ThemeConfig {
   active_theme?: string;
@@ -43,24 +42,24 @@ const CardVisual: React.FC<CardVisualProps> = ({ item }) => {
 
   return (
     <div
-      className="relative z-10 flex h-12 w-12 items-center justify-center rounded-[16px] border border-card-border bg-badge-bg text-badge-text"
+      className="relative z-10 flex h-10 w-10 items-center justify-center rounded-[14px] border border-card-border bg-badge-bg text-badge-text"
       style={color ? { color } : undefined}
     >
       {imageUrl && !imageFailed ? (
         <img
           src={imageUrl}
           alt={item.title}
-          width={28}
-          height={28}
+          width={24}
+          height={24}
           loading="lazy"
           decoding="async"
           draggable={false}
-          className="h-7 w-7 object-contain"
+          className="h-6 w-6 object-contain"
           onError={() => setImageFailed(true)}
         />
       ) : (
         <Icon
-          className="h-6 w-6"
+          className="h-5 w-5"
           strokeWidth={2.2}
           aria-hidden="true"
         />
@@ -76,14 +75,14 @@ const FeatureGrid: React.FC<FeatureGridProps> = memo(
     if (loading) {
       return (
         <div
-          className="grid grid-cols-2 gap-3"
+          className="grid grid-cols-3 gap-2.5"
           role={loadingLabel ? 'status' : undefined}
           aria-label={loadingLabel}
         >
           {Array.from({ length: SKELETON_COUNT }).map((_, index) => (
             <Skeleton
               key={`feature-skeleton-${index}`}
-              className="h-[148px] rounded-[22px] bg-surface-elevated"
+              className="h-[112px] rounded-[18px] bg-surface-elevated"
             />
           ))}
         </div>
@@ -115,7 +114,7 @@ const FeatureGrid: React.FC<FeatureGridProps> = memo(
     if (!features.length) return null;
 
     return (
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2.5">
         {features.map((item) => {
           const link = item.link?.trim() ?? '';
           const hasValidLink = link.length > 0 && (isExternalLink(link) || isInternalLink(link));
@@ -129,23 +128,19 @@ const FeatureGrid: React.FC<FeatureGridProps> = memo(
             <>
               <CardVisual item={item} />
 
-              <div className="relative z-10 mt-3 flex flex-1 flex-col items-center justify-center">
+              <div className="relative z-10 mt-2 flex min-h-8 flex-1 flex-col items-center justify-center">
                 <span
-                  className="line-clamp-2 select-none font-['Hind_Siliguri'] text-[15px] font-semibold leading-snug text-pretty no-underline [text-decoration:none] text-text-primary"
+                  className="line-clamp-2 select-none font-['Hind_Siliguri'] text-[13px] font-semibold leading-snug text-pretty !no-underline [text-decoration-line:none!important] text-text-primary"
                   style={color ? { color } : undefined}
                 >
                   {label}
                 </span>
               </div>
-
-              <div className="relative z-10 mt-3 flex h-8 w-8 items-center justify-center rounded-full bg-badge-bg text-badge-text">
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </div>
             </>
           );
 
           const baseClassName =
-            'relative flex min-h-[148px] select-none touch-manipulation no-underline [-webkit-tap-highlight-color:transparent] flex-col items-center justify-center overflow-hidden rounded-[22px] border border-card-border bg-card-bg px-3 py-4 text-center transition-[transform,background-color,border-color] duration-150 motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring';
+            'relative flex min-h-[112px] select-none touch-manipulation !no-underline [text-decoration-line:none!important] [-webkit-tap-highlight-color:transparent] flex-col items-center justify-center overflow-hidden rounded-[18px] border border-card-border bg-card-bg px-2 py-3 text-center transition-[transform,background-color,border-color] duration-150 motion-reduce:transition-none active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring';
 
           const cardProps = {
             className: baseClassName,
