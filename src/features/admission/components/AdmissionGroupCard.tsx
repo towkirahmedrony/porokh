@@ -47,7 +47,7 @@ export const AdmissionGroupCard: React.FC<AdmissionGroupCardProps> = ({
   return (
     <Link
       to={to}
-      className="group flex min-h-[176px] flex-col rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.99]"
+      className="group !no-underline [text-decoration-line:none!important] flex min-h-[176px] flex-col rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.99]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconStyle}`}>

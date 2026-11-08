@@ -103,7 +103,7 @@ const AdmissionLandingPage: React.FC = () => {
 
           <Link
             to="/dashboard/home"
-            className="mt-5 inline-flex items-center gap-2 rounded-xl border border-border-color bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            className="!no-underline [text-decoration-line:none!important] mt-5 inline-flex items-center gap-2 rounded-xl border border-border-color bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {t('admission.backToHome')}
           </Link>
@@ -151,7 +151,7 @@ const AdmissionLandingPage: React.FC = () => {
             <Link
               key={item.to}
               to={item.to}
-              className="flex items-center justify-between rounded-2xl bg-surface px-4 py-3.5 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="!no-underline [text-decoration-line:none!important] flex items-center justify-between rounded-2xl bg-surface px-4 py-3.5 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               {t(item.labelKey)}
               <ListChecks className="h-4 w-4 text-primary" aria-hidden="true" />

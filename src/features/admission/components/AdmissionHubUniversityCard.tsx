@@ -36,7 +36,7 @@ const AdmissionHubUniversityCard: React.FC<AdmissionHubUniversityCardProps> = ({
   return (
     <Link
       to={`/admission/${encodeURIComponent(university.slug)}`}
-      className="flex min-h-[140px] touch-manipulation select-none flex-col items-center justify-center rounded-[20px] border border-card-border bg-card-bg px-3 py-4 text-center transition-[transform,border-color] duration-150 hover:border-primary/40 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring motion-reduce:transition-none"
+      className="!no-underline [text-decoration-line:none!important] flex min-h-[140px] touch-manipulation select-none flex-col items-center justify-center rounded-[20px] border border-card-border bg-card-bg px-3 py-4 text-center transition-[transform,border-color] duration-150 hover:border-primary/40 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring motion-reduce:transition-none"
     >
       <UniversityLogo
         logoUrl={university.logoUrl}

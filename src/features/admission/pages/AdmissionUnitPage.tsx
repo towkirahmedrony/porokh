@@ -138,7 +138,7 @@ const AdmissionUnitPage: React.FC = () => {
       <header className="mb-4 rounded-[20px] border border-card-border bg-card-bg p-4">
         <Link
           to={`/admission/${encodeURIComponent(content.university.slug)}`}
-          className="mb-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg text-sm font-medium text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="!no-underline [text-decoration-line:none!important] mb-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg text-sm font-medium text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {t('admission.back')}

@@ -72,7 +72,7 @@ const AdmissionUnitCard: React.FC<AdmissionUnitCardProps> = ({
   return (
     <Link
       to={`/admission/${encodeURIComponent(institutionSlug)}/${encodeURIComponent(unit.code)}`}
-      className="group flex min-h-[132px] touch-manipulation select-none flex-col items-start rounded-[20px] border border-card-border bg-card-bg p-3.5 transition-[transform,border-color] duration-150 hover:border-primary/40 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring motion-reduce:transition-none"
+      className="group !no-underline [text-decoration-line:none!important] flex min-h-[132px] touch-manipulation select-none flex-col items-start rounded-[20px] border border-card-border bg-card-bg p-3.5 transition-[transform,border-color] duration-150 hover:border-primary/40 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring motion-reduce:transition-none"
     >
       {content}
       <span className="mt-auto flex w-full items-center justify-end pt-1 text-primary">

@@ -30,7 +30,7 @@ export const AdmissionUniversityCard: React.FC<AdmissionUniversityCardProps> = (
   return (
     <Link
       to={to}
-      className="group flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.99] sm:p-5"
+      className="group !no-underline [text-decoration-line:none!important] flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.99] sm:p-5"
     >
       <div className="flex items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border-color bg-surface font-['Hind_Siliguri'] text-lg font-bold text-primary">

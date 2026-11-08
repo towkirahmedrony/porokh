@@ -82,7 +82,7 @@ export const AdmissionExamTypeCard: React.FC<AdmissionExamTypeCardProps> = ({
   return (
     <Link
       to={to}
-      className={`${baseClass} border-card-border bg-card-bg shadow-sm hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md active:scale-[0.99]`}
+      className={`${baseClass} !no-underline [text-decoration-line:none!important] border-card-border bg-card-bg shadow-sm hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md active:scale-[0.99]`}
     >
       {content}
     </Link>

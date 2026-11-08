@@ -35,7 +35,7 @@ export const AdmissionBreadcrumb: React.FC<AdmissionBreadcrumbProps> = ({
             {item.to && !isLast ? (
               <Link
                 to={item.to}
-                className="rounded-md px-1 py-0.5 text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                className="!no-underline [text-decoration-line:none!important] rounded-md px-1 py-0.5 text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
                 {item.label}
               </Link>
