@@ -1,7 +1,7 @@
-import { BookOpen, Cpu, HeartPulse, Landmark, type LucideIcon } from 'lucide-react';
+import { BookOpen, Cpu, HeartPulse, type LucideIcon } from 'lucide-react';
 import type { AppMessageKey } from '@/shared/i18n/messages';
 
-export const MODEL_TRACKS = ['hsc', 'medical', 'engineering', 'varsity'] as const;
+export const MODEL_TRACKS = ['hsc', 'medical', 'engineering'] as const;
 
 export type ModelTrack = (typeof MODEL_TRACKS)[number];
 
@@ -36,13 +36,6 @@ export const MODEL_TRACK_CONFIGS: ModelTrackConfig[] = [
     descriptionKey: 'exam.track.engineeringDesc',
     icon: Cpu,
     accentClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-300',
-  },
-  {
-    value: 'varsity',
-    labelKey: 'exam.track.varsity',
-    descriptionKey: 'exam.track.varsityDesc',
-    icon: Landmark,
-    accentClass: 'bg-violet-500/10 text-violet-600 dark:text-violet-300',
   },
 ];
 
