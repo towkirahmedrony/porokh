@@ -71,6 +71,7 @@ import {
 export type OtaControllerOptions = {
   adapter: OtaUpdaterAdapter;
   getAuth: () => AuthSnapshot;
+  reconcilePending?: () => Promise<void>;
   getPathname?: () => string | undefined;
   kv?: OtaKeyValue;
   storage?: ActivationStorage;
@@ -894,6 +895,7 @@ export const createOtaController = (
       kv,
       supportedSchemaVersion
     );
+    await options.reconcilePending?.();
     const gate = await evaluateActivationGate({
       auth: options.getAuth(),
       storage,
@@ -1006,6 +1008,7 @@ export const createOtaController = (
       return { allowed: false, reasons: metadataReasons };
     }
 
+    await options.reconcilePending?.();
     const gate = await evaluateActivationGate({
       auth: options.getAuth(),
       storage,

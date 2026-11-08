@@ -49,6 +49,7 @@ export interface OfflineExamStorage {
   putSubmission(submission: SubmissionRecord): Promise<void>;
   getSubmission(attemptId: string): Promise<SubmissionRecord | null>;
   listSubmissionsForUser(userId: string): Promise<SubmissionRecord[]>;
+  listAnswersForUser(userId: string): Promise<AnswerRecord[]>;
   removeSubmission(attemptId: string): Promise<void>;
 
   putAnswerIfNewer(answer: AnswerRecord): Promise<void>;
@@ -128,6 +129,12 @@ export class MemoryOfflineExamStorage implements OfflineExamStorage {
     return [...this.submissions.values()]
       .filter((submission) => submission.userId === userId)
       .map((submission) => clone(submission));
+  }
+  async listAnswersForUser(userId: string): Promise<AnswerRecord[]> {
+    return [...this.answers.values()]
+      .flat()
+      .filter((answer) => answer.userId === userId)
+      .map((answer) => clone(answer));
   }
 
   async removeSubmission(attemptId: string): Promise<void> {
@@ -359,6 +366,14 @@ export class IndexedDbOfflineExamStorage implements OfflineExamStorage {
     const request = index.getAll(userId);
     const records = await requestResult(request);
     return (records as SubmissionRecord[]).map((record) => clone(record));
+  }
+  async listAnswersForUser(userId: string): Promise<AnswerRecord[]> {
+    // Keep this compatible with pre-index records created by schema v2.
+    const request = this.store(STORE_ANSWERS, 'readonly').getAll();
+    const records = await requestResult(request);
+    return (records as AnswerRecord[])
+      .filter((record) => record.userId === userId)
+      .map((record) => clone(record));
   }
 
   async removeSubmission(attemptId: string): Promise<void> {

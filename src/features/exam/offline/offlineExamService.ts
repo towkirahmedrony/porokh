@@ -342,6 +342,77 @@ export const saveOfflineAnswer = async (
   await storage.putAnswerIfNewer(answer);
 };
 
+/** Mark local work complete only after an authenticated server confirmation. */
+export const markAttemptSubmitted = async (
+  attemptId: string,
+  resultId: string | null,
+  storage: OfflineExamStorage = getOfflineExamStorage(),
+  nowMs = Date.now()
+): Promise<void> => {
+  await storage.init();
+  const submission = await storage.getSubmission(attemptId);
+  if (submission) {
+    await storage.putSubmission({
+      ...submission,
+      status: 'confirmed',
+      resultId: resultId ?? submission.resultId,
+      lastError: null,
+      updatedAt: new Date(nowMs).toISOString(),
+    });
+  }
+  const attempt = await storage.getAttempt(attemptId);
+  if (attempt) {
+    await storage.putAttempt({
+      ...attempt,
+      status: 'submitted',
+      submissionId: resultId ?? attempt.submissionId,
+      lastSyncedAt: new Date(nowMs).toISOString(),
+      lastSyncError: null,
+      updatedAt: new Date(nowMs).toISOString(),
+    });
+  }
+  for (const answer of await storage.getAnswers(attemptId)) {
+    if (answer.status === 'synced') continue;
+    await storage.putAnswerIfNewer({
+      ...answer,
+      status: 'synced',
+      lastError: null,
+      updatedAt: new Date(nowMs).toISOString(),
+      revision: answer.revision + 1,
+    });
+  }
+};
+
+export type AttemptStatusLookup = (attemptId: string) => Promise<{
+  id?: string;
+  status?: string;
+  exam_history_id?: string | null;
+}>;
+
+/** Recover records left by older builds without trusting ambiguous failures. */
+export const reconcileFinalizedAttempts = async (
+  userId: string,
+  lookup: AttemptStatusLookup,
+  storage: OfflineExamStorage = getOfflineExamStorage()
+): Promise<void> => {
+  if (!userId) return;
+  await storage.init();
+  const pending = (await storage.listAnswersForUser(userId)).filter(
+    (answer) => answer.status !== 'synced'
+  );
+  const attemptIds = [...new Set(pending.map((answer) => answer.attemptId))];
+  for (const attemptId of attemptIds) {
+    try {
+      const remote = await lookup(attemptId);
+      if (remote.id !== attemptId) continue;
+      if (remote.status !== 'submitted' && remote.status !== 'finalized') continue;
+      await markAttemptSubmitted(attemptId, remote.exam_history_id ?? null, storage);
+    } catch {
+      // Network/auth/server errors never prove that an answer was submitted.
+    }
+  }
+};
+
 /** Rehydrates an active attempt plus its durable answers. */
 export const recoverOfflineAttempt = async (
   userId: string,

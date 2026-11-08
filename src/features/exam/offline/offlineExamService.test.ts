@@ -7,10 +7,12 @@ import {
   computeRemainingSeconds,
   isAttemptExpired,
   loadPreparedExamForStart,
+  markAttemptSubmitted,
   offlineExamKey,
   prepareExamForOffline,
   queueOfflineSubmission,
   recoverOfflineAttempt,
+  reconcileFinalizedAttempts,
   saveOfflineAnswer,
   syncPendingSubmissions,
   validatePreparedExam,
@@ -300,6 +302,37 @@ test('answers are not counted as synced until the submission is confirmed', asyn
 
   const answers = await storage.getAnswers('attempt-1');
   assert.equal(answers[0].status, 'pending');
+});
+
+test('confirmed online submission reconciles stale local answers idempotently', async () => {
+  const storage = new MemoryOfflineExamStorage();
+  await saveOfflineAnswer('u1', 'attempt-1', 'q1', 'A', storage, NOW);
+
+  await markAttemptSubmitted('attempt-1', 'result-1', storage, NOW);
+  await markAttemptSubmitted('attempt-1', 'result-1', storage, NOW + 1);
+
+  const answers = await storage.getAnswers('attempt-1');
+  assert.equal(answers[0].status, 'synced');
+  assert.equal((await storage.listPendingWork()).pendingAnswers, 0);
+});
+
+test('stale answers recover only after the owner-scoped server says finalized', async () => {
+  const storage = new MemoryOfflineExamStorage();
+  await saveOfflineAnswer('u1', 'attempt-1', 'q1', 'A', storage, NOW);
+
+  await reconcileFinalizedAttempts(
+    'u1',
+    async () => ({ id: 'attempt-1', status: 'in_progress' }),
+    storage
+  );
+  assert.equal((await storage.getAnswers('attempt-1'))[0].status, 'pending');
+
+  await reconcileFinalizedAttempts(
+    'u1',
+    async () => ({ id: 'attempt-1', status: 'finalized', exam_history_id: 'result-1' }),
+    storage
+  );
+  assert.equal((await storage.getAnswers('attempt-1'))[0].status, 'synced');
 });
 
 test('the OTA activation gate blocks while offline work is protected', async () => {

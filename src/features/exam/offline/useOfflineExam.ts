@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { apiClient } from '@/shared/lib/apiClient';
 import { admissionExamService } from '@/features/admission/services/admissionExamService';
 import { extractSubmittedResultId } from '@/features/exam/utils/examSubmission';
 import { postExamSubmission } from '@/features/exam/utils/examSubmissionRequest';
 import {
   loadPreparedExamForStart,
   listPreparedExamsForUser,
+  markAttemptSubmitted,
   prepareExamForOffline,
   queueOfflineSubmission,
   recoverOfflineAttempt,
   removePreparedExam,
+  reconcileFinalizedAttempts,
   saveOfflineAnswer,
   syncPendingSubmissions,
   type OfflineExamApi,
@@ -78,6 +81,8 @@ export interface OfflineExamController {
     questionIds: string[]
   ) => Promise<void>;
   syncPending: () => Promise<void>;
+  reconcilePending: () => Promise<void>;
+  markSubmitted: (attemptId: string, resultId: string) => Promise<void>;
   loadPreparedExam: (examId: string) => Promise<PreparedExamRecord | null>;
   listPrepared: () => Promise<PreparedExamRecord[]>;
   recoverAttempt: (attemptId: string) => ReturnType<typeof recoverOfflineAttempt>;
@@ -111,11 +116,20 @@ export const useOfflineExam = (): OfflineExamController => {
     }
   }, [userId]);
 
+  const reconcilePending = useCallback(async () => {
+    if (!userId || !isOnlineNow()) return;
+    await reconcileFinalizedAttempts(userId, async (attemptId) => {
+      const response = await apiClient.get(`/exams/user/attempts/${attemptId}`);
+      return response.data?.data ?? response.data;
+    });
+  }, [userId]);
+
   // Retry pending work on startup and whenever connectivity returns.
   useEffect(() => {
     if (!isOnline || !userId) return;
+    void reconcilePending();
     void syncPending();
-  }, [isOnline, userId, syncPending]);
+  }, [isOnline, userId, reconcilePending, syncPending]);
 
   const prepareExam = useCallback(
     (examId: string, title?: string | null) =>
@@ -138,6 +152,12 @@ export const useOfflineExam = (): OfflineExamController => {
       await queueOfflineSubmission(userId ?? '', attemptId, answers, questionIds);
     },
     [userId]
+  );
+
+  const markSubmitted = useCallback(
+    (attemptId: string, resultId: string) =>
+      markAttemptSubmitted(attemptId, resultId),
+    []
   );
 
   const loadPreparedExam = useCallback(
@@ -170,6 +190,8 @@ export const useOfflineExam = (): OfflineExamController => {
     saveAnswer,
     queueSubmission,
     syncPending,
+    reconcilePending,
+    markSubmitted,
     loadPreparedExam,
     listPrepared,
     recoverAttempt,

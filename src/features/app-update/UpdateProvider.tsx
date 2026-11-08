@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useOfflineExam } from '@/features/exam/offline/useOfflineExam';
 import { CapgoUpdaterAdapter } from './capgoUpdater';
 import { stripReloadMarker } from './cacheRecovery';
 import { createOtaController, type OtaController } from './controller';
@@ -36,6 +37,7 @@ const UpdateContext = createContext<UpdateContextValue | null>(null);
 
 export const UpdateProvider = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
+  const offline = useOfflineExam();
   const location = useLocation();
   const authRef = useRef<{ loading: boolean; userId: string | null }>({
     loading,
@@ -44,6 +46,8 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
   authRef.current = { loading, userId: user?.id ?? null };
 
   const controllerRef = useRef<OtaController | null>(null);
+  const reconcileRef = useRef(offline.reconcilePending);
+  reconcileRef.current = offline.reconcilePending;
   if (!controllerRef.current) {
     controllerRef.current = createOtaController({
       adapter: new CapgoUpdaterAdapter(),
@@ -55,6 +59,7 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
         if (auth.loading) return { state: 'unknown', userId: null };
         return { state: 'anonymous', userId: null };
       },
+      reconcilePending: () => reconcileRef.current(),
       getPathname: () =>
         typeof window === 'undefined' ? undefined : window.location.pathname,
     });

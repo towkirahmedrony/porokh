@@ -284,6 +284,8 @@ const AdmissionExamPage: React.FC = () => {
           return;
         }
 
+        void offline.markSubmitted(attempt.id, resultId);
+
         navigate(`/exam/analysis/${resultId}`, {
           state: result,
           replace: true,
@@ -331,6 +333,7 @@ const AdmissionExamPage: React.FC = () => {
     submit,
     t,
     offline.isOnline,
+    offline.markSubmitted,
     offline.queueSubmission,
   ]);
 
@@ -363,13 +366,13 @@ const AdmissionExamPage: React.FC = () => {
 
       // Durable local persistence so a reload/restart never loses the answer,
       // even while offline. Failures surface only through the retry path.
-      if (attempt?.id) {
+      if (attempt?.id && (!offline.isOnline || isOfflineMode)) {
         void offline
           .saveAnswer(attempt.id, questionId, String(optionId))
           .catch(() => {});
       }
     },
-    [attempt?.id, offline.saveAnswer]
+    [attempt?.id, offline.isOnline, offline.saveAnswer, isOfflineMode]
   );
 
   if (!examId) {

@@ -34,6 +34,7 @@ import {
   resolveSubmitErrorMessage,
 } from '../utils/examSubmission';
 import { postExamSubmission } from '../utils/examSubmissionRequest';
+import { useOfflineExam } from '@/features/exam/offline/useOfflineExam';
 
 const defaultConfig: ExamConfig = {
   questionCount: 10,
@@ -126,6 +127,7 @@ const Arena: React.FC = () => {
   const isAttemptMode = Boolean(attemptId);
   const { language, t } = useLanguage();
   const queryClient = useQueryClient();
+  const offline = useOfflineExam();
 
   const passedConfig = location.state?.config as ExtendedExamConfig | undefined;
   const config = useMemo<ExtendedExamConfig>(() => {
@@ -402,6 +404,9 @@ const Arena: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['progressDashboard'] });
 
       // Navigate only after the backend confirmed persistence.
+      if (resultId && attemptId) {
+        void offline.markSubmitted(attemptId, resultId);
+      }
       navigate(`/exam/analysis/${resultId}`, {
         state: result,
         replace: true,
