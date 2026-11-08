@@ -65,18 +65,6 @@ const AdmissionUnitListPage = lazy(() =>
 const AdmissionUnitPage = lazy(() =>
   import('@/features/admission/pages/AdmissionUnitPage')
 );
-const AdmissionGroupPage = lazy(() =>
-  import('@/features/admission/pages/AdmissionGroupPage')
-);
-const AdmissionUniversityListPage = lazy(() =>
-  import('@/features/admission/pages/AdmissionUniversityListPage')
-);
-const AdmissionUniversityPage = lazy(() =>
-  import('@/features/admission/pages/AdmissionUniversityPage')
-);
-const AdmissionExamListPage = lazy(() =>
-  import('@/features/admission/pages/AdmissionExamListPage')
-);
 const AdmissionExamPage = lazy(() =>
   import('@/features/admission/pages/AdmissionExamPage')
 );
@@ -354,6 +342,21 @@ const AppRoutes: React.FC = () => {
           element={<Navigate to={examListPath(EXAM_TYPES.model.type)} replace />}
         />
 
+        {/* Admission is its own unit-first hub now; the old model-test
+            "University" track only forwards there. */}
+        <Route
+          path="/exams/admission"
+          element={<Navigate to="/admission" replace />}
+        />
+        <Route
+          path="/exams/model/varsity"
+          element={<Navigate to="/admission" replace />}
+        />
+        <Route
+          path="/exams/model/varsity/:subjectId"
+          element={<Navigate to="/admission" replace />}
+        />
+
         <Route
           path="/exams/model/:track"
           element={
@@ -570,32 +573,48 @@ const AppRoutes: React.FC = () => {
           <Route path="/group/:groupId/battle" element={<Navigate to="/groups" replace />} />
           <Route path="/group/:groupId/focus" element={<Placeholder title={t('placeholder.focusSession')} />} />
 
-          {/* Admission — unit-first flow: Admission → University → Unit.
-              Static segments outrank the legacy group routes below, which stay
-              in place for existing links. */}
+          {/* Admission — unit-first flow: Admission → University → Unit → Hub.
+              The hub tab is a query parameter (`?tab=papers|models|bank`). */}
           <Route path="/admission" element={<AdmissionUniversitiesPage />} />
+
+          {/* Old bookmarks from the group-first and id-based flows land on the
+              new university grid instead of a broken deep link. */}
           <Route
             path="/admission/university/:universityId"
-            element={<AdmissionUnitListPage />}
+            element={<Navigate to="/admission" replace />}
           />
           <Route
             path="/admission/university/:universityId/unit/:unitId"
-            element={<AdmissionUnitPage />}
+            element={<Navigate to="/admission" replace />}
+          />
+          <Route
+            path="/admission/:groupSlug/past-exams/*"
+            element={<Navigate to="/admission" replace />}
+          />
+          <Route
+            path="/admission/:groupSlug/model-test/*"
+            element={<Navigate to="/admission" replace />}
+          />
+          <Route
+            path="/admission/science"
+            element={<Navigate to="/admission" replace />}
+          />
+          <Route
+            path="/admission/arts"
+            element={<Navigate to="/admission" replace />}
+          />
+          <Route
+            path="/admission/commerce"
+            element={<Navigate to="/admission" replace />}
           />
 
-          {/* Legacy group-first admission routes (kept for backward compatibility) */}
-          <Route path="/admission/:groupSlug" element={<AdmissionGroupPage />} />
           <Route
-            path="/admission/:groupSlug/:examType"
-            element={<AdmissionUniversityListPage />}
+            path="/admission/:institutionSlug"
+            element={<AdmissionUnitListPage />}
           />
           <Route
-            path="/admission/:groupSlug/:examType/:universitySlug"
-            element={<AdmissionUniversityPage />}
-          />
-          <Route
-            path="/admission/:groupSlug/:examType/:universitySlug/exams"
-            element={<AdmissionExamListPage />}
+            path="/admission/:institutionSlug/:unitCode"
+            element={<AdmissionUnitPage />}
           />
 
           {/* Academic & Materials */}

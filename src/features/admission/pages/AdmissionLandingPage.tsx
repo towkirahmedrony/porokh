@@ -146,7 +146,7 @@ const AdmissionLandingPage: React.FC = () => {
           {[
             { to: '/exams/model?category=medical', labelKey: 'admission.modelTestMedical' as const },
             { to: '/exams/model?category=engineering', labelKey: 'admission.modelTestEngineering' as const },
-            { to: '/exams/model?category=varsity', labelKey: 'admission.modelTestUniversity' as const },
+            { to: '/admission', labelKey: 'admission.modelTestUniversity' as const },
           ].map((item) => (
             <Link
               key={item.to}

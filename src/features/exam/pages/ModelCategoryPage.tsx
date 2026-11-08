@@ -27,6 +27,9 @@ const ModelCategoryPage: React.FC = () => {
     : MODEL_TRACK_CONFIGS;
 
   const legacyTrack = searchParams.get('category');
+  if (legacyTrack === 'varsity') {
+    return <Navigate to="/admission" replace />;
+  }
   if (isModelTrack(legacyTrack)) {
     return <Navigate to={modelTrackPath(legacyTrack)} replace />;
   }

@@ -2,6 +2,18 @@
 
 Admission browsing has two surfaces:
 
+- **Admission Hub (current)** — `/admission` → `/admission/:institutionSlug` →
+  `/admission/:institutionSlug/:unitCode?tab=papers|models|bank`. The university
+  grid and unit grid come from the `get_admission_hub_catalog()` RPC and the
+  unit hub (`get_admission_unit_hub`) returns past papers
+  (`exam_papers.category='admission'`), model tests (`category='model_test'`),
+  and question-bank facets; the bank itself pages through
+  `get_admission_unit_question_bank_v2` / `get_admission_unit_question_answers`
+  (20/page, answer key only after tap). A unit is tappable only when papers,
+  models or questions exist; otherwise it renders dimmed as “শীঘ্রই আসছে”.
+  Paper/model rows reuse the existing secure start flow
+  (`/admission/exam/:examId` → attempt engine → `consume_quota`); the bank is
+  view-only.
 - **Unit-first experience (Phase 4)** — `/admission` → university → unit. Units
   come from `admission_units` and papers from `exam_papers.admission_unit_id`.
   The unit screen is served by `GET /api/v1/admissions/units/:unitId/content`,
@@ -20,6 +32,9 @@ Admission browsing has two surfaces:
 | --- | --- |
 | Admission exam papers | `exam_papers` where `category = 'admission'` and `is_published = true` |
 | Universities | `institutions` where `type` is `admission` or `university` and `is_active = true` |
+| University logos | `institutions.logo_url` → `/logos/universities/<slug>.png`, see `docs/LOGO_SOURCES.md`; NULL = initials badge |
+| Hub catalog | `get_admission_hub_catalog()` (one call for the whole grid, no N+1) |
+| Unit hub | `get_admission_unit_hub(slug, unit_code)` + `get_admission_unit_question_bank_v2(...)` |
 | Question count | `exam_paper_questions` rows for the returned exam ids |
 | Subjects (optional label) | `subjects` joined through `exam_papers.subject_id` |
 | Question content | `GET /api/v1/exams/user/attempts/:id/questions` (sanitized) |
