@@ -206,29 +206,13 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({ activities }) =>
                 ${isToday ? 'ring-2 ring-[#FF6B00] ring-offset-2 ring-offset-card-bg' : ''}
               `}
             >
-              {/* Day Number */}
-              <div className={`relative z-10 w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${numberTextColor}`}>
-                <svg
-                  viewBox="0 0 32 32"
-                  className="w-7 h-7 sm:w-8 sm:h-8"
-                  aria-hidden="true"
-                >
-                  <text
-                    x="16"
-                    y="19"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="currentColor"
-                    style={{
-                      fontSize: '18px',
-                      fontWeight: 600,
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {localizeDigits(day, language)}
-                  </text>
-                </svg>
-              </div>
+              {/* Day Number: keep Bengali glyphs in a normal HTML line box.
+                  SVG text with a 32px viewBox clips Bengali ascenders/marks. */}
+              <span
+                className={`font-bengali relative z-10 flex h-7 w-7 items-center justify-center whitespace-nowrap text-lg font-semibold leading-[1.35] sm:h-8 sm:w-8 ${numberTextColor}`}
+              >
+                {localizeDigits(day, language)}
+              </span>
 
               {/* Background Icon (Flame/Snowflake) */}
               {!isFuture && (
