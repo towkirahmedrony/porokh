@@ -33,12 +33,12 @@ export const AdmissionUniversityCard: React.FC<AdmissionUniversityCardProps> = (
       className="group !no-underline [text-decoration-line:none!important] flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.99] sm:p-5"
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border-color bg-surface font-['Hind_Siliguri'] text-lg font-bold text-primary">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border-color bg-surface font-['Noto_Sans_Bengali'] text-lg font-bold text-primary">
           {initial}
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 font-['Hind_Siliguri'] text-base font-bold leading-snug text-text-primary group-hover:text-primary">
+          <h3 className="line-clamp-2 font-['Noto_Sans_Bengali'] text-base font-bold leading-snug text-text-primary group-hover:text-primary">
             {name}
           </h3>
 

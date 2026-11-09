@@ -21,7 +21,7 @@ const NavItem: React.FC<NavItemProps> = ({ Icon, label, isActive }) => (
     }`}
   >
     <Icon className="w-6 h-6" aria-hidden="true" />
-    <span className="text-[10px] font-['Hind_Siliguri']">{label}</span>
+    <span className="text-[10px] font-['Noto_Sans_Bengali']">{label}</span>
   </div>
 );
 

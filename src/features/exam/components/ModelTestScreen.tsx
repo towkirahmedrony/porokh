@@ -204,7 +204,7 @@ const ModelTestScreen: React.FC<ModelTestScreenProps> = ({ onViewChange }) => {
                   <ChevronLeft className="h-4 w-4" />
                 </button>
               )}
-              <h2 className="truncate font-['Hind_Siliguri'] text-lg font-bold text-text-primary">
+              <h2 className="truncate font-['Noto_Sans_Bengali'] text-lg font-bold text-text-primary">
                 {scope === 'full' ? t('exam.fullModelTest') : subjectName}
               </h2>
             </div>
@@ -261,7 +261,7 @@ const ModelTestScreen: React.FC<ModelTestScreenProps> = ({ onViewChange }) => {
       ) : (
         <section>
           <div className="mb-3">
-            <h2 className="font-['Hind_Siliguri'] text-lg font-bold text-text-primary">
+            <h2 className="font-['Noto_Sans_Bengali'] text-lg font-bold text-text-primary">
               {t('exam.modelSelectSubject')}
             </h2>
             <p className="mt-1 text-sm text-text-secondary">{t('exam.modelSelectSubjectHint')}</p>
@@ -298,7 +298,7 @@ const ModelTestScreen: React.FC<ModelTestScreenProps> = ({ onViewChange }) => {
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface text-primary">
                         <Icon size={20} strokeWidth={2} />
                       </span>
-                      <span className="truncate font-['Hind_Siliguri'] text-[15px] font-medium text-text-primary">
+                      <span className="truncate font-['Noto_Sans_Bengali'] text-[15px] font-medium text-text-primary">
                         {pickLang(language, subject.name_bn, subject.name_en)}
                       </span>
                     </span>

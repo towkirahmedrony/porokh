@@ -95,7 +95,7 @@ const FeatureGrid: React.FC<FeatureGridProps> = memo(
           role="alert"
           className="rounded-[22px] border border-card-border bg-card-bg px-4 py-5 text-center"
         >
-          <p className="font-['Hind_Siliguri'] text-sm font-semibold leading-6 text-text-primary">
+          <p className="font-['Noto_Sans_Bengali'] text-sm font-semibold leading-6 text-text-primary">
             {t('home.featuresLoadFailed')}
           </p>
           {onRetry && (
@@ -130,7 +130,7 @@ const FeatureGrid: React.FC<FeatureGridProps> = memo(
 
               <div className="relative z-10 mt-2 flex min-h-8 flex-1 flex-col items-center justify-center">
                 <span
-                  className="line-clamp-2 select-none font-['Hind_Siliguri'] text-[13px] font-semibold leading-snug text-pretty !no-underline [text-decoration-line:none!important] text-text-primary"
+                  className="line-clamp-2 select-none font-['Noto_Sans_Bengali'] text-[13px] font-semibold leading-snug text-pretty !no-underline [text-decoration-line:none!important] text-text-primary"
                   style={color ? { color } : undefined}
                 >
                   {label}

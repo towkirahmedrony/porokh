@@ -38,7 +38,7 @@ const StatRow: React.FC<StatRowProps> = ({ icon: Icon, label, myValue, theirValu
       
       <div className="flex flex-col items-center justify-center">
         <Icon className="w-4 h-4 mb-1 text-text-secondary" />
-        <span className="text-[10px] font-['Hind_Siliguri'] text-text-secondary">{label}</span>
+        <span className="text-[10px] font-['Noto_Sans_Bengali'] text-text-secondary">{label}</span>
       </div>
 
       <div className={`text-center font-bold text-sm font-['Inter'] ${(!iWin && !tie) ? 'text-accent' : 'text-text-secondary'}`}>

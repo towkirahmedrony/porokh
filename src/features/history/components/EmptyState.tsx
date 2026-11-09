@@ -60,10 +60,10 @@ export const EmptyState: React.FC<Props> = memo(({ type }) => {
         />
       </div>
 
-      <h3 className="text-text-primary text-xl font-bold mb-2 font-['Hind_Siliguri']">
+      <h3 className="text-text-primary text-xl font-bold mb-2 font-['Noto_Sans_Bengali']">
         {t(current.titleKey)}
       </h3>
-      <p className="text-text-secondary max-w-xs mx-auto mb-8 font-['Hind_Siliguri'] text-sm">
+      <p className="text-text-secondary max-w-xs mx-auto mb-8 font-['Noto_Sans_Bengali'] text-sm">
         {t(current.descKey)}
       </p>
 
@@ -71,7 +71,7 @@ export const EmptyState: React.FC<Props> = memo(({ type }) => {
         onClick={() => navigate(current.link)}
         className="bg-card-bg border border-border-color hover:bg-surface-elevated group flex items-center space-x-2 px-6 py-3 rounded-full shadow-sm transition-all duration-300 hover:shadow-md active:scale-95"
       >
-        <span className="text-primary text-sm font-semibold font-['Hind_Siliguri'] transition-colors">
+        <span className="text-primary text-sm font-semibold font-['Noto_Sans_Bengali'] transition-colors">
           {t(current.btnKey)}
         </span>
         <ArrowRight className="text-primary w-4 h-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />

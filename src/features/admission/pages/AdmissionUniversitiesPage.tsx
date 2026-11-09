@@ -53,10 +53,10 @@ const AdmissionUniversitiesPage: React.FC = () => {
       />
 
       <header className="mb-4">
-        <h1 className="font-['Hind_Siliguri'] text-2xl font-bold leading-snug text-text-primary">
+        <h1 className="font-['Noto_Sans_Bengali'] text-2xl font-bold leading-snug text-text-primary">
           {t('admission.universityListTitle')}
         </h1>
-        <p className="mt-1 font-['Hind_Siliguri'] text-sm leading-6 text-text-secondary">
+        <p className="mt-1 font-['Noto_Sans_Bengali'] text-sm leading-6 text-text-secondary">
           {t('admission.universityListHint')}
         </p>
 

@@ -44,15 +44,15 @@ const AdmissionUnitCard: React.FC<AdmissionUnitCardProps> = ({
 
   const content = (
     <>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-badge-bg font-['Hind_Siliguri'] text-lg font-bold uppercase text-badge-text">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-badge-bg font-['Noto_Sans_Bengali'] text-lg font-bold uppercase text-badge-text">
         {unit.code}
       </span>
 
-      <span className="mt-2.5 line-clamp-2 font-['Hind_Siliguri'] text-sm font-bold leading-snug text-text-primary">
+      <span className="mt-2.5 line-clamp-2 font-['Noto_Sans_Bengali'] text-sm font-bold leading-snug text-text-primary">
         {name}
       </span>
 
-      <span className="mt-1 text-[11px] font-medium leading-snug text-text-secondary">
+      <span className="font-bengali mt-1 min-h-[1.55em] text-[11px] font-medium leading-[1.55] text-text-secondary">
         {unit.isAvailable ? countLine : t('admission.hub.comingSoon')}
       </span>
     </>

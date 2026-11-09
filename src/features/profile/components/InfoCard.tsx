@@ -14,7 +14,7 @@ export const InfoCard: React.FC<InfoCardProps> = memo(({ title, icon, children }
         <div className="p-2 rounded-xl bg-surface-elevated text-primary">
           {icon}
         </div>
-        <h3 className="text-sm font-bold uppercase tracking-wider font-['Hind_Siliguri'] text-text-primary">
+        <h3 className="text-sm font-bold uppercase tracking-wider font-['Noto_Sans_Bengali'] text-text-primary">
           {title}
         </h3>
       </div>
@@ -36,15 +36,15 @@ interface InfoRowProps {
 export const InfoRow: React.FC<InfoRowProps> = memo(({ label, value, isVerified }) => {
   const { t } = useLanguage();
   return <div className="flex justify-between items-center group">
-    <span className="text-sm font-medium font-['Hind_Siliguri'] transition-colors text-text-secondary">
+    <span className="text-sm font-medium font-['Noto_Sans_Bengali'] transition-colors text-text-secondary">
       {label}
     </span>
     <div className="text-right flex items-center gap-2">
-      <span className={`text-sm font-semibold font-['Hind_Siliguri'] ${value ? 'text-text-primary' : 'text-text-secondary'}`}>
+      <span className={`text-sm font-semibold font-['Noto_Sans_Bengali'] ${value ? 'text-text-primary' : 'text-text-secondary'}`}>
         {value || t('profile.notProvided')}
       </span>
       {isVerified && (
-        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide font-['Hind_Siliguri'] bg-badge-bg text-badge-text">
+        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide font-['Noto_Sans_Bengali'] bg-badge-bg text-badge-text">
           {t('profile.verified')}
         </span>
       )}

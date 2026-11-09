@@ -13,7 +13,7 @@ const ModelPageHeader: React.FC<ModelPageHeaderProps> = ({ title, subtitle, onBa
       <div className="mx-auto flex min-h-14 w-full max-w-4xl items-center gap-3 px-3 py-2">
         <BackButton onClick={onBack} />
         <div className="min-w-0">
-          <h1 className="truncate font-['Hind_Siliguri'] text-lg font-bold leading-tight text-text-primary">
+          <h1 className="truncate font-['Noto_Sans_Bengali'] text-lg font-bold leading-tight text-text-primary">
             {title}
           </h1>
           {subtitle && (

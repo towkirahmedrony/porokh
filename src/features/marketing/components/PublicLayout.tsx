@@ -88,7 +88,7 @@ export const PublicLayout: React.FC = () => {
   return (
     <div
       className={`flex min-h-screen flex-col bg-app text-text-primary ${
-        language === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans'
+        language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans'
       }`}
     >
       <a

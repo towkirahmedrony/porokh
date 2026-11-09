@@ -116,10 +116,10 @@ const DynamicBanner: React.FC<DynamicBannerProps> = ({ banners, isLoading }) => 
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="font-['Hind_Siliguri'] text-base font-bold leading-tight text-text-primary">
+                  <p className="font-['Noto_Sans_Bengali'] text-base font-bold leading-tight text-text-primary">
                     {pickLang(language, banner.title_bn || banner.title, banner.title_en)}
                   </p>
-                  <p className="mt-0.5 line-clamp-2 font-['Hind_Siliguri'] text-xs leading-snug text-text-secondary">
+                  <p className="mt-0.5 line-clamp-2 font-['Noto_Sans_Bengali'] text-xs leading-snug text-text-secondary">
                     {pickLang(
                       language,
                       banner.target_rules?.description_bn || banner.description_bn || banner.description,

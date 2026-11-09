@@ -60,12 +60,12 @@ export const AdmissionGroupCard: React.FC<AdmissionGroupCardProps> = ({
       </div>
 
       <div className="mt-4 flex-1">
-        <h3 className="font-['Hind_Siliguri'] text-lg font-bold text-text-primary">
+        <h3 className="font-['Noto_Sans_Bengali'] text-lg font-bold text-text-primary">
           {getAdmissionGroupName(group, t, language)}
         </h3>
 
         {description && (
-          <p className="mt-1.5 font-['Hind_Siliguri'] text-sm leading-6 text-text-secondary">
+          <p className="mt-1.5 font-['Noto_Sans_Bengali'] text-sm leading-6 text-text-secondary">
             {description}
           </p>
         )}

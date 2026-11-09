@@ -93,11 +93,11 @@ const AdmissionLandingPage: React.FC = () => {
             {t('admission.eyebrow')}
           </div>
 
-          <h1 className="font-['Hind_Siliguri'] text-3xl font-bold leading-tight text-text-primary sm:text-4xl">
+          <h1 className="font-['Noto_Sans_Bengali'] text-3xl font-bold leading-tight text-text-primary sm:text-4xl">
             {t('admission.title')}
           </h1>
 
-          <p className="mt-3 font-['Hind_Siliguri'] text-sm leading-7 text-text-secondary sm:text-base">
+          <p className="mt-3 font-['Noto_Sans_Bengali'] text-sm leading-7 text-text-secondary sm:text-base">
             {t('admission.intro')}
           </p>
 
@@ -116,7 +116,7 @@ const AdmissionLandingPage: React.FC = () => {
                 <Landmark className="h-4 w-4" aria-hidden="true" />
                 {t('admission.universityStat')}
               </div>
-              <p className="mt-1 font-['Hind_Siliguri'] text-2xl font-bold text-text-primary">
+              <p className="mt-1 font-['Noto_Sans_Bengali'] text-2xl font-bold text-text-primary">
                 {formatAdmissionCount(universityCount, language)}
               </p>
             </div>
@@ -126,7 +126,7 @@ const AdmissionLandingPage: React.FC = () => {
                 <ListChecks className="h-4 w-4" aria-hidden="true" />
                 {t('admission.totalExams')}
               </div>
-              <p className="mt-1 font-['Hind_Siliguri'] text-2xl font-bold text-text-primary">
+              <p className="mt-1 font-['Noto_Sans_Bengali'] text-2xl font-bold text-text-primary">
                 {formatAdmissionCount(examCount, language)}
               </p>
             </div>
@@ -135,10 +135,10 @@ const AdmissionLandingPage: React.FC = () => {
       </section>
 
       <section className="mt-5 rounded-3xl bg-card-bg p-5 sm:p-6">
-        <h2 className="font-['Hind_Siliguri'] text-lg font-bold text-text-primary sm:text-xl">
+        <h2 className="font-['Noto_Sans_Bengali'] text-lg font-bold text-text-primary sm:text-xl">
           {t('admission.modelTestCtaTitle')}
         </h2>
-        <p className="mt-1 font-['Hind_Siliguri'] text-sm text-text-secondary">
+        <p className="mt-1 font-['Noto_Sans_Bengali'] text-sm text-text-secondary">
           {t('admission.modelTestCtaHint')}
         </p>
 
@@ -179,10 +179,10 @@ const AdmissionLandingPage: React.FC = () => {
           <section className="mt-7">
             <div className="mb-3 flex items-end justify-between gap-4">
               <div>
-                <h2 className="font-['Hind_Siliguri'] text-xl font-bold text-text-primary sm:text-2xl">
+                <h2 className="font-['Noto_Sans_Bengali'] text-xl font-bold text-text-primary sm:text-2xl">
                   {t('admission.browseGroups')}
                 </h2>
-                <p className="mt-1 font-['Hind_Siliguri'] text-sm text-text-secondary">
+                <p className="mt-1 font-['Noto_Sans_Bengali'] text-sm text-text-secondary">
                   {t('admission.browseGroupsHint')}
                 </p>
               </div>
@@ -202,10 +202,10 @@ const AdmissionLandingPage: React.FC = () => {
           {featuredUniversities.length > 0 && (
             <section className="mt-7">
               <div className="mb-3">
-                <h2 className="font-['Hind_Siliguri'] text-xl font-bold text-text-primary sm:text-2xl">
+                <h2 className="font-['Noto_Sans_Bengali'] text-xl font-bold text-text-primary sm:text-2xl">
                   {t('admission.featuredUniversities')}
                 </h2>
-                <p className="mt-1 font-['Hind_Siliguri'] text-sm text-text-secondary">
+                <p className="mt-1 font-['Noto_Sans_Bengali'] text-sm text-text-secondary">
                   {t('admission.featuredHint')}
                 </p>
               </div>

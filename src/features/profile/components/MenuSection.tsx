@@ -38,7 +38,7 @@ const MenuSection: React.FC = memo(() => {
   return (
     <div className="rounded-3xl overflow-hidden shadow-sm transition-all duration-300 bg-card-bg border border-card-border pb-2">
       <div className="px-5 py-4 mb-2 bg-surface border-b border-border-color">
-        <h3 className="text-xs font-bold uppercase tracking-wider font-['Hind_Siliguri'] text-text-secondary">
+        <h3 className="text-xs font-bold uppercase tracking-wider font-['Noto_Sans_Bengali'] text-text-secondary">
           {t('profile.accountSettings')}
         </h3>
       </div>
@@ -75,7 +75,7 @@ const MenuSection: React.FC = memo(() => {
             <div className="p-2 rounded-xl transition-colors bg-surface-elevated text-primary">
               <Shield size={18} />
             </div>
-            <span className="font-medium font-['Hind_Siliguri'] text-text-primary">{t('profile.helpLegal')}</span>
+            <span className="font-medium font-['Noto_Sans_Bengali'] text-text-primary">{t('profile.helpLegal')}</span>
           </div>
           <ChevronRight size={18} className={`transition-transform duration-300 text-text-secondary ${isLegalOpen ? 'rotate-90' : ''}`} />
         </button>
@@ -102,7 +102,7 @@ const MenuSection: React.FC = memo(() => {
           <div className="p-2 rounded-xl transition-colors bg-surface-elevated text-red-500">
             <LogOut size={18} />
           </div>
-          <span className="font-medium font-['Hind_Siliguri'] text-red-500">{t('profile.logout')}</span>
+          <span className="font-medium font-['Noto_Sans_Bengali'] text-red-500">{t('profile.logout')}</span>
         </div>
       </button>
     </div>
@@ -124,7 +124,7 @@ const MenuItem: React.FC<MenuItemProps> = memo(({ icon, label, onClick, rightEle
       <div className="p-2 rounded-xl transition-colors bg-surface-elevated text-primary">
         {icon}
       </div>
-      <span className="font-medium font-['Hind_Siliguri'] text-text-primary">{label}</span>
+      <span className="font-medium font-['Noto_Sans_Bengali'] text-text-primary">{label}</span>
     </div>
     {rightElement ? rightElement : <ChevronRight size={18} className="text-text-secondary" />}
   </button>
@@ -134,7 +134,7 @@ MenuItem.displayName = 'MenuItem';
 
 const SubMenuItem: React.FC<{ label: string; onClick?: () => void; danger?: boolean; }> = memo(({ label, onClick, danger }) => (
   <button onClick={onClick} className="w-full flex items-center justify-start py-2 pl-4 transition-colors hover:pl-5 duration-200">
-    <span className={`font-medium font-['Hind_Siliguri'] text-[13px] ${danger ? 'text-red-500' : 'text-text-secondary'}`}>
+    <span className={`font-medium font-['Noto_Sans_Bengali'] text-[13px] ${danger ? 'text-red-500' : 'text-text-secondary'}`}>
       {label}
     </span>
   </button>

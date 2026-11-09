@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -91,10 +91,17 @@
 @layer components {
   /* Shared Base Helpers */
   .page-title {
-    @apply text-2xl font-bold text-text-primary font-['Hind_Siliguri'];
+    @apply text-2xl font-bold text-text-primary font-['Noto_Sans_Bengali'];
   }
   .page-subtitle {
-    @apply text-text-secondary font-['Hind_Siliguri'];
+    @apply text-text-secondary font-['Noto_Sans_Bengali'];
+  }
+
+  /* Bengali vowel signs and numerals need more vertical breathing room than
+     Latin text, especially in small metadata labels. */
+  .font-bengali {
+    font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+    line-height: 1.55;
   }
 }
 

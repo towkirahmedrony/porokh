@@ -50,7 +50,7 @@ const UserProfile: React.FC = () => {
       : null;
 
   return (
-    <div className={`container mx-auto px-4 py-6 space-y-6 animate-in fade-in duration-300 pb-24 bg-app text-text-primary ${language === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans'}`}>
+    <div className={`container mx-auto px-4 py-6 space-y-6 animate-in fade-in duration-300 pb-24 bg-app text-text-primary ${language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans'}`}>
       <div className="flex justify-end">
         <LanguageSwitcher />
       </div>

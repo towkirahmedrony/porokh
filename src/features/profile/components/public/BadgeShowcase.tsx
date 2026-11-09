@@ -17,10 +17,10 @@ const BadgeShowcase: React.FC<{ badges: Badge[] }> = ({ badges }) => {
   return (
     <div className="py-2 mb-20">
       <div className="px-6 mb-4 flex justify-between items-end">
-        <h3 className="text-lg font-bold font-['Hind_Siliguri'] text-text-primary">
+        <h3 className="text-lg font-bold font-['Noto_Sans_Bengali'] text-text-primary">
 {t('profile.achievements')}
         </h3>
-        <span className="text-xs font-['Hind_Siliguri'] text-text-secondary">
+        <span className="text-xs font-['Noto_Sans_Bengali'] text-text-secondary">
 {t('profile.unlockedCount', { done: badges.filter(b => b.is_earned).length, total: badges.length })}
         </span>
       </div>
@@ -58,7 +58,7 @@ const BadgeShowcase: React.FC<{ badges: Badge[] }> = ({ badges }) => {
                 </div>
               )}
             </div>
-            <span className="text-xs text-center font-medium line-clamp-2 leading-tight font-['Hind_Siliguri'] text-text-primary">
+            <span className="text-xs text-center font-medium line-clamp-2 leading-tight font-['Noto_Sans_Bengali'] text-text-primary">
               {badge.title}
             </span>
           </motion.div>

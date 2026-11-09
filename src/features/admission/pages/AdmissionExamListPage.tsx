@@ -195,11 +195,11 @@ const AdmissionExamListPage: React.FC = () => {
       <AdmissionBreadcrumb items={breadcrumbItems} />
 
       <header className="rounded-3xl border border-card-border bg-card-bg px-5 py-6 shadow-sm sm:px-7">
-        <h1 className="font-['Hind_Siliguri'] text-2xl font-bold text-text-primary sm:text-3xl">
+        <h1 className="font-['Noto_Sans_Bengali'] text-2xl font-bold text-text-primary sm:text-3xl">
           {t('admission.universityExamsTitle')}
         </h1>
 
-        <p className="mt-1 font-['Hind_Siliguri'] text-sm text-text-secondary sm:text-base">
+        <p className="mt-1 font-['Noto_Sans_Bengali'] text-sm text-text-secondary sm:text-base">
           {[universityName, examTypeLabel, selectedUnitName]
             .filter(Boolean)
             .join(' • ')}
@@ -211,7 +211,7 @@ const AdmissionExamListPage: React.FC = () => {
 
         {units.length > 0 && (
           <div className="mt-5">
-            <h2 className="mb-2 font-['Hind_Siliguri'] text-sm font-bold text-text-primary">
+            <h2 className="mb-2 font-['Noto_Sans_Bengali'] text-sm font-bold text-text-primary">
               {t('admission.unitsTitle')}
             </h2>
             <AdmissionUnitSelector

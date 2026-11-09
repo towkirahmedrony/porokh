@@ -21,7 +21,7 @@ export const AdmissionQuestionNavigator: React.FC<
       className="rounded-2xl border border-card-border bg-card-bg p-4 shadow-sm"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="font-['Hind_Siliguri'] text-sm font-bold text-text-primary">
+        <h2 className="font-['Noto_Sans_Bengali'] text-sm font-bold text-text-primary">
           {t('admission.questionNavigator')}
         </h2>
 

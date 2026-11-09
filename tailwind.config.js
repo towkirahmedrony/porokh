@@ -34,6 +34,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'Hind Siliguri', 'sans-serif'],
+        bengali: ['Noto Sans Bengali', 'Hind Siliguri', 'sans-serif'],
       },
     },
   },

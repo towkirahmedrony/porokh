@@ -398,7 +398,7 @@ const Analysis: React.FC = () => {
             <Trophy size={28} strokeWidth={2} />
           </div>
 
-          <h2 className="text-xl md:text-2xl font-bold mb-6 font-['Hind_Siliguri'] text-text-primary">
+          <h2 className="text-xl md:text-2xl font-bold mb-6 font-['Noto_Sans_Bengali'] text-text-primary">
             {t('analysis.title')}
           </h2>
 
@@ -435,7 +435,7 @@ const Analysis: React.FC = () => {
           </div>
 
           <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border shadow-sm font-mono text-lg md:text-xl bg-surface border-border-color">
-            <span className="font-semibold opacity-70 text-sm md:text-base font-['Hind_Siliguri'] text-text-secondary">
+            <span className="font-semibold opacity-70 text-sm md:text-base font-['Noto_Sans_Bengali'] text-text-secondary">
               {t('analysis.score')}
             </span>
             <span className="font-bold text-text-primary">

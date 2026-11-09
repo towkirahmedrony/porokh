@@ -58,10 +58,10 @@ const Marketplace: React.FC = () => {
     <div className="min-h-screen p-4 md:p-8 bg-app text-text-primary">
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-text-primary font-['Hind_Siliguri']">
+          <h1 className="text-3xl font-extrabold text-text-primary font-['Noto_Sans_Bengali']">
             {t('marketplace.title')}
           </h1>
-          <p className="mt-2 text-sm text-text-secondary font-['Hind_Siliguri']">
+          <p className="mt-2 text-sm text-text-secondary font-['Noto_Sans_Bengali']">
             {t('marketplace.subtitle')}
           </p>
         </div>
@@ -73,7 +73,7 @@ const Marketplace: React.FC = () => {
             </svg>
           </div>
           <div>
-            <p className="text-[10px] text-text-secondary uppercase tracking-widest font-['Hind_Siliguri']">{t('marketplace.totalCoins')}</p>
+            <p className="text-[10px] text-text-secondary uppercase tracking-widest font-['Noto_Sans_Bengali']">{t('marketplace.totalCoins')}</p>
             <p className="text-2xl font-bold text-text-primary">
               {isCoinsLoading ? '...' : coinBalance.toLocaleString()}
             </p>
@@ -82,7 +82,7 @@ const Marketplace: React.FC = () => {
       </div>
 
       {purchaseError && (
-        <div className="mb-6 p-4 rounded-xl bg-surface-elevated border border-border-color text-text-primary text-sm font-['Hind_Siliguri']">
+        <div className="mb-6 p-4 rounded-xl bg-surface-elevated border border-border-color text-text-primary text-sm font-['Noto_Sans_Bengali']">
           ⚠️ {purchaseError}
         </div>
       )}
@@ -91,18 +91,18 @@ const Marketplace: React.FC = () => {
         {isItemsLoading ? (
           [1, 2, 3].map(i => <div key={i} className="h-64 rounded-2xl bg-surface animate-pulse border border-border-color" />)
         ) : marketplaceItems.length === 0 ? (
-          <div className="col-span-full text-center py-10 text-text-secondary font-['Hind_Siliguri']">
+          <div className="col-span-full text-center py-10 text-text-secondary font-['Noto_Sans_Bengali']">
             {t('marketplace.empty')}
           </div>
         ) : (
           marketplaceItems.map((item: MarketplaceItem) => (
             <div key={item.id} className="rounded-2xl bg-card-bg border border-card-border p-6 flex flex-col justify-between hover:ring-1 hover:ring-focus-ring transition-all">
               <div>
-                <h3 className="text-xl font-bold mb-2 text-text-primary font-['Hind_Siliguri']">{pickLang(language, item.title, item.title_en)}</h3>
-                <p className="text-sm mb-4 text-text-secondary font-['Hind_Siliguri']">{pickLang(language, item.description, item.description_en)}</p>
+                <h3 className="text-xl font-bold mb-2 text-text-primary font-['Noto_Sans_Bengali']">{pickLang(language, item.title, item.title_en)}</h3>
+                <p className="text-sm mb-4 text-text-secondary font-['Noto_Sans_Bengali']">{pickLang(language, item.description, item.description_en)}</p>
                 <ul className="space-y-2 mb-6">
                   {getFeatures(item, language).map((f, i) => (
-                    <li key={i} className="text-xs text-text-secondary flex items-center gap-2 font-['Hind_Siliguri']">
+                    <li key={i} className="text-xs text-text-secondary flex items-center gap-2 font-['Noto_Sans_Bengali']">
                       ✅ {f}
                     </li>
                   ))}
@@ -113,7 +113,7 @@ const Marketplace: React.FC = () => {
                 <button 
                   onClick={() => handlePurchase(item)}
                   disabled={purchaseMutation.isPending}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:opacity-90 transition-opacity font-['Hind_Siliguri'] disabled:opacity-50"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:opacity-90 transition-opacity font-['Noto_Sans_Bengali'] disabled:opacity-50"
                 >
                   {purchaseMutation.isPending ? t('marketplace.processing') : t('marketplace.buy')}
                 </button>

@@ -154,12 +154,12 @@ const AdmissionUniversityPage: React.FC = () => {
 
       <section className="rounded-3xl border border-card-border bg-card-bg p-5 shadow-sm sm:p-7">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border-color bg-surface font-['Hind_Siliguri'] text-xl font-bold text-primary">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border-color bg-surface font-['Noto_Sans_Bengali'] text-xl font-bold text-primary">
             {initial}
           </div>
 
           <div className="min-w-0 flex-1">
-            <h1 className="font-['Hind_Siliguri'] text-2xl font-bold leading-snug text-text-primary sm:text-3xl">
+            <h1 className="font-['Noto_Sans_Bengali'] text-2xl font-bold leading-snug text-text-primary sm:text-3xl">
               {universityName}
             </h1>
 
@@ -193,10 +193,10 @@ const AdmissionUniversityPage: React.FC = () => {
 
       {units.length > 0 ? (
         <section className="mt-6">
-          <h2 className="font-['Hind_Siliguri'] text-xl font-bold text-text-primary">
+          <h2 className="font-['Noto_Sans_Bengali'] text-xl font-bold text-text-primary">
             {t('admission.unitsTitle')}
           </h2>
-          <p className="mt-1 font-['Hind_Siliguri'] text-sm text-text-secondary">
+          <p className="mt-1 font-['Noto_Sans_Bengali'] text-sm text-text-secondary">
             {t('admission.unitsHint')}
           </p>
 
@@ -219,10 +219,10 @@ const AdmissionUniversityPage: React.FC = () => {
         </section>
       ) : (
         <section className="mt-6 rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm">
-          <h2 className="font-['Hind_Siliguri'] text-lg font-bold text-text-primary">
+          <h2 className="font-['Noto_Sans_Bengali'] text-lg font-bold text-text-primary">
             {t('admission.universityExamsTitle')}
           </h2>
-          <p className="mt-1 font-['Hind_Siliguri'] text-sm text-text-secondary">
+          <p className="mt-1 font-['Noto_Sans_Bengali'] text-sm text-text-secondary">
             {t('admission.noUnits')}
           </p>
 

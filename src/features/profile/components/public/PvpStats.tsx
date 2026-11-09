@@ -37,7 +37,7 @@ const StatRow: React.FC<StatRowProps> = ({ icon: Icon, label, myValue, theirValu
         <div className="w-8 h-8 rounded-full flex items-center justify-center mb-1 bg-surface">
           <Icon className="w-4 h-4 text-primary" />
         </div>
-        <span className="text-[10px] uppercase font-bold tracking-wider font-['Hind_Siliguri'] text-text-secondary">
+        <span className="text-[10px] uppercase font-bold tracking-wider font-['Noto_Sans_Bengali'] text-text-secondary">
           {label}
         </span>
       </div>
@@ -62,8 +62,8 @@ const PvpStats: React.FC<PvpStatsProps> = ({ myStats, theirStats, opponentName, 
         className="m-4 p-5 rounded-2xl shadow-lg border bg-card-bg border-card-border"
       >
         <div className="mb-4">
-          <h3 className="text-lg font-bold font-['Hind_Siliguri'] text-text-primary">{t('profile.pvpTitle')} 🎮</h3>
-          <p className="text-xs font-['Hind_Siliguri'] text-text-secondary">{t('profile.pvpSubtitle')}</p>
+          <h3 className="text-lg font-bold font-['Noto_Sans_Bengali'] text-text-primary">{t('profile.pvpTitle')} 🎮</h3>
+          <p className="text-xs font-['Noto_Sans_Bengali'] text-text-secondary">{t('profile.pvpSubtitle')}</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3 rounded-xl flex items-center gap-3 border bg-surface border-border-color">
@@ -72,7 +72,7 @@ const PvpStats: React.FC<PvpStatsProps> = ({ myStats, theirStats, opponentName, 
             </div>
             <div>
               <div className="text-xl font-bold font-['Inter'] leading-none text-text-primary">{theirWinRate}%</div>
-              <div className="text-[10px] font-bold font-['Hind_Siliguri'] text-text-secondary">{t('profile.winRate')}</div>
+              <div className="text-[10px] font-bold font-['Noto_Sans_Bengali'] text-text-secondary">{t('profile.winRate')}</div>
             </div>
           </div>
           <div className="p-3 rounded-xl flex items-center gap-3 border bg-surface border-border-color">
@@ -81,7 +81,7 @@ const PvpStats: React.FC<PvpStatsProps> = ({ myStats, theirStats, opponentName, 
             </div>
             <div>
               <div className="text-xl font-bold font-['Inter'] leading-none text-text-primary">{theirStats.pvp_matches_played || 0}</div>
-              <div className="text-[10px] font-bold font-['Hind_Siliguri'] text-text-secondary">{t('profile.pvpTotalBattles')}</div>
+              <div className="text-[10px] font-bold font-['Noto_Sans_Bengali'] text-text-secondary">{t('profile.pvpTotalBattles')}</div>
             </div>
           </div>
           <div className="p-3 rounded-xl flex items-center gap-3 border col-span-2 bg-surface border-border-color">
@@ -90,7 +90,7 @@ const PvpStats: React.FC<PvpStatsProps> = ({ myStats, theirStats, opponentName, 
             </div>
             <div>
               <div className="text-xl font-bold font-['Inter'] leading-none text-text-primary">{theirStats.pvp_win_streak || 0}</div>
-              <div className="text-[10px] font-bold font-['Hind_Siliguri'] text-text-secondary">{t('profile.pvpWinStreak')}</div>
+              <div className="text-[10px] font-bold font-['Noto_Sans_Bengali'] text-text-secondary">{t('profile.pvpWinStreak')}</div>
             </div>
           </div>
         </div>

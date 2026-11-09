@@ -56,7 +56,7 @@ const ModelPaperCard: React.FC<ModelPaperCardProps> = ({ paper, onOpen }) => {
             )}
           </div>
 
-          <h3 className="font-['Hind_Siliguri'] text-base font-bold leading-snug text-text-primary">
+          <h3 className="font-['Noto_Sans_Bengali'] text-base font-bold leading-snug text-text-primary">
             {pickLang(language, paper.title, paper.title_en)}
           </h3>
         </div>

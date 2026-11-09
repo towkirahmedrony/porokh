@@ -23,12 +23,12 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         />
       </div>
       
-      <h3 className="text-text-primary font-['Hind_Siliguri'] text-lg font-semibold mb-2">
+      <h3 className="text-text-primary font-['Noto_Sans_Bengali'] text-lg font-semibold mb-2">
         {message}
       </h3>
       
       {subMessage && (
-        <p className="text-text-secondary font-['Hind_Siliguri'] text-sm max-w-xs mx-auto leading-relaxed">
+        <p className="text-text-secondary font-['Noto_Sans_Bengali'] text-sm max-w-xs mx-auto leading-relaxed">
           {subMessage}
         </p>
       )}

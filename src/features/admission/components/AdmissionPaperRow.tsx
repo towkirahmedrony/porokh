@@ -72,7 +72,7 @@ const AdmissionPaperRow: React.FC<AdmissionPaperRowProps> = ({
             )}
           </div>
 
-          <h3 className="mt-1.5 line-clamp-2 font-['Hind_Siliguri'] text-sm font-bold leading-snug text-text-primary">
+          <h3 className="mt-1.5 line-clamp-2 font-['Noto_Sans_Bengali'] text-sm font-bold leading-snug text-text-primary">
             {title}
           </h3>
         </div>

@@ -81,7 +81,7 @@ const ModelSubjectsPage: React.FC = () => {
             >
               <TrackIcon className="h-7 w-7" aria-hidden="true" />
             </span>
-            <h2 className="mt-4 font-['Hind_Siliguri'] text-base font-bold text-text-primary">
+            <h2 className="mt-4 font-['Noto_Sans_Bengali'] text-base font-bold text-text-primary">
               {t('exam.noTrackPapers')}
             </h2>
             <p className="mt-1 max-w-xs text-sm text-text-secondary">
@@ -92,7 +92,7 @@ const ModelSubjectsPage: React.FC = () => {
           <>
             {showFullSection && (
               <section className="space-y-3">
-                <h2 className="font-['Hind_Siliguri'] text-base font-bold text-text-primary">
+                <h2 className="font-['Noto_Sans_Bengali'] text-base font-bold text-text-primary">
                   {t('exam.fullModelTest')}
                 </h2>
                 {fullQuery.isLoading ? (
@@ -110,7 +110,7 @@ const ModelSubjectsPage: React.FC = () => {
 
             {subjects.length > 0 && (
               <section className="space-y-3">
-                <h2 className="font-['Hind_Siliguri'] text-base font-bold text-text-primary">
+                <h2 className="font-['Noto_Sans_Bengali'] text-base font-bold text-text-primary">
                   {t('exam.subjectWise')}
                 </h2>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -129,7 +129,7 @@ const ModelSubjectsPage: React.FC = () => {
                           <Icon size={20} strokeWidth={2} aria-hidden="true" />
                         </span>
                         <span>
-                          <span className="block font-['Hind_Siliguri'] text-[14.5px] font-semibold leading-snug text-text-primary">
+                          <span className="block font-['Noto_Sans_Bengali'] text-[14.5px] font-semibold leading-snug text-text-primary">
                             {pickLang(language, subject.name_bn, subject.name_en)}
                           </span>
                           <span className="mt-0.5 block text-xs text-text-secondary">

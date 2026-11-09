@@ -63,7 +63,7 @@ const History: React.FC = () => {
   } = useHistory(activeTab);
 
   const textFontClass =
-    language === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans';
+    language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans';
 
   // Reset pagination whenever the list itself changes shape
   useEffect(() => {

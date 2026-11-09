@@ -77,7 +77,7 @@ const SubjectList: React.FC<SubjectListProps> = memo(({ onSelect }) => {
                 <IconComponent size={26} strokeWidth={2.5} />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold font-['Hind_Siliguri'] text-[17px] md:text-[19px] leading-tight text-text-primary">
+                <h3 className="font-semibold font-['Noto_Sans_Bengali'] text-[17px] md:text-[19px] leading-tight text-text-primary">
                   {pickLang(language, subject.name_bn, subject.name_en) || subject.title || t('exam.untitledSubject')}
                 </h3>
               </div>

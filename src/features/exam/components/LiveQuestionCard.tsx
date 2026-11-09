@@ -57,7 +57,7 @@ const LiveQuestionCard: React.FC<LiveQuestionCardProps> = memo(({
             />
           )}
           
-          <div className="text-[15px] leading-relaxed font-['Hind_Siliguri'] text-text-secondary">
+          <div className="text-[15px] leading-relaxed font-['Noto_Sans_Bengali'] text-text-secondary">
             <MathDisplay content={question.comprehension.body} />
           </div>
         </div>
@@ -82,7 +82,7 @@ const LiveQuestionCard: React.FC<LiveQuestionCardProps> = memo(({
             {index + 1}
           </span>
           <div className="space-y-4 w-full pt-1">
-            <div className="text-[17px] md:text-[18px] font-medium font-['Hind_Siliguri'] leading-relaxed text-text-primary">
+            <div className="text-[17px] md:text-[18px] font-medium font-['Noto_Sans_Bengali'] leading-relaxed text-text-primary">
               <MathDisplay content={questionText} />
             </div>
             
@@ -116,7 +116,7 @@ const LiveQuestionCard: React.FC<LiveQuestionCardProps> = memo(({
                   <div className={`flex-shrink-0 w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all duration-200 ${isCorrectOption ? 'bg-emerald-500 border-transparent' : isWrongSelection ? 'bg-red-500 border-transparent' : isSelected ? 'bg-primary border-transparent' : 'bg-transparent border-border-color'}`}>
                     {isSelected && !isCorrectOption && !isWrongSelection && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
                   </div>
-                  <span className={`text-[15px] md:text-[16px] font-['Hind_Siliguri'] leading-snug ${isCorrectOption ? 'text-emerald-700 font-semibold' : isWrongSelection ? 'text-red-700 line-through opacity-80' : isSelected ? 'text-text-primary font-semibold' : 'text-text-secondary font-normal'}`}>
+                  <span className={`text-[15px] md:text-[16px] font-['Noto_Sans_Bengali'] leading-snug ${isCorrectOption ? 'text-emerald-700 font-semibold' : isWrongSelection ? 'text-red-700 line-through opacity-80' : isSelected ? 'text-text-primary font-semibold' : 'text-text-secondary font-normal'}`}>
                     <MathDisplay content={pickLang(language, option.text_bn, option.text_en) || option.text} />
                   </span>
                 </div>

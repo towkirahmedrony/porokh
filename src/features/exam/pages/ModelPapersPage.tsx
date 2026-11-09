@@ -86,7 +86,7 @@ const ModelPapersPage: React.FC = () => {
           ))
         ) : (
           <div className="rounded-3xl border border-border-color bg-card-bg px-6 py-10 text-center">
-            <h2 className="font-['Hind_Siliguri'] text-base font-bold text-text-primary">
+            <h2 className="font-['Noto_Sans_Bengali'] text-base font-bold text-text-primary">
               {t('exam.noModelPapers')}
             </h2>
             <p className="mt-1 text-sm text-text-secondary">{t('exam.noModelPapersHint')}</p>

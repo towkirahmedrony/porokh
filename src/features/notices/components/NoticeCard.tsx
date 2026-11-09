@@ -54,13 +54,13 @@ const NoticeCard: React.FC<NoticeCardProps> = ({ notice, onOpen }) => {
           </div>
 
           <h3
-            className={`font-['Hind_Siliguri'] text-sm leading-5 text-text-primary ${
+            className={`font-['Noto_Sans_Bengali'] text-sm leading-5 text-text-primary ${
               isUnread ? 'font-bold' : 'font-semibold'
             }`}
           >
             {title}
           </h3>
-          <p className="mt-0.5 line-clamp-2 font-['Hind_Siliguri'] text-xs leading-5 text-text-secondary">
+          <p className="mt-0.5 line-clamp-2 font-['Noto_Sans_Bengali'] text-xs leading-5 text-text-secondary">
             {body}
           </p>
 

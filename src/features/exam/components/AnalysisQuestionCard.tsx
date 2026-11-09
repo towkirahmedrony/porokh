@@ -272,7 +272,7 @@ const AnalysisQuestionCard: React.FC<AnalysisQuestionCardProps> = memo(({
 
       {bodyReady ? (
       <div className="p-4 sm:p-5 bg-surface">
-        <div className="font-['Hind_Siliguri'] text-[15px] sm:text-base mb-5 leading-relaxed text-text-primary">
+        <div className="font-['Noto_Sans_Bengali'] text-[15px] sm:text-base mb-5 leading-relaxed text-text-primary">
           {parsedQuestion.statements.length > 0 ? (
             <>
               <QuestionText text={parsedQuestion.stem} />
@@ -322,7 +322,7 @@ const AnalysisQuestionCard: React.FC<AnalysisQuestionCardProps> = memo(({
                 key={opt.id} 
                 className={`p-3.5 sm:p-4 rounded-xl border text-sm sm:text-base flex justify-between items-start gap-3 transition-colors ${containerClasses}`}
               >
-                <div className={`font-['Hind_Siliguri'] flex-1 ${textClasses}`}>
+                <div className={`font-['Noto_Sans_Bengali'] flex-1 ${textClasses}`}>
                   <MathDisplay content={pickLang(language, opt.text_bn, opt.text_en) || opt.text || ''} />
                 </div>
                 {isAns && <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />}
@@ -343,7 +343,7 @@ const AnalysisQuestionCard: React.FC<AnalysisQuestionCardProps> = memo(({
             >
               <span className="flex items-center gap-2">
                 <Sparkles size={18} className="shrink-0" />
-                <span className="font-['Hind_Siliguri']">
+                <span className="font-['Noto_Sans_Bengali']">
                   {aiPhase === 'closed' ? copy.show : copy.hide}
                 </span>
               </span>
@@ -359,7 +359,7 @@ const AnalysisQuestionCard: React.FC<AnalysisQuestionCardProps> = memo(({
                 className="mt-3 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 animate-in fade-in"
               >
                 <Sparkles size={18} className="shrink-0 text-primary animate-pulse motion-reduce:animate-none" />
-                <span className="font-['Hind_Siliguri'] text-sm text-text-secondary">{copy.thinking}</span>
+                <span className="font-['Noto_Sans_Bengali'] text-sm text-text-secondary">{copy.thinking}</span>
                 <span className="flex items-center gap-1" aria-hidden="true">
                   {[0, 150, 300].map((delay) => (
                     <span
@@ -379,13 +379,13 @@ const AnalysisQuestionCard: React.FC<AnalysisQuestionCardProps> = memo(({
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <Sparkles size={14} />
                     </span>
-                    <span className="font-['Hind_Siliguri'] text-sm font-bold text-text-primary">{copy.title}</span>
+                    <span className="font-['Noto_Sans_Bengali'] text-sm font-bold text-text-primary">{copy.title}</span>
                     <span className="rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-primary">
                       AI
                     </span>
                   </div>
                 )}
-                <div className="text-sm sm:text-base font-['Hind_Siliguri'] leading-relaxed text-text-primary">
+                <div className="text-sm sm:text-base font-['Noto_Sans_Bengali'] leading-relaxed text-text-primary">
                   <MathDisplay content={explanationText} className="whitespace-pre-line" />
                 </div>
               </div>

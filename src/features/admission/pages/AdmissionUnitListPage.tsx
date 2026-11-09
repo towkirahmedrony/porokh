@@ -96,10 +96,10 @@ const AdmissionUnitListPage: React.FC = () => {
             className="h-12 w-12"
           />
           <div className="min-w-0">
-            <h1 className="font-['Hind_Siliguri'] text-xl font-bold leading-snug text-text-primary sm:text-2xl">
+            <h1 className="font-['Noto_Sans_Bengali'] text-xl font-bold leading-snug text-text-primary sm:text-2xl">
               {universityName}
             </h1>
-            <p className="mt-0.5 font-['Hind_Siliguri'] text-sm text-text-secondary">
+            <p className="mt-0.5 font-['Noto_Sans_Bengali'] text-sm text-text-secondary">
               {t('admission.unitListHint')}
             </p>
           </div>

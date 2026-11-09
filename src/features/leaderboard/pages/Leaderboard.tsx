@@ -125,7 +125,7 @@ const Leaderboard: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen font-['Hind_Siliguri'] pb-24 pt-[135px] bg-app text-text-primary">
+    <div className="w-full min-h-screen font-['Noto_Sans_Bengali'] pb-24 pt-[135px] bg-app text-text-primary">
       <LeagueHeader
         selectedLeagueIndex={selectedLeagueIndex}
         selectedLeague={selectedLeague}

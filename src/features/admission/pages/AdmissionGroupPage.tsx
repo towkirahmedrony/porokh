@@ -93,12 +93,12 @@ const AdmissionGroupPage: React.FC = () => {
           {t('admission.backToAdmission')}
         </button>
 
-        <h1 className="font-['Hind_Siliguri'] text-2xl font-bold text-text-primary sm:text-3xl">
+        <h1 className="font-['Noto_Sans_Bengali'] text-2xl font-bold text-text-primary sm:text-3xl">
           {groupName}
         </h1>
 
         {description && (
-          <p className="mt-2 max-w-2xl font-['Hind_Siliguri'] text-sm leading-7 text-text-secondary sm:text-base">
+          <p className="mt-2 max-w-2xl font-['Noto_Sans_Bengali'] text-sm leading-7 text-text-secondary sm:text-base">
             {description}
           </p>
         )}

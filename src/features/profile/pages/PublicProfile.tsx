@@ -49,10 +49,10 @@ const PublicProfile: React.FC = () => {
         <div className="w-64 h-64 mb-4">
           <Lottie animationData={userNotFoundAnimation} loop={true} />
         </div>
-        <p className="font-['Hind_Siliguri'] text-lg font-medium mb-6 text-text-primary">
+        <p className="font-['Noto_Sans_Bengali'] text-lg font-medium mb-6 text-text-primary">
           {t('profile.loadError')}
         </p>
-        <button onClick={handleGoBack} className="flex items-center gap-2 px-6 py-2.5 rounded-full font-['Hind_Siliguri'] shadow-md active:scale-95 bg-primary text-primary-foreground">
+        <button onClick={handleGoBack} className="flex items-center gap-2 px-6 py-2.5 rounded-full font-['Noto_Sans_Bengali'] shadow-md active:scale-95 bg-primary text-primary-foreground">
 <ChevronLeft className="w-5 h-5" /> {t('common.back')}
         </button>
       </div>

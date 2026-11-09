@@ -51,7 +51,7 @@ const QuestionCard: React.FC<QuestionCardProps> = memo(({
               className="mb-3 max-h-72 w-full rounded-xl border border-border-color bg-surface-elevated object-contain"
             />
           )}
-          <div className="text-[15px] font-['Hind_Siliguri'] leading-relaxed text-text-secondary">
+          <div className="text-[15px] font-['Noto_Sans_Bengali'] leading-relaxed text-text-secondary">
             <MathDisplay content={question.comprehension.body} />
           </div>
         </div>
@@ -63,7 +63,7 @@ const QuestionCard: React.FC<QuestionCardProps> = memo(({
             Q
           </span>
           <div className="w-full space-y-3 pt-1">
-            <div className="text-[17px] md:text-[18px] font-medium font-['Hind_Siliguri'] leading-relaxed text-text-primary">
+            <div className="text-[17px] md:text-[18px] font-medium font-['Noto_Sans_Bengali'] leading-relaxed text-text-primary">
               <MathDisplay content={questionText} />
             </div>
 
@@ -92,7 +92,7 @@ const QuestionCard: React.FC<QuestionCardProps> = memo(({
                       <div className="w-2 h-2 rounded-full bg-primary-foreground" />
                     )}
                   </div>
-                  <span className={`text-[15px] md:text-[16px] font-['Hind_Siliguri'] leading-snug ${isSelected ? 'text-text-primary font-semibold' : 'text-text-secondary font-normal'}`}>
+                  <span className={`text-[15px] md:text-[16px] font-['Noto_Sans_Bengali'] leading-snug ${isSelected ? 'text-text-primary font-semibold' : 'text-text-secondary font-normal'}`}>
                     <MathDisplay content={pickLang(language, option.text_bn, option.text_en) || option.text} />
                     {option.image_url && (
                       <img

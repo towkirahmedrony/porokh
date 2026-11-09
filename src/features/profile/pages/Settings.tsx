@@ -147,7 +147,7 @@ export const Settings: React.FC = () => {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const textFontClass =
-    language === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans';
+    language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans';
 
   // The website always runs the deployed build, so update controls belong to
   // the Android app only.

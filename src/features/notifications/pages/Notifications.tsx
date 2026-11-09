@@ -185,7 +185,7 @@ const Notifications: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-['Hind_Siliguri'] bg-bgApp text-textPrimary">
+    <div className="min-h-screen flex flex-col font-['Noto_Sans_Bengali'] bg-bgApp text-textPrimary">
       <NotificationHeader
         activeTab={activeTab}
         setActiveTab={setActiveTab}

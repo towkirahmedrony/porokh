@@ -76,7 +76,7 @@ export const AdmissionExamCard: React.FC<AdmissionExamCardProps> = ({
             )}
           </div>
 
-          <h3 className="font-['Hind_Siliguri'] text-base font-bold leading-snug text-text-primary sm:text-lg">
+          <h3 className="font-['Noto_Sans_Bengali'] text-base font-bold leading-snug text-text-primary sm:text-lg">
             {exam.title}
           </h3>
         </div>

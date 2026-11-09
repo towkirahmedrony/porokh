@@ -885,7 +885,7 @@ const Arena: React.FC = () => {
               <ExamTimer seconds={timeLeft} layout="card" />
 
               <div className="p-6 rounded-2xl border shadow-sm bg-card-bg border-card-border">
-                <h3 className="font-bold text-lg mb-4 font-['Hind_Siliguri'] text-text-primary">
+                <h3 className="font-bold text-lg mb-4 font-['Noto_Sans_Bengali'] text-text-primary">
               {t('exam.progress')}
                 </h3>
 

@@ -90,7 +90,7 @@ const Home: React.FC = memo(() => {
   const { language, t } = useLanguage();
 
   const textFontClass =
-    language === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans';
+    language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans';
 
   const metadataName =
     normalizeDisplayName(user?.user_metadata?.full_name) ||

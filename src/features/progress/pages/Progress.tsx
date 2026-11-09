@@ -53,7 +53,7 @@ const Progress: React.FC = () => {
   const { language, t } = useLanguage();
 
   const textFontClass =
-    language === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans';
+    language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans';
 
   if (isPending && !data) {
     return <ProgressSkeleton label={t('progress.loadingLabel')} />;

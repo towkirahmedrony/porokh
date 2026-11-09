@@ -58,7 +58,7 @@ const LeaderboardSkeleton: React.FC<LeaderboardSkeletonProps> = ({ rowsOnly = fa
   }
 
   return (
-    <div className="w-full min-h-screen font-['Hind_Siliguri'] pb-24 pt-[135px] bg-app text-text-primary">
+    <div className="w-full min-h-screen font-['Noto_Sans_Bengali'] pb-24 pt-[135px] bg-app text-text-primary">
       <section className="relative overflow-hidden border-b border-primary/10 bg-surface/60 px-4 pb-7 pt-5">
         <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
 

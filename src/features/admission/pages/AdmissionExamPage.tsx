@@ -536,13 +536,13 @@ const AdmissionExamPage: React.FC = () => {
 
       <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-5 sm:py-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-card-border bg-card-bg px-4 py-2.5 text-xs font-semibold text-text-secondary sm:text-sm">
-          <span className="font-['Hind_Siliguri']">
+          <span className="font-['Noto_Sans_Bengali']">
             {t('admission.questionOf', {
               current: currentNumber,
               total: totalNumber,
             })}
           </span>
-          <span className="font-['Hind_Siliguri']">
+          <span className="font-['Noto_Sans_Bengali']">
             {t('admission.answered')}: {answeredNumber} / {totalNumber}
           </span>
         </div>

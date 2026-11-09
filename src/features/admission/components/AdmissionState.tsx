@@ -37,12 +37,12 @@ export const AdmissionState: React.FC<AdmissionStateProps> = ({
         <Icon className={`h-8 w-8 ${iconClass}`} aria-hidden="true" />
       </div>
 
-      <h2 className="mb-2 font-['Hind_Siliguri'] text-lg font-semibold text-text-primary">
+      <h2 className="mb-2 font-['Noto_Sans_Bengali'] text-lg font-semibold text-text-primary">
         {title}
       </h2>
 
       {message && (
-        <p className="mb-6 max-w-sm font-['Hind_Siliguri'] text-sm leading-relaxed text-text-secondary">
+        <p className="mb-6 max-w-sm font-['Noto_Sans_Bengali'] text-sm leading-relaxed text-text-secondary">
           {message}
         </p>
       )}

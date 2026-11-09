@@ -28,7 +28,7 @@ const UrgentNoticeStrip: React.FC = () => {
         <span className="block text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
           {t('notice.urgent')}
         </span>
-        <span className="line-clamp-2 font-['Hind_Siliguri'] text-xs font-semibold leading-5 text-text-primary">
+        <span className="line-clamp-2 font-['Noto_Sans_Bengali'] text-xs font-semibold leading-5 text-text-primary">
           {noticeTitle(notice, language)}
         </span>
       </button>

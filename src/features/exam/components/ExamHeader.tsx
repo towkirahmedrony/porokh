@@ -24,7 +24,7 @@ const ExamHeader: React.FC<ExamHeaderProps> = ({ title, icon: Icon, iconColor, o
         </button>
         <div className="flex items-center gap-2 text-text-primary">
           {Icon && <Icon size={18} className={iconColor} />}
-          <span className="font-['Hind_Siliguri'] font-semibold text-lg">
+          <span className="font-['Noto_Sans_Bengali'] font-semibold text-lg">
             {title}
           </span>
         </div>

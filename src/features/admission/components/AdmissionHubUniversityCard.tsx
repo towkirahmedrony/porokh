@@ -44,7 +44,7 @@ const AdmissionHubUniversityCard: React.FC<AdmissionHubUniversityCardProps> = ({
         shortName={university.shortName}
       />
 
-      <h2 className="mt-2.5 line-clamp-2 font-['Hind_Siliguri'] text-[13px] font-bold leading-snug text-text-primary">
+      <h2 className="mt-2.5 line-clamp-2 font-['Noto_Sans_Bengali'] text-[13px] font-bold leading-snug text-text-primary">
         {primaryName}
       </h2>
 

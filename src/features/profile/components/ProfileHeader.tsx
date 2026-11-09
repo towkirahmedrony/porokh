@@ -30,7 +30,7 @@ const bio = user?.bio || t('profile.bioPlaceholder');
       <button 
         onClick={() => navigate('/dashboard/marketplace')}
 title={t('profile.goToMarketplace')}
-        className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs shadow-sm font-['Hind_Siliguri'] cursor-pointer transition-transform hover:scale-105 active:scale-95 bg-surface-elevated text-text-primary border border-border-color backdrop-blur-sm"
+        className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs shadow-sm font-['Noto_Sans_Bengali'] cursor-pointer transition-transform hover:scale-105 active:scale-95 bg-surface-elevated text-text-primary border border-border-color backdrop-blur-sm"
       >
         <Coins size={14} style={{ color: '#F59E0B' }} />
         <span>{localizeDigits(userCoins, language)}</span>
@@ -52,7 +52,7 @@ title={t('profile.goToMarketplace')}
       </div>
       
       <div className="text-center mt-4 relative z-10">
-        <h1 className="text-2xl font-bold flex items-center justify-center gap-2 font-['Hind_Siliguri'] text-text-primary">
+        <h1 className="text-2xl font-bold flex items-center justify-center gap-2 font-['Noto_Sans_Bengali'] text-text-primary">
           {fullName}
           {user?.is_phone_verified && (
 <span title={t('profile.verified')} className="inline-flex">
@@ -60,7 +60,7 @@ title={t('profile.goToMarketplace')}
             </span>
           )}
         </h1>
-        <p className="text-sm mt-1 font-['Hind_Siliguri'] font-medium text-text-secondary">
+        <p className="text-sm mt-1 font-['Noto_Sans_Bengali'] font-medium text-text-secondary">
           {bio}
         </p>
       </div>
@@ -69,7 +69,7 @@ title={t('profile.goToMarketplace')}
       <div className="flex items-center gap-4 mt-6 relative z-10 w-full justify-center">
         <button 
           onClick={onEdit}
-          className="flex items-center gap-2 px-8 py-2.5 text-sm rounded-2xl font-bold shadow-md transition-all active:scale-95 hover:opacity-90 font-['Hind_Siliguri'] bg-primary text-primary-foreground"
+          className="flex items-center gap-2 px-8 py-2.5 text-sm rounded-2xl font-bold shadow-md transition-all active:scale-95 hover:opacity-90 font-['Noto_Sans_Bengali'] bg-primary text-primary-foreground"
         >
           <Edit3 size={16} />
           {t('profile.editProfile')}

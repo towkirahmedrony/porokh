@@ -16,7 +16,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose }
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/50">
       <div className="rounded-2xl w-full max-w-sm overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200 bg-surface-elevated">
         <div className="flex justify-between items-center p-4 border-b border-border-color">
-          <h3 className="font-semibold text-lg font-['Hind_Siliguri'] text-text-primary">
+          <h3 className="font-semibold text-lg font-['Noto_Sans_Bengali'] text-text-primary">
             {t('notification.permissionTitle')}
           </h3>
           <button 
@@ -36,7 +36,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose }
             />
           </div>
           
-          <p className="font-['Hind_Siliguri'] leading-relaxed text-text-secondary">
+          <p className="font-['Noto_Sans_Bengali'] leading-relaxed text-text-secondary">
             {t('notification.permissionGuide')}
           </p>
         </div>
@@ -47,7 +47,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose }
               onClose();
               window.location.reload(); 
             }}
-            className="w-full py-3 rounded-xl font-medium font-['Hind_Siliguri'] hover:opacity-90 transition-all shadow-lg shadow-primary/30 bg-primary text-primary-foreground"
+            className="w-full py-3 rounded-xl font-medium font-['Noto_Sans_Bengali'] hover:opacity-90 transition-all shadow-lg shadow-primary/30 bg-primary text-primary-foreground"
           >
             {t('notification.reload')}
           </button>

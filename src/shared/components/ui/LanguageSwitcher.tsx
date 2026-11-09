@@ -35,7 +35,7 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
             aria-pressed={isActive}
             title={LANGUAGE_OPTION_LABELS[option]}
             className={`rounded-full px-2.5 py-1.5 text-[11px] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card-bg sm:px-3 sm:text-xs ${
-              option === 'bn' ? "font-['Hind_Siliguri']" : 'font-sans'
+              option === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans'
             } ${
               isActive
                 ? 'bg-badge-bg text-badge-text shadow-sm'

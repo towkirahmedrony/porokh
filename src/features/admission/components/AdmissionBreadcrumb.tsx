@@ -44,8 +44,8 @@ export const AdmissionBreadcrumb: React.FC<AdmissionBreadcrumbProps> = ({
                 aria-current={isLast ? 'page' : undefined}
                 className={
                   isLast
-                    ? "font-semibold text-text-primary font-['Hind_Siliguri']"
-                    : "text-text-secondary font-['Hind_Siliguri']"
+                    ? "font-semibold text-text-primary font-['Noto_Sans_Bengali']"
+                    : "text-text-secondary font-['Noto_Sans_Bengali']"
                 }
               >
                 {item.label}

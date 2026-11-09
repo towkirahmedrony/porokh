@@ -58,7 +58,7 @@ export const AdmissionUnitSelector: React.FC<AdmissionUnitSelectorProps> = ({
                 : 'border-card-border bg-card-bg text-text-secondary hover:border-primary/40 hover:bg-surface'
             }`}
           >
-            <span className="block truncate font-['Hind_Siliguri'] text-sm font-bold">
+            <span className="block truncate font-['Noto_Sans_Bengali'] text-sm font-bold">
               {option.label}
             </span>
             <span className="mt-1 block text-xs">

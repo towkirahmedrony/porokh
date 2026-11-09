@@ -92,7 +92,7 @@ const SupportTicketDetail: React.FC = () => {
   const replyAllowed = canStudentReply(ticket.status);
 
   return (
-    <div className="min-h-screen bg-app pb-28 font-['Hind_Siliguri'] text-text-primary">
+    <div className="min-h-screen bg-app pb-28 font-['Noto_Sans_Bengali'] text-text-primary">
       <header className="sticky top-0 z-30 border-b border-border-color bg-surface/90 backdrop-blur-md">
         <div className="flex items-center gap-3 p-4">
           <button

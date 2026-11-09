@@ -45,24 +45,24 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ profile, onChallenge, isOwnPr
           </div>
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold shadow-md flex items-center border bg-card-bg border-border-color text-accent">
             <Shield className="w-3 h-3 mr-1 fill-current" />
-            <span className="font-['Hind_Siliguri']">
+            <span className="font-['Noto_Sans_Bengali']">
               {t('profile.ratingLabel')} {localizeDigits(profile.pvp_rating || PROFILE_DEFAULTS.RATING, language)}
             </span>
           </div>
         </div>
 
-        <h1 className="text-2xl font-bold mb-1 font-['Hind_Siliguri'] text-text-primary">
+        <h1 className="text-2xl font-bold mb-1 font-['Noto_Sans_Bengali'] text-text-primary">
           {profile.full_name || t('profile.anonymousUser')}
         </h1>
 
         {/* 🟢 ডায়নামিক শিক্ষাপ্রতিষ্ঠান ও ক্লাস */}
         {(profile.institution || profile.class_level) && (
-          <p className="text-sm font-medium mb-1 font-['Hind_Siliguri'] text-primary">
+          <p className="text-sm font-medium mb-1 font-['Noto_Sans_Bengali'] text-primary">
             {profile.institution || ''} {profile.class_level ? `• ${localizeClassLevel(profile.class_level, language)}` : ''}
           </p>
         )}
 
-        <p className="text-sm mb-5 font-['Hind_Siliguri'] text-text-secondary">
+        <p className="text-sm mb-5 font-['Noto_Sans_Bengali'] text-text-secondary">
           {profile.batch_year
             ? t('profile.batchValue', { year: localizeDigits(profile.batch_year, language) })
             : ''}{' '}
@@ -74,7 +74,7 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ profile, onChallenge, isOwnPr
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={onChallenge}
-            className="flex items-center gap-2 px-8 py-2.5 rounded-full font-bold shadow-lg transition-all font-['Hind_Siliguri'] bg-primary text-primary-foreground shadow-primary/40"
+            className="flex items-center gap-2 px-8 py-2.5 rounded-full font-bold shadow-lg transition-all font-['Noto_Sans_Bengali'] bg-primary text-primary-foreground shadow-primary/40"
           >
             <Swords className="w-5 h-5" />
 {t('profile.battle')}

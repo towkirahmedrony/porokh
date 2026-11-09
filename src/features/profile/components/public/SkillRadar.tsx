@@ -18,10 +18,10 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-card-bg border border-card-border p-3 rounded-lg shadow-sm">
-        <p className="text-text-secondary text-xs mb-1 font-['Hind_Siliguri']">{label}</p>
+        <p className="text-text-secondary text-xs mb-1 font-['Noto_Sans_Bengali']">{label}</p>
         {/* entry এবং index এর টাইপ নির্দিষ্ট করে দেওয়া হয়েছে */}
         {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-primary text-xs font-bold font-['Hind_Siliguri']">
+          <p key={index} className="text-primary text-xs font-bold font-['Noto_Sans_Bengali']">
             {entry.name}: {entry.value}
           </p>
         ))}
@@ -40,10 +40,10 @@ const SkillRadar: React.FC<SkillRadarProps> = ({ data }) => {
       className="m-4 p-5 rounded-2xl shadow-lg border bg-card-bg border-card-border"
     >
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold font-['Hind_Siliguri'] text-text-primary">
+        <h3 className="text-lg font-bold font-['Noto_Sans_Bengali'] text-text-primary">
           {t('profile.skills')} 🕸️
         </h3>
-        <span className="text-xs font-medium font-['Hind_Siliguri'] text-primary">
+        <span className="text-xs font-medium font-['Noto_Sans_Bengali'] text-primary">
           {t('profile.topSubjects')}
         </span>
       </div>

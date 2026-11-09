@@ -48,7 +48,7 @@ const UniversityLogo: React.FC<UniversityLogoProps> = ({
       ) : (
         <span
           aria-hidden="true"
-          className="font-['Hind_Siliguri'] text-sm font-bold leading-none"
+          className="font-['Noto_Sans_Bengali'] text-sm font-bold leading-none"
         >
           {fallback}
         </span>

@@ -51,10 +51,10 @@ export const AdmissionExamTypeCard: React.FC<AdmissionExamTypeCardProps> = ({
       </div>
 
       <div className="mt-5 flex-1">
-        <h3 className="font-['Hind_Siliguri'] text-xl font-bold text-text-primary">
+        <h3 className="font-['Noto_Sans_Bengali'] text-xl font-bold text-text-primary">
           {getAdmissionExamTypeLabel(examType, t)}
         </h3>
-        <p className="mt-1.5 font-['Hind_Siliguri'] text-sm leading-6 text-text-secondary">
+        <p className="mt-1.5 font-['Noto_Sans_Bengali'] text-sm leading-6 text-text-secondary">
           {getAdmissionExamTypeDescription(examType, t)}
         </p>
       </div>

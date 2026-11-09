@@ -19,9 +19,9 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-card-bg border border-card-border p-3 rounded-lg shadow-sm">
-        <p className="text-text-secondary text-xs mb-2 font-['Hind_Siliguri']">{label}</p>
+        <p className="text-text-secondary text-xs mb-2 font-['Noto_Sans_Bengali']">{label}</p>
         {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-text-primary text-xs font-medium font-['Hind_Siliguri']">
+          <p key={index} className="text-text-primary text-xs font-medium font-['Noto_Sans_Bengali']">
             {entry.name}: {entry.value}
           </p>
         ))}
@@ -41,15 +41,15 @@ const ActivityChart: React.FC<ActivityChartProps> = ({ data, opponentName, isOwn
     >
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h3 className="text-lg font-bold font-['Hind_Siliguri'] text-text-primary">
+          <h3 className="text-lg font-bold font-['Noto_Sans_Bengali'] text-text-primary">
 {isOwnProfile ? t('profile.myActivity') : t('profile.comparisonActivity')}
           </h3>
-          <p className="text-xs font-['Hind_Siliguri'] text-text-secondary">
+          <p className="text-xs font-['Noto_Sans_Bengali'] text-text-secondary">
 {t('profile.last7Days')}
           </p>
         </div>
         
-        <div className="flex gap-4 text-xs font-['Hind_Siliguri'] font-medium">
+        <div className="flex gap-4 text-xs font-['Noto_Sans_Bengali'] font-medium">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-primary"></div>
             <span className="text-text-primary">{t('profile.you')}</span>

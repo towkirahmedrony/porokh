@@ -112,7 +112,7 @@ const GreetingCard: React.FC<GreetingCardProps> = memo(
       <div className="px-4 py-4 sm:px-5 sm:py-5">
         <div className="inline-flex items-center gap-2 rounded-full bg-badge-bg px-3 py-1 text-badge-text">
           <Icon size={14} />
-          <span className={`font-['Hind_Siliguri'] text-xs font-medium ${greetingTextClass}`}>
+          <span className={`font-['Noto_Sans_Bengali'] text-xs font-medium ${greetingTextClass}`}>
             {t(greetingKey)}
           </span>
         </div>
@@ -121,13 +121,13 @@ const GreetingCard: React.FC<GreetingCardProps> = memo(
           {isNameLoading ? (
             <Skeleton className="h-9 w-[200px] max-w-[78%] rounded-xl bg-surface-elevated" />
           ) : (
-            <h1 className={`font-['Hind_Siliguri'] text-[2rem] font-bold leading-tight ${nameTextClass}`}>
+            <h1 className={`font-['Noto_Sans_Bengali'] text-[2rem] font-bold leading-tight ${nameTextClass}`}>
               {safeUserName}
             </h1>
           )}
         </div>
 
-        <p className={`mt-1 font-['Hind_Siliguri'] text-sm leading-5 ${quoteTextClass}`}>
+        <p className={`mt-1 font-['Noto_Sans_Bengali'] text-sm leading-5 ${quoteTextClass}`}>
           {dailyQuote ?? t('home.dailyQuote')}
         </p>
       </div>

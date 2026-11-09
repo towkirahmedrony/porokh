@@ -119,7 +119,7 @@ const PaperDetailsSheet: React.FC<PaperDetailsSheetProps> = ({
             )}
           </div>
 
-          <h2 className="font-['Hind_Siliguri'] text-xl font-bold leading-snug text-text-primary">
+          <h2 className="font-['Noto_Sans_Bengali'] text-xl font-bold leading-snug text-text-primary">
             {pickLang(language, paper.title, paper.title_en)}
           </h2>
         </div>

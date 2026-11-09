@@ -153,12 +153,12 @@ const AdmissionUnitPage: React.FC = () => {
           />
 
           <div className="min-w-0 flex-1">
-            <p className="truncate font-['Hind_Siliguri'] text-xs font-semibold text-text-secondary">
+            <p className="truncate font-['Noto_Sans_Bengali'] text-xs font-semibold text-text-secondary">
               {universityName}
             </p>
 
             <div className="mt-0.5 flex items-center gap-2">
-              <h1 className="min-w-0 font-['Hind_Siliguri'] text-xl font-bold leading-snug text-text-primary sm:text-2xl">
+              <h1 className="min-w-0 font-['Noto_Sans_Bengali'] text-xl font-bold leading-snug text-text-primary sm:text-2xl">
                 {unitName}
               </h1>
               <span className="shrink-0 rounded-md bg-badge-bg px-2 py-0.5 text-[11px] font-bold uppercase text-badge-text">
@@ -167,7 +167,7 @@ const AdmissionUnitPage: React.FC = () => {
             </div>
 
             {content.unit.description && (
-              <p className="mt-1 line-clamp-2 font-['Hind_Siliguri'] text-xs leading-5 text-text-secondary">
+              <p className="mt-1 line-clamp-2 font-['Noto_Sans_Bengali'] text-xs leading-5 text-text-secondary">
                 {content.unit.description}
               </p>
             )}

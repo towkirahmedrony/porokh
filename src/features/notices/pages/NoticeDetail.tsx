@@ -87,7 +87,7 @@ const NoticeDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-app pb-10 font-['Hind_Siliguri'] text-text-primary">
+    <div className="min-h-screen bg-app pb-10 font-['Noto_Sans_Bengali'] text-text-primary">
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border-color bg-surface/90 p-4 backdrop-blur-md">
         <button
           type="button"

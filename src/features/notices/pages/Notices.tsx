@@ -32,7 +32,7 @@ const Notices: React.FC = () => {
   }, [data?.items, filter]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-app font-['Hind_Siliguri'] text-text-primary">
+    <div className="flex min-h-screen flex-col bg-app font-['Noto_Sans_Bengali'] text-text-primary">
       <header className="sticky top-0 z-30 border-b border-border-color bg-surface/90 backdrop-blur-md">
         <div className="flex items-center gap-3 p-4">
           <button

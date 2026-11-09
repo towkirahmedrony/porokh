@@ -42,7 +42,7 @@ const ModelCategoryPage: React.FC = () => {
       />
 
       <main className="mx-auto w-full max-w-4xl space-y-3 px-4 pb-10 pt-5">
-        <h2 className="font-['Hind_Siliguri'] text-xl font-bold text-text-primary">
+        <h2 className="font-['Noto_Sans_Bengali'] text-xl font-bold text-text-primary">
           {t('exam.modelChooseTrack')}
         </h2>
 
@@ -66,7 +66,7 @@ const ModelCategoryPage: React.FC = () => {
 
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="font-['Hind_Siliguri'] text-lg font-bold text-text-primary">
+                  <span className="font-['Noto_Sans_Bengali'] text-lg font-bold text-text-primary">
                     {t(config.labelKey)}
                   </span>
                   {isGoalTrack && (

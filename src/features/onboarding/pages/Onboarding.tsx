@@ -235,7 +235,7 @@ export default function Onboarding() {
               <span className="h-9 w-9" aria-hidden="true" />
             )}
 
-            <span className="font-['Hind_Siliguri'] text-sm font-semibold text-text-secondary">
+            <span className="font-['Noto_Sans_Bengali'] text-sm font-semibold text-text-secondary">
               {stepLabel}
             </span>
           </div>

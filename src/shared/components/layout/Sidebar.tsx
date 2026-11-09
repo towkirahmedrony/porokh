@@ -57,7 +57,7 @@ export const Sidebar: React.FC = memo(() => {
       className="hidden md:flex flex-col w-64 h-screen sticky top-0 border-r border-border-color transition-colors duration-500 bg-surface text-text-primary"
     >
       <div className="h-20 flex items-center px-6 border-b border-border-color">
-        <span className="text-2xl font-bold font-['Hind_Siliguri'] text-primary">
+        <span className="text-2xl font-bold font-['Noto_Sans_Bengali'] text-primary">
           {t('brand.name')}
         </span>
       </div>
@@ -68,7 +68,7 @@ export const Sidebar: React.FC = memo(() => {
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 font-['Hind_Siliguri'] ${
+              `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 font-['Noto_Sans_Bengali'] ${
                 isActive 
                   ? 'shadow-sm font-bold bg-accent text-primary' 
                   : 'text-text-secondary hover:text-text-primary hover:bg-secondary hover:scale-[1.02]'
@@ -89,7 +89,7 @@ export const Sidebar: React.FC = memo(() => {
             {initialStr}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-bold truncate font-['Hind_Siliguri'] text-text-primary">
+            <p className="text-sm font-bold truncate font-['Noto_Sans_Bengali'] text-text-primary">
               {fullNameStr}
             </p>
             <p className="text-xs truncate text-text-secondary">
@@ -103,7 +103,7 @@ export const Sidebar: React.FC = memo(() => {
           className="w-full flex items-center justify-center gap-2 py-2 text-sm rounded-lg transition-colors border border-transparent text-text-primary bg-secondary hover:bg-accent hover:text-primary"
         >
           <LogOut className="w-4 h-4" />
-          <span className="font-['Hind_Siliguri']">{t('nav.logout')}</span>
+          <span className="font-['Noto_Sans_Bengali']">{t('nav.logout')}</span>
         </button>
       </div>
     </aside>
