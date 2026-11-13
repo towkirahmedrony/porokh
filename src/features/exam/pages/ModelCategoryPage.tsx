@@ -7,8 +7,9 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import ModelPageHeader from '../components/ModelPageHeader';
 import { useModelTrackSummary } from '../hooks/useModelTrackSummary';
 import {
-  MODEL_TRACK_CONFIGS,
+  MODEL_CATEGORY_CONFIGS,
   isModelTrack,
+  modelCategoryPath,
   modelTrackPath,
 } from '../constants/modelTracks';
 
@@ -20,11 +21,11 @@ const ModelCategoryPage: React.FC = () => {
   const summaryQuery = useModelTrackSummary();
 
   const goalTrack = isModelTrack(user?.study_goal) ? user.study_goal : null;
-  const orderedTracks = goalTrack
-    ? [...MODEL_TRACK_CONFIGS].sort(
+  const orderedCategories = goalTrack
+    ? [...MODEL_CATEGORY_CONFIGS].sort(
         (a, b) => Number(b.value === goalTrack) - Number(a.value === goalTrack)
       )
-    : MODEL_TRACK_CONFIGS;
+    : MODEL_CATEGORY_CONFIGS;
 
   const legacyTrack = searchParams.get('category');
   if (legacyTrack === 'varsity') {
@@ -46,16 +47,19 @@ const ModelCategoryPage: React.FC = () => {
           {t('exam.modelChooseTrack')}
         </h2>
 
-        {orderedTracks.map((config) => {
+        {orderedCategories.map((config) => {
           const Icon = config.icon;
-          const count = summaryQuery.data?.[config.value].paperCount ?? 0;
+          const isVarsity = config.value === 'varsity';
+          const count = config.value === 'varsity'
+            ? 0
+            : summaryQuery.data?.[config.value].paperCount ?? 0;
           const isGoalTrack = config.value === goalTrack;
 
           return (
             <button
               key={config.value}
               type="button"
-              onClick={() => navigate(modelTrackPath(config.value))}
+              onClick={() => navigate(modelCategoryPath(config.value))}
               className="flex w-full items-center gap-4 rounded-3xl border border-border-color bg-card-bg p-4 text-left transition-all hover:bg-surface-elevated active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <span
@@ -78,7 +82,11 @@ const ModelCategoryPage: React.FC = () => {
                 <span className="mt-0.5 block text-sm text-text-secondary">
                   {t(config.descriptionKey)}
                 </span>
-                {summaryQuery.isLoading ? (
+                {isVarsity ? (
+                  <span className="mt-1 block text-xs font-semibold text-primary">
+                    {t('admission.universityListTitle')}
+                  </span>
+                ) : summaryQuery.isLoading ? (
                   <Skeleton className="mt-1.5 h-3 w-16 bg-surface-elevated" />
                 ) : summaryQuery.data ? (
                   <span className="mt-1 block text-xs font-semibold text-primary">

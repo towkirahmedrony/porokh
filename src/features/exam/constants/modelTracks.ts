@@ -1,4 +1,10 @@
-import { BookOpen, Cpu, HeartPulse, type LucideIcon } from 'lucide-react';
+import {
+  BookOpen,
+  Cpu,
+  GraduationCap,
+  HeartPulse,
+  type LucideIcon,
+} from 'lucide-react';
 import type { AppMessageKey } from '@/shared/i18n/messages';
 
 export const MODEL_TRACKS = ['hsc', 'medical', 'engineering'] as const;
@@ -39,6 +45,31 @@ export const MODEL_TRACK_CONFIGS: ModelTrackConfig[] = [
   },
 ];
 
+/**
+ * Categories shown on the top-level Model Test screen.
+ *
+ * University admission content is owned by the admission hub rather than the
+ * subject-wise model-paper tables, so it deliberately stays out of
+ * `MODEL_TRACKS` and its summary service. It is still a first-class entry
+ * point here and routes to the database-backed university → unit → paper flow.
+ */
+export type ModelCategory = ModelTrack | 'varsity';
+
+export type ModelCategoryConfig = Omit<ModelTrackConfig, 'value'> & {
+  value: ModelCategory;
+};
+
+export const MODEL_CATEGORY_CONFIGS: ModelCategoryConfig[] = [
+  ...MODEL_TRACK_CONFIGS,
+  {
+    value: 'varsity',
+    labelKey: 'exam.track.varsity',
+    descriptionKey: 'exam.track.varsityDesc',
+    icon: GraduationCap,
+    accentClass: 'bg-violet-500/10 text-violet-600 dark:text-violet-300',
+  },
+];
+
 export const isModelTrack = (value: string | null | undefined): value is ModelTrack =>
   (MODEL_TRACKS as readonly string[]).includes(value ?? '');
 
@@ -48,6 +79,9 @@ export const getModelTrackConfig = (track: ModelTrack): ModelTrackConfig =>
 export type ModelPaperScope = 'full' | 'subject';
 
 export const modelTrackPath = (track: ModelTrack): string => `/exams/model/${track}`;
+
+export const modelCategoryPath = (category: ModelCategory): string =>
+  category === 'varsity' ? '/exams/model/varsity' : modelTrackPath(category);
 
 export const modelSubjectPath = (track: ModelTrack, subjectId: string): string =>
   `/exams/model/${track}/${encodeURIComponent(subjectId)}`;
