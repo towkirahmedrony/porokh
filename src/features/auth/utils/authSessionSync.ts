@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import type { AppUser } from '../types/auth';
+import type { CachedProfileFields } from './profileCache';
 
 /**
  * Supabase returns a brand-new session object on every `getSession()` call and
@@ -95,6 +96,33 @@ export function isSameAppUser(
     sameMetadataValue(current.user_metadata, next.user_metadata, 'name') &&
     sameMetadataValue(current.user_metadata, next.user_metadata, 'avatar_url')
   );
+}
+
+/**
+ * Overlays the cached profile row on a session user.
+ *
+ * The cache is a snapshot of the same `profiles` select the enrichment query
+ * runs, so it wins over JWT claims (which never carry the onboarding flag or
+ * academic fields). A `null` in the cache is a real answer and is kept.
+ */
+export function applyCachedProfile(
+  user: AppUser,
+  cached: CachedProfileFields
+): AppUser {
+  return {
+    ...user,
+    username: cached.username,
+    full_name: cached.full_name,
+    avatar_url: cached.avatar_url,
+    institution: cached.institution,
+    language_preference: cached.language_preference ?? 'bn',
+    class_level: cached.class_level,
+    group: cached.group,
+    study_goal: cached.study_goal,
+    onboarding_completed_at: cached.onboarding_completed_at,
+    total_xp: cached.total_xp ?? 0,
+    total_score: cached.total_xp ?? 0,
+  };
 }
 
 /** Profile enrichment is required once per signed-in user, not per auth event. */

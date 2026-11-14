@@ -9,6 +9,7 @@ import { useHomeGrids } from '../hooks/useHomeGrids';
 import { matchesHomeGridTargetRules } from '../utils/homeGridTargeting';
 import { useLiveExamActive } from '../hooks/useLiveExamActive';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { PromoBanner } from '@/features/access/components/PromoBanner';
 import UrgentNoticeStrip from '@/features/notices/components/UrgentNoticeStrip';
 import type { AppMessageKey } from '@/shared/i18n/messages';
@@ -88,6 +89,7 @@ const Home: React.FC = memo(() => {
   const { features, loading: featuresLoading, error: featuresError, refetch: refetchFeatures } = useHomeGrids();
   const { isLive: isLiveExamActive } = useLiveExamActive();
   const { language, t } = useLanguage();
+  const { isOffline } = useNetworkStatus();
 
   const textFontClass =
     language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans';
@@ -222,6 +224,7 @@ const Home: React.FC = memo(() => {
             onRetry={() => void refetchFeatures()}
             themeConfig={themeConfig}
             loadingLabel={t('home.featuresLoading')}
+            offline={isOffline}
           />
         </section>
       </main>

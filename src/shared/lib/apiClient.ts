@@ -4,6 +4,7 @@ import { getDeviceId } from '../utils/device';
 import { getNativeVersion } from '../utils/nativeVersion';
 import { API_BASE_URL } from './apiConfig';
 import { formatNetworkDiagnostic } from './networkDiagnostics';
+import { reportNetworkFailure, reportNetworkSuccess } from './networkStatus';
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
@@ -57,7 +58,11 @@ apiClient.interceptors.request.use(
  * Response Interceptor: Handle global errors like 401 Unauthorized
  */
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    // Any answer proves the network works, even an error status.
+    reportNetworkSuccess();
+    return response;
+  },
   (error: AxiosError) => {
     const accessPayload = error.response?.data as
       | { code?: string; details?: Record<string, unknown> }
@@ -81,8 +86,13 @@ apiClient.interceptors.response.use(
       window.dispatchEvent(new CustomEvent('auth:suspended'));
     }
 
-    if (!error.response && import.meta.env.DEV) {
-      console.warn('[api:network]', formatNetworkDiagnostic({ url: error.config?.url, method: error.config?.method }));
+    if (!error.response) {
+      // No response at all: DNS failure, timeout or no route. A 4xx/5xx answer
+      // is deliberately excluded — the server is reachable, the request is not.
+      reportNetworkFailure();
+      if (import.meta.env.DEV) {
+        console.warn('[api:network]', formatNetworkDiagnostic({ url: error.config?.url, method: error.config?.method }));
+      }
     }
 
     if (error.response?.status === 401) {

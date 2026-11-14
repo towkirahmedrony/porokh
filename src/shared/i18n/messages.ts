@@ -236,6 +236,13 @@ const bn = {
   'home.dailyGoalProgress': 'আজকের লক্ষ্যের অগ্রগতি',
   'home.featuresLoading': 'হোমপেজের ফিচার লোড হচ্ছে',
   'home.featuresLoadFailed': 'কার্ডগুলো লোড করা যায়নি। ইন্টারনেট চেক করে আবার চেষ্টা করুন।',
+  'offline.bannerTitle': 'কোনো সংযোগ নেই',
+  'offline.bannerBody':
+    'সেভ করা তথ্য দেখানো হচ্ছে। ইন্টারনেট ফিরে এলে নিজে থেকেই হালনাগাদ হবে।',
+  'offline.dashboardEmptyTitle': 'এখনো ড্যাশবোর্ড তথ্য সেভ হয়নি',
+  'offline.dashboardEmptyBody':
+    'ড্যাশবোর্ড দেখতে একবার ইন্টারনেট সংযোগসহ অ্যাপটি খুলুন। এরপর তথ্য ফোনে সেভ থাকবে এবং অফলাইনেও দেখা যাবে।',
+  'offline.cachedNotice': 'সেভ করা তথ্য দেখানো হচ্ছে',
   'home.bannerFallbackDescription': 'বিস্তারিত দেখুন',
   'home.bannerFallbackButton': 'ক্লিক করুন',
   'home.bannerSlide': 'স্লাইড {index}',
@@ -1948,6 +1955,13 @@ const en: Record<AppMessageKey, string> = {
   'home.dailyGoalProgress': "Today's goal progress",
   'home.featuresLoading': 'Loading homepage features',
   'home.featuresLoadFailed': 'We could not load the cards. Check your connection and try again.',
+  'offline.bannerTitle': 'No connection',
+  'offline.bannerBody':
+    'Showing saved data. It updates automatically when you are back online.',
+  'offline.dashboardEmptyTitle': 'No dashboard data saved yet',
+  'offline.dashboardEmptyBody':
+    'Open the app once with an internet connection to load your dashboard. It is then saved on this device and stays available offline.',
+  'offline.cachedNotice': 'Showing saved data',
   'home.bannerFallbackDescription': 'View details',
   'home.bannerFallbackButton': 'Click here',
   'home.bannerSlide': 'Slide {index}',
