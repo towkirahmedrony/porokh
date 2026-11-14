@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import OfflineBanner from './OfflineBanner';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import type { AppMessageKey } from '@/shared/i18n/messages';
 
@@ -91,6 +92,9 @@ export const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => 
 
       <div className="relative flex w-full flex-1 flex-col">
         <Header />
+
+        {/* Explains stale data without blocking any part of the app. */}
+        <OfflineBanner />
 
         <main
           className="scrollbar-hide flex-1 overflow-y-auto overflow-x-hidden p-4 pb-24 md:p-6 md:pb-6"

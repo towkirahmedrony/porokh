@@ -25,6 +25,9 @@ export const STORAGE_KEYS = {
   DISMISSED_UPDATE: 'dismissed_optional_update',
   HOME_GRIDS_DATA: 'home_grids_data',
   REACT_QUERY_CACHE: 'POROKH_QUERY_CACHE',
+  // Last known profile row per user id, so a cold start without connectivity
+  // can still resolve the onboarding gate and the dashboard name card.
+  AUTH_PROFILE_CACHE_PREFIX: 'porokh_profile_cache_',
 } as const;
 
 export type StorageKey = typeof STORAGE_KEYS[keyof typeof STORAGE_KEYS];

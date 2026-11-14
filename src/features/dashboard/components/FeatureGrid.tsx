@@ -22,6 +22,8 @@ interface FeatureGridProps {
   onRetry?: () => void;
   themeConfig?: ThemeConfig;
   loadingLabel?: string;
+  /** Connectivity state, used only to explain an empty grid. */
+  offline?: boolean;
 }
 
 const isExternalLink = (value: string) => /^https?:\/\//i.test(value);
@@ -70,8 +72,38 @@ const CardVisual: React.FC<CardVisualProps> = ({ item }) => {
 };
 
 const FeatureGrid: React.FC<FeatureGridProps> = memo(
-  ({ features, loading = false, error, onRetry, loadingLabel }) => {
+  ({ features, loading = false, error, onRetry, loadingLabel, offline = false }) => {
     const { language, t } = useLanguage();
+
+    /**
+     * No cached cards and no connection: the user has never downloaded the
+     * dashboard on this device. This is a first-run-online state, not a failure,
+     * so it is worded as such instead of showing a bare error.
+     */
+    if (!features.length && offline && !loading) {
+      return (
+        <div
+          role="status"
+          className="rounded-[22px] border border-card-border bg-card-bg px-4 py-6 text-center"
+        >
+          <p className="font-['Hind_Siliguri'] text-base font-bold leading-6 text-text-primary">
+            {t('offline.dashboardEmptyTitle')}
+          </p>
+          <p className="mt-2 font-['Hind_Siliguri'] text-sm leading-6 text-text-secondary">
+            {t('offline.dashboardEmptyBody')}
+          </p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-4 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              {t('common.retry')}
+            </button>
+          )}
+        </div>
+      );
+    }
 
     if (loading) {
       return (

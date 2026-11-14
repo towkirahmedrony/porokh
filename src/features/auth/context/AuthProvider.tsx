@@ -2,14 +2,23 @@ import { createContext, useState, useEffect, useRef, useCallback, useMemo } from
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/shared/lib/supabase';
 import { buildApiUrl } from '@/shared/lib/apiConfig';
+import { purgePersistedQueryCache } from '@/shared/lib/queryClient';
 import { authService } from '../services/authService';
 import type { AppUser, AuthContextType, ProfileStatus } from '../types/auth';
 import {
+  applyCachedProfile,
   isSameAppUser,
   isSameSession,
   mergeSessionUser,
   needsProfileEnrichment,
 } from '../utils/authSessionSync';
+import {
+  clearCachedProfile,
+  normalizeCachedProfile,
+  readCachedProfile,
+  writeCachedProfile,
+} from '../utils/profileCache';
+import { isSessionBeyondOfflineGrace } from '../utils/offlineSession';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SUSPENDED_SESSION_KEY = 'parapoth:suspended-session-id';
@@ -68,6 +77,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const enrichedUserIdRef = useRef<string | null>(null);
   const profileRequestRef = useRef<string | null>(null);
   const roleUserIdRef = useRef<string | null>(null);
+  // The user whose cached profile row has already been merged into state. While
+  // it matches, a failed network read is a refresh failure, never an unknown
+  // identity, so the gate keeps rendering the app instead of an error screen.
+  const cachedProfileUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     roleRef.current = role;
@@ -80,7 +93,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     profileRequestRef.current = authUser.id;
     enrichedUserIdRef.current = authUser.id;
-    setProfileStatus('loading');
+
+    // A cached row already answered the questions this gate needs, so the
+    // refresh must not put the app back into a blocking loading state. Without
+    // this, every launch waited for the network before the dashboard could
+    // render — the offline failure this cache exists to remove.
+    const hasCachedProfile = cachedProfileUserIdRef.current === authUser.id;
+    if (!hasCachedProfile) {
+      setProfileStatus('loading');
+    }
     setProfileError(null);
 
     try {
@@ -99,6 +120,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // The account changed while this read was in flight; the new user's
       // enrichment owns the state now.
       if (!mountedRef.current || activeUserIdRef.current !== authUser.id) return;
+
+      // Keep the row on the device for the next cold start. Failure to write is
+      // handled inside StorageUtils (quota/private mode) and never blocks the
+      // in-memory profile below.
+      writeCachedProfile(
+        authUser.id,
+        normalizeCachedProfile(profile as unknown as Record<string, unknown>)
+      );
+      cachedProfileUserIdRef.current = authUser.id;
 
       setUser(prev => {
         if (!prev || prev.id !== authUser.id) return prev;
@@ -124,7 +154,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Leave the flag unknown instead of guessing "not onboarded". A retry or
       // the next auth event may read the row again.
       enrichedUserIdRef.current = null;
-      setProfileStatus('error');
+      const cachedAnswer = cachedProfileUserIdRef.current === authUser.id;
+      // With a cached row the gate already has its answer; a failed refresh is
+      // reported but must not replace the dashboard with an error screen.
+      setProfileStatus(cachedAnswer ? 'ready' : 'error');
       setProfileError(error instanceof Error ? error.message : 'Profile load failed');
       console.warn('Profile enrichment failed:', error);
     } finally {
@@ -223,8 +256,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const nextUserId = currentSession?.user.id ?? null;
 
     if (!nextUserId) {
+      // The session is gone (sign-out, revocation, grace expiry): nothing this
+      // account cached may stay readable on the device.
+      const signedOutUserId = activeUserIdRef.current;
+      if (signedOutUserId) {
+        clearCachedProfile(signedOutUserId);
+        purgePersistedQueryCache();
+      }
+
       activeUserIdRef.current = null;
       enrichedUserIdRef.current = null;
+      cachedProfileUserIdRef.current = null;
       roleUserIdRef.current = null;
       setUser(null);
       setProfileStatus('idle');
@@ -241,12 +283,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
       total_score: (currentSession!.user as any)?.total_score ?? 0
     } as AppUser;
 
+    // A different account replaced the previous session without a sign-out
+    // (shared phone, expired session, provider switch). Nothing the previous
+    // account cached may survive into the next one.
+    const previousUserId = activeUserIdRef.current;
+    if (previousUserId && previousUserId !== nextUserId) {
+      clearCachedProfile(previousUserId);
+      cachedProfileUserIdRef.current = null;
+      purgePersistedQueryCache();
+    }
+
     activeUserIdRef.current = nextUserId;
+
+    // Restore the last known profile row before touching the network. This is
+    // what lets an offline cold start resolve the onboarding gate and render
+    // the dashboard; the network read below then reconciles it in background.
+    const cachedProfile = readCachedProfile(nextUserId);
 
     setUser((previous) => {
       const merged = mergeSessionUser(baseUser, previous);
-      return isSameAppUser(previous, merged) ? previous : merged;
+      const hydrated = cachedProfile
+        ? applyCachedProfile(merged, cachedProfile)
+        : merged;
+      return isSameAppUser(previous, hydrated) ? previous : hydrated;
     });
+
+    if (cachedProfile) {
+      cachedProfileUserIdRef.current = nextUserId;
+      setProfileStatus('ready');
+      setProfileError(null);
+    }
 
     setLoading(false);
 
@@ -269,6 +335,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [enrichUserWithProfile]);
 
   const signOut = useCallback(async () => {
+    // Captured before the SDK emits SIGNED_OUT, because that event already
+    // resets the refs this cleanup needs to identify the account.
+    const signingOutUserId = activeUserIdRef.current ?? sessionRef.current?.user?.id ?? null;
     try {
       setLoading(true);
       const currentSession = sessionRef.current;
@@ -295,19 +364,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        // Offline (or with the server unreachable) a global sign-out cannot
+        // revoke the refresh token. Dropping the local session is still the
+        // correct answer: this device must stop opening the account, and the
+        // token is unusable once the device is back online without the session.
+        console.warn('Global sign-out failed; clearing the local session:', error.message);
+        const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+        if (localError) throw localError;
+      }
+
+      // Account-scoped local data must not outlive the session on this device.
+      clearCachedProfile(signingOutUserId);
+      purgePersistedQueryCache();
 
       sessionRef.current = null;
       setSession(null);
       setUser(null);
       activeUserIdRef.current = null;
       enrichedUserIdRef.current = null;
+      cachedProfileUserIdRef.current = null;
       roleUserIdRef.current = null;
       setProfileStatus('idle');
       setProfileError(null);
       setRole('student');
       setPermissions([]);
     } catch (error) {
+      // The session is still the user's own when both sign-out calls failed, so
+      // its cached data is left intact; the signed-out branch above performs
+      // the purge as soon as the session actually disappears.
       console.error('Logout failed:', error);
     } finally {
       if (mountedRef.current) {
@@ -345,6 +430,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(false);
       activeUserIdRef.current = null;
       enrichedUserIdRef.current = null;
+      cachedProfileUserIdRef.current = null;
       roleUserIdRef.current = null;
     };
 
@@ -360,6 +446,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (error) throw error;
         if (!mountedRef.current) return;
+
+        // A session restored from storage is normally refreshed by the SDK, but
+        // that refresh needs the network. Offline the stored token is honoured
+        // for reads and syncs once the device is back online; only a session
+        // abandoned far past its expiry is discarded so a stolen device cannot
+        // keep an old account open forever.
+        if (initialSession && isSessionBeyondOfflineGrace(initialSession)) {
+          console.warn(
+            'Stored session is beyond the offline grace window; requiring a fresh sign-in.'
+          );
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+          } catch (signOutError) {
+            console.warn('Local sign-out failed:', signOutError);
+          }
+          if (!mountedRef.current) return;
+          applySession(null);
+          return;
+        }
 
         applySession(initialSession);
       } catch (error) {
@@ -390,6 +495,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // made every getSession() result re-run init() -> applySession() ->
     // setSession(new object) -> effect again, which flickered the whole app.
   }, [applySession, signOut]);
+
+  /**
+   * Connectivity recovery.
+   *
+   * React Query resumes its own paused queries on reconnect, but the session
+   * and the profile row are outside that cache. A token that expired while the
+   * device was offline is refreshed here, and a profile that could only be
+   * answered from cache is reconciled with the server. Nothing is reloaded and
+   * no request is issued when there is nothing stale to fix.
+   */
+  useEffect(() => {
+    const handleOnline = () => {
+      const current = sessionRef.current;
+      if (!current) return;
+
+      const expiresSoon =
+        typeof current.expires_at === 'number' &&
+        current.expires_at * 1000 - Date.now() < 60_000;
+
+      if (expiresSoon) {
+        void supabase.auth.refreshSession().catch((error) => {
+          console.warn('Session refresh on reconnect failed:', error);
+        });
+      }
+
+      if (enrichedUserIdRef.current !== current.user.id) {
+        refreshProfile();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [refreshProfile]);
 
   const value = useMemo<AuthContextType>(() => ({
     session,

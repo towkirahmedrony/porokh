@@ -15,7 +15,11 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import App from './App';
 import { AuthProvider } from '@/features/auth/context/AuthProvider';
 import { ThemeProvider } from '@/app/providers/ThemeProvider';
-import { queryClient, localStoragePersister } from '@/shared/lib/queryClient';
+import {
+  queryClient,
+  localStoragePersister,
+  PERSISTED_CACHE_MAX_AGE_MS,
+} from '@/shared/lib/queryClient';
 import { APP_MESSAGES } from '@/shared/i18n/messages';
 import { readStoredLanguage, resolveInitialLanguage } from '@/shared/i18n/languagePreference';
 
@@ -122,7 +126,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         client={queryClient}
         persistOptions={{
           persister: localStoragePersister,
-          maxAge: 1000 * 60 * 60 * 24,
+          maxAge: PERSISTED_CACHE_MAX_AGE_MS,
         }}
       >
         <BrowserRouter

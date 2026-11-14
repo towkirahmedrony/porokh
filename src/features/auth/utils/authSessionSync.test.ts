@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyCachedProfile,
   isSameAppUser,
   isSameSession,
   mergeSessionUser,
   needsProfileEnrichment,
 } from './authSessionSync';
+import { normalizeCachedProfile } from './profileCache';
 import type { AppUser } from '../types/auth';
 
 const makeSession = (accessToken: string, userId = 'user-1') => ({
@@ -105,6 +107,43 @@ test('session comparison ignores object identity but respects real changes', () 
   assert.equal(isSameSession(makeSession('a') as any, null), false);
   assert.equal(isSameSession(makeSession('a') as any, makeSession('a') as any), true);
   assert.equal(isSameSession(makeSession('a') as any, makeSession('b') as any), false);
+});
+
+test('a cached profile row resolves the gate without any network read', () => {
+  const cached = normalizeCachedProfile({
+    full_name: 'Rahim Uddin',
+    username: 'rahim',
+    class_level: 'hsc',
+    group: 'science',
+    study_goal: 'medical',
+    onboarding_completed_at: '2026-11-01T08:26:00.000Z',
+    total_xp: 420,
+  });
+
+  const restored = applyCachedProfile(
+    makeUser({ onboarding_completed_at: undefined, total_xp: 0 }),
+    cached
+  );
+
+  assert.equal(restored.onboarding_completed_at, '2026-11-01T08:26:00.000Z');
+  assert.equal(restored.class_level, 'hsc');
+  assert.equal(restored.full_name, 'Rahim Uddin');
+  assert.equal(restored.total_xp, 420);
+  assert.equal(restored.total_score, 420);
+  // The JWT identity fields are untouched by the profile overlay.
+  assert.equal(restored.id, 'user-1');
+  assert.equal(restored.email, 'student@example.com');
+});
+
+/** A cached null is a real answer: an empty name must not fall back to a JWT claim. */
+test('a cached null clears a stale value instead of keeping it', () => {
+  const restored = applyCachedProfile(
+    makeUser({ full_name: 'Old Name', avatar_url: 'https://cdn/old.png' }),
+    normalizeCachedProfile({ full_name: null, avatar_url: null })
+  );
+
+  assert.equal(restored.full_name, null);
+  assert.equal(restored.avatar_url, null);
 });
 
 test('profile enrichment is tied to a user id, not to auth events', () => {

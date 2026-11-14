@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useIsRestoring, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/shared/lib/apiClient';
 import { QUERY_KEYS } from '@/shared/constants/storageKeys';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -111,11 +111,20 @@ export const useHomeGrids = () => {
     );
   }, [query.data, user?.study_goal, user?.class_level, user?.group]);
 
-  const loading = query.isLoading && features.length === 0;
+  // Offline, React Query pauses this fetch instead of failing it. `isLoading`
+  // already excludes paused queries, but the dashboard still needs to know that
+  // the empty grid is "no cached data yet", not "still loading".
+  const paused = query.fetchStatus === 'paused';
+  // While the persisted snapshot is being rehydrated the grid is empty for a
+  // moment; that is loading, not "nothing cached".
+  const restoring = useIsRestoring();
+  const loading =
+    restoring || (query.isLoading && !paused && features.length === 0);
 
   return {
     features,
     loading,
+    isPaused: paused,
     isRefetching: query.isFetching && !query.isLoading,
     error: query.error,
     refetch: query.refetch,
