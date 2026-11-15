@@ -1,1 +1,0 @@
-import{a}from"./query-vendor-8UHcsCZN.js";import{b as s}from"./AdmissionSkeleton-2OXwQmfi.js";const o=["admission","catalog"],t=()=>a({queryKey:o,queryFn:()=>s.getCatalog(),staleTime:5*60*1e3}),m=e=>a({queryKey:["admission","exam-paper",e],queryFn:()=>s.getExamPaper(e??""),enabled:!!e,staleTime:5*60*1e3});export{m as a,t as u};
