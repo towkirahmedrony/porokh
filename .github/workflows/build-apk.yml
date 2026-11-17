@@ -61,15 +61,21 @@ jobs:
 
       - name: Configure frontend environment
         env:
+          API_URL: ${{ vars.VITE_API_URL }}
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+          if [ -z "${API_URL:-}" ]; then
+            echo "::error::VITE_API_URL repository variable is required. The bundle has no built-in backend URL fallback, so an APK built without it cannot reach the API."
+            exit 1
+          fi
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
             echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY repository secrets are required; without them the app crashes on startup with a white screen."
             exit 1
           fi
           {
+            printf 'VITE_API_URL=%s\n' "$API_URL"
             printf 'VITE_SUPABASE_URL=%s\n' "$SUPABASE_URL"
             printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY"
           } > .env.local

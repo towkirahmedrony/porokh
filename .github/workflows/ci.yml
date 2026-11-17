@@ -8,6 +8,8 @@ on:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    env:
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +24,13 @@ jobs:
 
       - name: Run unit tests
         run: npm test
+
+      - name: Require VITE_API_URL
+        run: |
+          if [ -z "${VITE_API_URL:-}" ]; then
+            echo "::error::VITE_API_URL repository variable is required; the source has no backend URL fallback."
+            exit 1
+          fi
 
       - name: Build (tsc + vite)
         run: npm run build

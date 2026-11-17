@@ -1,4 +1,17 @@
-import { API_BASE_URL } from './apiConfig';
+import { resolveApiBaseUrl } from './apiConfig';
+
+/**
+ * Base used to expand relative request paths. Diagnostics must never throw on a
+ * misconfigured environment, so an unset `VITE_API_URL` degrades to reporting
+ * `unknown` instead of breaking the error handler that calls us.
+ */
+const optionalApiBase = (): string | undefined => {
+  try {
+    return resolveApiBaseUrl();
+  } catch {
+    return undefined;
+  }
+};
 
 /**
  * Diagnostics for failed network calls. These records are safe to log or show
@@ -24,9 +37,12 @@ interface DiagnosticInput {
 }
 
 /** Keep only origin and pathname; strip credentials, query and fragment. */
-export const sanitizeApiUrl = (value: string): { origin: string; path: string } => {
+export const sanitizeApiUrl = (
+  value: string,
+  apiBase: string | undefined = optionalApiBase()
+): { origin: string; path: string } => {
   try {
-    const url = new URL(value, `${API_BASE_URL}/`);
+    const url = new URL(value, apiBase);
     return {
       origin: url.origin,
       path: url.pathname.replace(/\/+$/, '') || '/',
@@ -37,7 +53,8 @@ export const sanitizeApiUrl = (value: string): { origin: string; path: string } 
 };
 
 export const buildNetworkDiagnostic = (input: DiagnosticInput = {}): NetworkDiagnostic => {
-  const { origin, path } = sanitizeApiUrl(input.url ?? API_BASE_URL);
+  const apiBase = optionalApiBase();
+  const { origin, path } = sanitizeApiUrl(input.url ?? apiBase ?? '', apiBase);
   const diagnostic: NetworkDiagnostic = {
     method: (input.method ?? 'GET').toUpperCase(),
     origin,

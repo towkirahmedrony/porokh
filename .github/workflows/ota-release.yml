@@ -87,10 +87,16 @@ jobs:
 
       - name: Configure frontend environment
         env:
+          API_URL: ${{ vars.VITE_API_URL }}
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           set -euo pipefail
+
+          if [ -z "${API_URL:-}" ]; then
+            echo "::error::VITE_API_URL repository variable is required; the OTA bundle has no built-in backend URL fallback."
+            exit 1
+          fi
 
           if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
             echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required."
@@ -98,6 +104,7 @@ jobs:
           fi
 
           {
+            printf 'VITE_API_URL=%s\n' "$API_URL"
             printf 'VITE_SUPABASE_URL=%s\n' "$SUPABASE_URL"
             printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY"
           } > .env.local

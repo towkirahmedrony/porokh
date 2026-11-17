@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 import fs from 'node:fs';
@@ -10,6 +10,27 @@ import {
   SEO_MARKER_START,
   renderSeoHead,
 } from './src/app/seo/publicPages';
+
+/**
+ * Refuse to build without a backend URL.
+ *
+ * `src/shared/lib/apiConfig.ts` has no fallback, so a bundle built without
+ * `VITE_API_URL` throws the moment the app imports the API client. Failing here
+ * puts that error in the build log instead of on a user's screen.
+ */
+const requireApiUrlPlugin = (): Plugin => ({
+  name: 'porokh-require-api-url',
+  apply: 'build',
+  config(_config, { mode }) {
+    const env = loadEnv(mode, process.cwd(), 'VITE_');
+    if (!env.VITE_API_URL?.trim()) {
+      throw new Error(
+        'VITE_API_URL is required to build. Set it in .env.local, in the Vercel ' +
+          'project settings, or as the GitHub Actions VITE_API_URL variable.'
+      );
+    }
+  },
+});
 
 /**
  * Publish `dist/version.json` next to `index.html`.
@@ -88,7 +109,7 @@ const publicSitePlugin = (): Plugin => ({
 const buildIdentity = resolveBuildIdentity();
 
 export default defineConfig({
-  plugins: [react(), versionManifestPlugin(), publicSitePlugin()],
+  plugins: [react(), requireApiUrlPlugin(), versionManifestPlugin(), publicSitePlugin()],
   define: {
     // অ্যাপের ভেতরে VITE_APP_VERSION হিসেবে ভার্সনটি ব্যবহার করা যাবে
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(buildIdentity.version),

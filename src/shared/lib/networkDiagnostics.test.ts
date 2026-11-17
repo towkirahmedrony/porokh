@@ -38,10 +38,10 @@ test('diagnostics never contain tokens, credentials, query strings or headers', 
   assert.equal(diagnostic.durationMs, 43);
 });
 
-test('relative API URLs resolve against the configured production base', () => {
-  const sanitized = sanitizeApiUrl('/api/v1/contact');
+test('relative API URLs resolve against the configured base', () => {
+  const sanitized = sanitizeApiUrl('/api/v1/contact', 'https://api.example.test/api/v1');
   assert.equal(sanitized.path, '/api/v1/contact');
-  assert.equal(sanitized.origin, 'https://porokhbd.onrender.com');
+  assert.equal(sanitized.origin, 'https://api.example.test');
 });
 
 test('negative durations are clamped and missing fields are omitted', () => {

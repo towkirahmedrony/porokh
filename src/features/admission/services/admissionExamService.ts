@@ -14,7 +14,7 @@ import type {
  *   PATCH /exams/user/attempts/:id/answers   -> draft answers
  *   POST  /exams/user/submit                -> trusted grading by attempt id
  *
- * These endpoints already exist in parapoth-backend; the admission feature
+ * These endpoints already exist in porokh-backend; the admission feature
  * only consumes them. No score is calculated on the client.
  */
 

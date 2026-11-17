@@ -2,14 +2,14 @@ import axios, { InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'ax
 import { supabase } from './supabase';
 import { getDeviceId } from '../utils/device';
 import { getNativeVersion } from '../utils/nativeVersion';
-import { API_BASE_URL } from './apiConfig';
+import { resolveApiBaseUrl } from './apiConfig';
 import { formatNetworkDiagnostic } from './networkDiagnostics';
 import { reportNetworkFailure, reportNetworkSuccess } from './networkStatus';
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: resolveApiBaseUrl(),
   timeout: 15000, 
   headers: {
     'Content-Type': 'application/json',
