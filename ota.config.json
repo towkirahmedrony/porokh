@@ -1,0 +1,11 @@
+{
+  "//": "Compatibility policy for OTA bundles. Changing these values is a deliberate release decision, not a per-release override.",
+  "//minNativeVersion": "Oldest Android versionName still supported. Bundles declare nv<this>. 1.0.0 APKs shipped without the OTA public key and cannot verify a signed bundle, so they are deliberately outside the supported set; they reject new bundles cleanly as native_incompatible. Raise this only when dropping older APKs; it must never be newer than android versionName.",
+  "minNativeVersion": "1.0.1",
+  "//schemaVersion": "Informational mirror of src/features/exam/offline/schemaVersion.ts. The build fails if the two disagree; the module stays authoritative because the client bundles it.",
+  "schemaVersion": 2,
+  "channels": [
+    "production-android",
+    "staging-android"
+  ]
+}

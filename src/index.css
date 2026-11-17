@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* --- Semantic Theme Variables (Default Fallbacks) --- */
+  :root {
+    --bg-app: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-surface-elevated: #FFFFFF;
+    --text-primary: #0F172A;
+    --text-secondary: #64748B;
+    --border-color: #E2E8F0;
+    --input-bg: #FFFFFF;
+    --input-border: #CBD5E1;
+    --primary: #2563EB;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F1F5F9;
+    --accent: #4F46E5;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --info: #0EA5E9;
+    --nav-bg: #FFFFFF;
+    --nav-text: #64748B;
+    --card-bg: #FFFFFF;
+    --card-border: #E2E8F0;
+    --badge-bg: #DBEAFE;
+    --badge-text: #1E40AF;
+    --focus-ring: #93C5FD;
+    --grp-bg: #FFFFFF;
+    --grp-primary: #0B7A85;
+    --grp-primary-dark: #0B6670;
+    --grp-primary-tint: #E3F1F3;
+    --grp-surface-tint: #EEF5F6;
+    --grp-hairline: #E4ECEE;
+    --grp-text: #0F2A2E;
+    --grp-muted: #52646A;
+    --grp-gold-tint: #FEF3C7;
+    --grp-gold-ink: #92400E;
+    color-scheme: light;
+  }
+
+  .dark {
+    --bg-app: #0F1115;
+    --bg-surface: #1E293B;
+    --bg-surface-elevated: #334155;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --border-color: #334155;
+    --input-bg: #0F172A;
+    --input-border: #475569;
+    --primary: #3B82F6;
+    --primary-foreground: #FFFFFF;
+    --secondary: #1E293B;
+    --accent: #6366F1;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --info: #0EA5E9;
+    --nav-bg: #1E293B;
+    --nav-text: #94A3B8;
+    --card-bg: #1E293B;
+    --card-border: #334155;
+    --badge-bg: #1E3A8A;
+    --badge-text: #DBEAFE;
+    --focus-ring: #3B82F6;
+    --grp-bg: #0F172A;
+    --grp-primary: #1496A3;
+    --grp-primary-dark: #0B7A85;
+    --grp-primary-tint: #132C30;
+    --grp-surface-tint: #17242A;
+    --grp-hairline: #23353B;
+    --grp-text: #F1F5F9;
+    --grp-muted: #94A3B8;
+    --grp-gold-tint: #3A2E14;
+    --grp-gold-ink: #FCD34D;
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+  }
+
+  body {
+    @apply bg-app text-text-primary font-sans;
+  }
+}
+
+/*
+ * Startup background of the Android app (src/app/routes/AppRoutes.tsx).
+ * Mirrors the in-app splash and the Android launch theme, which both pick their
+ * colour from prefers-color-scheme: white in light, near-black in dark.
+ */
+.pk-start {
+  background-color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pk-start {
+    background-color: #0a0a0b;
+  }
+}
+
+@layer components {
+  /* Shared Base Helpers */
+  .page-title {
+    @apply text-2xl font-bold text-text-primary font-['Noto_Sans_Bengali'];
+  }
+  .page-subtitle {
+    @apply text-text-secondary font-['Noto_Sans_Bengali'];
+  }
+
+  /* Bengali vowel signs and numerals need more vertical breathing room than
+     Latin text, especially in small metadata labels. */
+  .font-bengali {
+    font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+    line-height: 1.55;
+  }
+
+  .font-hind-bangla {
+    font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+  }
+}
+
+.logo{
+  font-family:"Anek Bangla","Hind Siliguri","Noto Sans Bengali",sans-serif;
+  font-weight:800;
+  font-size:32px;
+  line-height:1.25;   /* keep: prevents Bengali matra/vowel marks from being clipped */
+  padding:0 .04em;    /* keep: same reason */
+  display:inline-block;
+  margin:0;
+  --logo-g1:#1E3FBF;
+  --logo-g2:#3B82F6;
+  background:linear-gradient(100deg,var(--logo-g1) 0%,var(--logo-g2) 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  color:transparent;
+}
+
+.dark .logo{
+  --logo-g1:#4F83F5;
+  --logo-g2:#8EC5FF;
+}
+
+.logo:lang(en){
+  letter-spacing:-0.01em;
+  line-height:1.2;
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

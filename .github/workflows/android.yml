@@ -1,0 +1,257 @@
+name: Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: OTA channel baked into this build
+        required: true
+        default: production-android
+        type: choice
+        options:
+          - production-android
+          - staging-android
+  # Every push to main produces an installable debug APK, so a build is never
+  # waiting on someone remembering to dispatch the workflow by hand.
+  push:
+    branches:
+      - main
+    tags:
+      - 'android-v*'
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-latest
+    env:
+      # `inputs` is empty on push events, so the default applies there too.
+      APP_CHANNEL: ${{ inputs.channel || 'production-android' }}
+      VITE_OTA_CHANNEL: ${{ inputs.channel || 'production-android' }}
+      POROKH_OTA_CHANNEL: ${{ inputs.channel || 'production-android' }}
+      # Same per-commit identity the website and the OTA bundle carry.
+      POROKH_BUILD_ID: ${{ github.sha }}
+      # Signature enforcement is decided here and mirrored into the web bundle,
+      # so an APK that embeds a public key always ships a client that refuses
+      # unsigned releases.
+      POROKH_OTA_REQUIRE_SIGNATURE: 'true'
+      VITE_OTA_REQUIRE_SIGNATURE: 'true'
+      CAPGO_PUBLIC_KEY: ${{ vars.CAPGO_PUBLIC_KEY }}
+      # Ed25519 key that verifies the GitHub channel pointer. It is compiled into
+      # the web bundle, so an APK built without it can never verify an update.
+      VITE_OTA_POINTER_PUBLIC_KEY: ${{ vars.OTA_ED25519_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      # ubuntu-latest ships a full Android SDK (android-36 + build-tools) with
+      # licenses already accepted, so no separate SDK setup step is required.
+
+      - run: npm ci
+
+      - name: Configure Firebase Cloud Messaging
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GOOGLE_SERVICES_JSON:-}" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON is not configured. Without android/app/google-services.json the push plugin has no Firebase project and FCM registration fails on the device."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          node -e "
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('android/app/google-services.json', 'utf8'));
+            const pkg = 'net.porokh.app';
+            const clients = (config.client || []).map((entry) => entry?.client_info?.android_client_info?.package_name);
+            if (!clients.includes(pkg)) {
+              console.error('::error::google-services.json has no Android client for ' + pkg + ' (found: ' + clients.join(', ') + ')');
+              process.exit(1);
+            }
+            console.log('google-services.json verified for', pkg);
+          "
+
+      - name: Configure frontend environment
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::error::VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY repository secrets are required; without them the app crashes on startup with a white screen."
+            exit 1
+          fi
+          {
+            printf 'VITE_SUPABASE_URL=%s\n' "$SUPABASE_URL"
+            printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY"
+          } > .env.local
+
+      - name: Require the signing public key
+        run: |
+          set -euo pipefail
+          if [ -z "${CAPGO_PUBLIC_KEY:-}" ]; then
+            echo "::error::CAPGO_PUBLIC_KEY is not configured. An APK built without it cannot verify any bundle, so every future update would be either rejected or unauthenticated. Set the repository variable to the Capgo key-v2 public key."
+            exit 1
+          fi
+          node -e "
+            const key = (process.env.CAPGO_PUBLIC_KEY || '').replace(/\\\\n/g, '\n').trim();
+            if (!key.startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
+              console.error('::error::CAPGO_PUBLIC_KEY is not a PKCS#1 RSA public key');
+              process.exit(1);
+            }
+            if (!key.endsWith('-----END RSA PUBLIC KEY-----')) {
+              console.error('::error::CAPGO_PUBLIC_KEY is truncated');
+              process.exit(1);
+            }
+            console.log('public key present (PKCS#1 RSA)');
+          "
+          if [ -z "${VITE_OTA_POINTER_PUBLIC_KEY:-}" ]; then
+            echo "::error::OTA_ED25519_PUBLIC_KEY is not configured. The web bundle would carry no pointer verification key, so every update check would be rejected as unsigned and the app could never update."
+            exit 1
+          fi
+          node -e "
+            const raw = Buffer.from((process.env.VITE_OTA_POINTER_PUBLIC_KEY || '').trim(), 'base64');
+            if (raw.length !== 32) {
+              console.error('::error::OTA_ED25519_PUBLIC_KEY must be a base64 raw 32-byte Ed25519 key');
+              process.exit(1);
+            }
+            console.log('pointer verification key present (Ed25519, 32 bytes)');
+          "
+
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run native:sync
+
+      - name: Verify the packaged build manifest
+        run: |
+          set -euo pipefail
+          manifest=android/app/src/main/assets/public/version.json
+          test -f "$manifest" || { echo "::error::$manifest was not produced"; exit 1; }
+          python3 - "$manifest" <<'PY'
+          import json
+          import os
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              manifest = json.load(handle)
+
+          expected = os.environ["POROKH_BUILD_ID"][:12]
+          if manifest.get("buildId") != expected:
+              print(
+                  f"::error::packaged buildId {manifest.get('buildId')} does not match commit {expected}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+
+          print("packaged manifest", manifest)
+          PY
+
+      - name: Verify the packaged OTA pointer key
+        run: |
+          set -euo pipefail
+          # The key is inlined into the JS bundle; if it is not there, every
+          # pointer fails verification on the device and OTA is dead silently.
+          if ! grep -rqF "$VITE_OTA_POINTER_PUBLIC_KEY" android/app/src/main/assets/public/assets; then
+            echo "::error::The packaged bundle does not contain OTA_ED25519_PUBLIC_KEY; pointer verification would always fail on the device."
+            exit 1
+          fi
+          echo "packaged pointer verification key present"
+
+      - name: Verify Firebase Messaging configuration
+        run: |
+          set -euo pipefail
+          if ! grep -qF '@capacitor-firebase/messaging' android/app/src/main/assets/capacitor.plugins.json; then
+            echo "::error::The Firebase Messaging Capacitor plugin is missing from the native build; the app could never obtain an FCM token."
+            exit 1
+          fi
+          if [ ! -f android/app/google-services.json ]; then
+            echo "::error::android/app/google-services.json is missing; FCM cannot initialise on the device."
+            exit 1
+          fi
+          echo "Firebase Messaging plugin and google-services.json present"
+
+      - name: Verify the native OTA configuration
+        run: |
+          set -euo pipefail
+          config=android/app/src/main/assets/capacitor.config.json
+          test -f "$config" || { echo "::error::$config was not produced"; exit 1; }
+          node -e "
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+            const updater = config?.plugins?.CapacitorUpdater;
+            if (!updater) {
+              console.error('::error::CapacitorUpdater is missing from the packaged config');
+              process.exit(1);
+            }
+            if (!updater.publicKey) {
+              console.error('::error::packaged config has no publicKey; signature verification would be skipped');
+              process.exit(1);
+            }
+            if (!String(updater.publicKey).startsWith('-----BEGIN RSA PUBLIC KEY-----')) {
+              console.error('::error::packaged publicKey is not PKCS#1 RSA');
+              process.exit(1);
+            }
+            if (updater.autoDeletePrevious !== false) {
+              console.error('::error::autoDeletePrevious must be false so a rollback bundle survives confirmation');
+              process.exit(1);
+            }
+            if (updater.autoUpdate !== 'off') {
+              console.error('::error::autoUpdate must be off; activation belongs to the exam-aware gate');
+              process.exit(1);
+            }
+            if (updater.defaultChannel !== process.env.POROKH_OTA_CHANNEL) {
+              console.error('::error::defaultChannel does not match POROKH_OTA_CHANNEL', updater.defaultChannel);
+              process.exit(1);
+            }
+            console.log('native OTA config verified: channel', updater.defaultChannel, '| signing on | manual activation');
+          " "$config"
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: porokh-${{ env.APP_CHANNEL }}-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Summarise the build
+        run: |
+          set -euo pipefail
+          apk=$(ls android/app/build/outputs/apk/debug/*.apk | head -1)
+          size=$(du -h "$apk" | cut -f1)
+          version_name=$(grep -oP 'versionName "\K[^"]+' android/app/build.gradle)
+          version_code=$(grep -oP 'versionCode \K[0-9]+' android/app/build.gradle)
+          {
+            echo "### Porokh debug APK"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Commit | \`${GITHUB_SHA:0:7}\` |"
+            echo "| Channel | ${APP_CHANNEL} |"
+            echo "| APK | $(basename "$apk") (${size}) |"
+            echo "| versionName / versionCode | ${version_name} / ${version_code} |"
+            echo "| OTA signing | enforced (public key embedded) |"
+            echo ""
+            echo "Download it from the **Artifacts** section of this run."
+          } >> "$GITHUB_STEP_SUMMARY"

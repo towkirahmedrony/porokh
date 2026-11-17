@@ -1,0 +1,50 @@
+=========================================
+      ROUTING CONFIGURATION GUIDE
+=========================================
+
+To enable the new Premium Subscription Module, please add the following routes to your main router configuration (likely src/App.tsx).
+
+1. Import the pages:
+   import Plans from './pages/subscription/Plans';
+   import Checkout from './pages/subscription/Checkout';
+
+2. Add these routes inside your <Routes> component:
+
+   {/* Subscription Routes */}
+   <Route path="/premium" element={<Plans />} />
+   <Route path="/premium/checkout/:planId" element={
+     <ProtectedRoute>
+       <Checkout />
+     </ProtectedRoute>
+   } />
+
+   *Note: Wrap Checkout in your specific Auth Guard component to ensure user is logged in.*
+
+=========================================
+      SUPABASE RPC (Optional)
+=========================================
+If you haven't created the 'submit_payment_claim' function in Supabase SQL yet, the service code includes a fallback to direct INSERT. However, for best security, run this SQL in your Supabase SQL Editor:
+
+CREATE OR REPLACE FUNCTION submit_payment_claim(
+  p_user_id UUID,
+  p_plan_id UUID,
+  p_amount NUMERIC,
+  p_method TEXT,
+  p_sender_number TEXT,
+  p_trx_id TEXT
+) RETURNS JSONB AS $$
+DECLARE
+  v_request_id UUID;
+BEGIN
+  -- Check for duplicate TrxID
+  IF EXISTS (SELECT 1 FROM payment_requests WHERE trx_id = p_trx_id) THEN
+    RAISE EXCEPTION 'Transaction ID already used.';
+  END IF;
+
+  INSERT INTO payment_requests (user_id, plan_id, amount, method, sender_number, trx_id, status)
+  VALUES (p_user_id, p_plan_id, p_amount, p_method, p_sender_number, p_trx_id, 'pending')
+  RETURNING id INTO v_request_id;
+
+  RETURN jsonb_build_object('success', true, 'id', v_request_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

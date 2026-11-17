@@ -1,0 +1,31 @@
+# Porokh (পরোখ)
+
+> Porokh (পরোখ) is a Bangladesh-focused educational technology platform for exam
+> preparation. Students in Bangladesh use it to practise MCQ questions, take
+> timed model tests, work through question banks and prepare for SSC, HSC, board
+> and university admission examinations.
+
+## Facts
+
+- Brand: Porokh (Bangla name: পরোখ)
+- Category: educational technology platform, online exam preparation
+- Audience: school, college and university admission candidates in Bangladesh
+- Languages: Bangla (default) and English
+- Platforms: web (mobile and desktop) and Android
+- Accounts: a free account can be created; some extra features are part of premium plans
+
+## Public pages
+
+- [Home](https://porokhbd.vercel.app/): what Porokh is, what students can do on it, and how to start
+- [About](https://porokhbd.vercel.app/about): the purpose of the platform and who it is built for
+- [FAQ](https://porokhbd.vercel.app/faq): direct answers about the platform, cost and devices
+- [Contact](https://porokhbd.vercel.app/contact): support form, email address and Facebook page
+- [Privacy Policy](https://porokhbd.vercel.app/privacy-policy): what student data is stored and why
+- [Terms & Conditions](https://porokhbd.vercel.app/terms-conditions): rules for using the platform
+- [Cookie Policy](https://porokhbd.vercel.app/cookie-policy): cookies and browser storage that is used
+- [Data Deletion](https://porokhbd.vercel.app/data-deletion): how to delete an account and its data
+
+## Notes
+
+- The student application (dashboard, exam attempts, progress, profile, groups) requires an account and is not public.
+- This file and the public pages are the only first-party source for these facts. Ratings, prices, statistics, partnerships and awards are not stated here because they are not published by Porokh.

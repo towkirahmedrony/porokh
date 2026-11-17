@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/webp" href="/icons/parapoth-icon.webp" />
+    <link rel="apple-touch-icon" href="/icons/parapoth-icon.webp" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta
+      name="google-site-verification"
+      content="QMb64RIDO5ZrVY6kRDoAnvqyhWDyi6pD-P8g2T8URhE"
+    />
+
+    <title>ParaPoth - SSC HSC MCQ, Model Test & Exam Preparation</title>
+
+    <meta
+      name="description"
+      content="ParaPoth হলো SSC, HSC ও board exam প্রস্তুতির জন্য MCQ practice, CQ exam, model test, question bank, suggestion ও progress tracking platform."
+    />
+
+    <meta
+      name="keywords"
+      content="ParaPoth, SSC MCQ, HSC MCQ, MCQ practice, CQ exam, model test, question bank, board exam, exam preparation Bangladesh, online exam, suggestion"
+    />
+
+    <meta name="author" content="ParaPoth" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#2563EB" />
+
+    <link rel="canonical" href="https://parapothexam.web.app/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ParaPoth" />
+    <meta property="og:url" content="https://parapothexam.web.app/" />
+    <meta
+      property="og:title"
+      content="ParaPoth - SSC HSC MCQ, Model Test & Exam Preparation"
+    />
+    <meta
+      property="og:description"
+      content="SSC, HSC ও board exam প্রস্তুতির জন্য MCQ practice, CQ exam, model test, question bank, suggestion ও leaderboard এক জায়গায়।"
+    />
+    <meta
+      property="og:image"
+      content="https://parapothexam.web.app/icons/header.webp"
+    />
+    <meta property="og:locale" content="bn_BD" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="ParaPoth - SSC HSC MCQ, Model Test & Exam Preparation"
+    />
+    <meta
+      name="twitter:description"
+      content="SSC, HSC ও board exam প্রস্তুতির জন্য MCQ practice, CQ exam, model test, question bank, suggestion ও progress tracking platform."
+    />
+    <meta
+      name="twitter:image"
+      content="https://parapothexam.web.app/icons/header.webp"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "EducationalOrganization",
+        "name": "ParaPoth",
+        "url": "https://parapothexam.web.app/",
+        "logo": "https://parapothexam.web.app/icons/parapoth-icon.webp",
+        "description": "ParaPoth is an online exam preparation platform for SSC, HSC, MCQ practice, CQ exam, model test, question bank and board exam preparation in Bangladesh.",
+        "areaServed": {
+          "@type": "Country",
+          "name": "Bangladesh"
+        },
+        "educationalCredentialAwarded": "SSC, HSC and board exam preparation"
+      }
+    </script>
+
+    <script>
+      (function () {
+        try {
+          const root = document.documentElement;
+          const rawMode = localStorage.getItem('app_theme');
+          const rawDynamicTheme = localStorage.getItem('dyn_theme');
+
+          const normalizedMode =
+            rawMode === '"dark"' || rawMode === 'dark'
+              ? 'dark'
+              : rawMode === '"light"' || rawMode === 'light'
+                ? 'light'
+                : 'system';
+
+          const prefersDark =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+          const isDark =
+            normalizedMode === 'dark' ||
+            (normalizedMode === 'system' && prefersDark);
+
+          const fallbackTheme = isDark
+            ? {
+                bg: '#0F172A',
+                card: '#1E293B',
+                text: '#F8FAFC',
+                primary: '#3B82F6',
+                accent: '#6366F1',
+              }
+            : {
+                bg: '#F8FAFC',
+                card: '#FFFFFF',
+                text: '#0F172A',
+                primary: '#2563EB',
+                accent: '#4F46E5',
+              };
+
+          root.classList.remove('light', 'dark');
+          root.classList.add(isDark ? 'dark' : 'light');
+          root.style.colorScheme = isDark ? 'dark' : 'light';
+
+          root.style.setProperty('--dyn-bg', fallbackTheme.bg);
+          root.style.setProperty('--dyn-card', fallbackTheme.card);
+          root.style.setProperty('--dyn-text', fallbackTheme.text);
+          root.style.setProperty('--dyn-primary', fallbackTheme.primary);
+          root.style.setProperty('--dyn-accent', fallbackTheme.accent);
+          root.style.backgroundColor = fallbackTheme.bg;
+
+          if (rawDynamicTheme) {
+            try {
+              const parsed = JSON.parse(rawDynamicTheme);
+
+              if (parsed && typeof parsed === 'object') {
+                if (
+                  typeof parsed.primaryBackground === 'string' &&
+                  parsed.primaryBackground.trim()
+                ) {
+                  root.style.setProperty('--dyn-bg', parsed.primaryBackground);
+                  root.style.backgroundColor = parsed.primaryBackground;
+                }
+
+                if (
+                  typeof parsed.cardBackground === 'string' &&
+                  parsed.cardBackground.trim()
+                ) {
+                  root.style.setProperty('--dyn-card', parsed.cardBackground);
+                }
+
+                if (
+                  typeof parsed.textColor === 'string' &&
+                  parsed.textColor.trim()
+                ) {
+                  root.style.setProperty('--dyn-text', parsed.textColor);
+                }
+
+                if (
+                  typeof parsed.buttonColor === 'string' &&
+                  parsed.buttonColor.trim()
+                ) {
+                  root.style.setProperty('--dyn-primary', parsed.buttonColor);
+                }
+
+                if (
+                  typeof parsed.accentColor === 'string' &&
+                  parsed.accentColor.trim()
+                ) {
+                  root.style.setProperty('--dyn-accent', parsed.accentColor);
+                }
+              }
+            } catch (_) {
+              // Ignore corrupted cached theme and keep safe fallback values.
+            }
+          }
+
+          const applyResolvedBodyTheme = function () {
+            const computed = getComputedStyle(root);
+            const resolvedBg =
+              computed.getPropertyValue('--dyn-bg').trim() || fallbackTheme.bg;
+            const resolvedText =
+              computed.getPropertyValue('--dyn-text').trim() ||
+              fallbackTheme.text;
+
+            root.style.backgroundColor = resolvedBg;
+
+            if (document.body) {
+              document.body.style.backgroundColor = resolvedBg;
+              document.body.style.color = resolvedText;
+            }
+          };
+
+          if (document.body) {
+            applyResolvedBodyTheme();
+          } else {
+            document.addEventListener('DOMContentLoaded', applyResolvedBodyTheme, {
+              once: true,
+            });
+          }
+        } catch (_) {
+          const root = document.documentElement;
+          root.classList.remove('dark');
+          root.classList.add('light');
+          root.style.colorScheme = 'light';
+          root.style.backgroundColor = '#F8FAFC';
+        }
+      })();
+    </script>
+  </head>
+
+  <body>
+    <noscript>
+      ParaPoth ব্যবহার করতে JavaScript চালু করুন। এটি SSC, HSC, MCQ practice,
+      CQ exam, model test, question bank এবং board exam preparation-এর জন্য
+      একটি online learning platform।
+    </noscript>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
