@@ -4,10 +4,10 @@
  * build time; a wrong host here breaks the packaged APK while the browser
  * build keeps working.
  *
- * Never change this to `porokh-backend.onrender.com`: the Render service is
- * `parapoth-backend` (the project is spelled ParaPoth, the repo is `porokh`).
+ * The Render service is `porokhbd`, which serves the porokh-backend repo. The
+ * old `parapoth-backend` host no longer receives deploys.
  */
-export const PRODUCTION_API_BASE_URL = 'https://parapoth-backend.onrender.com/api/v1';
+export const PRODUCTION_API_BASE_URL = 'https://porokhbd.onrender.com/api/v1';
 
 type EnvRecord = Record<string, string | undefined>;
 

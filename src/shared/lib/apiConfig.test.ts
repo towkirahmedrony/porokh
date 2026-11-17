@@ -8,14 +8,14 @@ import {
   resolveApiBaseUrl,
 } from './apiConfig';
 
-test('the production API base URL is the parapoth Render service', () => {
-  assert.equal(PRODUCTION_API_BASE_URL, 'https://parapoth-backend.onrender.com/api/v1');
+test('the production API base URL is the porokhbd Render service', () => {
+  assert.equal(PRODUCTION_API_BASE_URL, 'https://porokhbd.onrender.com/api/v1');
   assert.equal(API_BASE_URL, PRODUCTION_API_BASE_URL);
   assert.equal(resolveApiBaseUrl(), PRODUCTION_API_BASE_URL);
 });
 
-test('the production API base URL never points at porokh-backend', () => {
-  assert.equal(PRODUCTION_API_BASE_URL.includes('porokh-backend.onrender.com'), false);
+test('the production API base URL never points at the old parapoth host', () => {
+  assert.equal(PRODUCTION_API_BASE_URL.includes('parapoth-backend.onrender.com'), false);
   assert.equal(PRODUCTION_API_BASE_URL.endsWith('/api/v1'), true);
 });
 
