@@ -8,17 +8,17 @@ type GroupShieldTileProps = {
 };
 
 const CONTAINER_SIZES: Record<NonNullable<GroupShieldTileProps['size']>, string> = {
-  sm: 'h-11 w-11 rounded-xl',
-  md: 'h-14 w-14 rounded-2xl',
-  lg: 'h-16 w-16 rounded-2xl',
-  xl: 'h-[72px] w-[72px] rounded-2xl',
+  sm: 'h-10 w-10 rounded-xl',
+  md: 'h-12 w-12 rounded-xl',
+  lg: 'h-14 w-14 rounded-2xl',
+  xl: 'h-14 w-14 rounded-2xl',
 };
 
 const ICON_SIZES: Record<NonNullable<GroupShieldTileProps['size']>, string> = {
   sm: 'h-5 w-5',
-  md: 'h-6 w-6',
-  lg: 'h-7 w-7',
-  xl: 'h-8 w-8',
+  md: 'h-5 w-5',
+  lg: 'h-6 w-6',
+  xl: 'h-6 w-6',
 };
 
 const TONES: Record<NonNullable<GroupShieldTileProps['tone']>, string> = {

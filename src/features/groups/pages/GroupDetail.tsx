@@ -367,18 +367,29 @@ const GroupDetail: React.FC = () => {
         await battles.refetch();
       }}
     >
-      <div className="-m-4 min-h-[calc(100vh-4rem)] bg-grp-bg px-4 pt-4 pb-28 text-grp-text font-hind-bangla md:-m-6 md:px-6 md:pt-6 md:pb-10">
-        <div className="mx-auto max-w-2xl space-y-5">
-          {/* Top bar: Back link + Three-dot menu */}
+      <div className="-m-4 min-h-[calc(100vh-4rem)] bg-grp-bg px-4 pt-2 pb-24 text-grp-text font-hind-bangla md:-m-6 md:px-6 md:pt-6 md:pb-10">
+        <div className="mx-auto max-w-2xl space-y-3">
+          {/* Top bar: Back + group identity + Three-dot menu */}
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => navigate('/groups')}
-              className="-ml-1 inline-flex min-h-[44px] items-center gap-1 rounded-lg px-1 text-[15px] font-medium text-grp-muted transition-colors hover:text-grp-text focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+              aria-label={t('groups.title')}
+              className="-ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-grp-text transition-colors hover:bg-grp-surface-tint focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
             >
-              <ChevronLeft className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
-              <span>{t('groups.title')}</span>
+              <ChevronLeft className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
             </button>
+            <GroupShieldTile size="sm" />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-[18px] font-bold leading-tight text-grp-text">
+                {group.name}
+              </h1>
+              <p className="truncate text-[12px] leading-snug text-grp-muted tabular-nums">
+                {typeLabel} · {t('groups.level')} {localizeDigits(group.group_level, language)} ·{' '}
+                {localizeDigits(group.member_count, language)}/
+                {localizeDigits(group.max_members, language)} {t('groups.members')}
+              </p>
+            </div>
 
             <div className="relative" ref={menuRef}>
               <button
@@ -387,7 +398,7 @@ const GroupDetail: React.FC = () => {
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 onClick={() => setMenuOpen((open) => !open)}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-grp-text transition-colors hover:bg-grp-surface-tint focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-grp-text transition-colors hover:bg-grp-surface-tint focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
               >
                 <MoreVertical className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
               </button>
@@ -451,35 +462,16 @@ const GroupDetail: React.FC = () => {
           </div>
 
           {/* Borderless Group Header */}
-          <header className="space-y-4">
-            <div className="flex items-center gap-4">
-              <GroupShieldTile size="xl" />
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h1 className="min-w-0 truncate text-[26px] font-bold leading-tight text-grp-text">
-                    {group.name}
-                  </h1>
-                  <span className="shrink-0 whitespace-nowrap rounded-md bg-grp-primary-tint px-2 py-0.5 text-[12px] font-semibold text-grp-primary">
-                    {typeLabel}
-                  </span>
-                </div>
-                <p className="mt-1 truncate text-[13px] leading-snug text-grp-muted tabular-nums">
-                  {t('groups.level')} {localizeDigits(group.group_level, language)} ·{' '}
-                  {localizeDigits(group.member_count, language)}/
-                  {localizeDigits(group.max_members, language)} {t('groups.members')}
-                </p>
-              </div>
-            </div>
-
+          <header className="space-y-2">
             {group.description && (
-              <p className="text-[15px] leading-relaxed text-grp-muted">{group.description}</p>
+              <p className="text-[14px] leading-snug text-grp-muted">{group.description}</p>
             )}
 
             {/* Non-member join controls */}
             {!isMember && !isPending && membershipStatus !== 'kicked' && group.is_active && (
               <div className="pt-1">
                 {group.visibility === 'code' ? (
-                  <div className="flex items-center gap-2.5 rounded-2xl bg-grp-surface-tint p-3">
+                  <div className="flex items-center gap-1.5 rounded-xl bg-grp-surface-tint p-1.5">
                     <label htmlFor="detail-join-code-input" className="sr-only">
                       {t('groups.enterCode')}
                     </label>
@@ -491,13 +483,13 @@ const GroupDetail: React.FC = () => {
                         setJoinCodeInput(event.target.value.toUpperCase().slice(0, 16))
                       }
                       placeholder={t('groups.enterCode')}
-                      className="min-h-[44px] min-w-0 flex-1 rounded-xl bg-grp-bg px-3.5 text-[15px] text-grp-text placeholder:text-grp-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+                      className="min-h-[40px] min-w-0 flex-1 rounded-lg bg-grp-bg px-3 text-[14px] text-grp-text placeholder:text-grp-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
                     />
                     <button
                       type="button"
                       disabled={!joinCodeInput.trim() || joinMutation.isPending}
                       onClick={() => joinMutation.mutate(joinCodeInput.trim())}
-                      className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl bg-grp-primary px-5 text-[15px] font-semibold text-white transition-colors hover:bg-grp-primary-dark disabled:opacity-50"
+                      className="min-h-[40px] shrink-0 whitespace-nowrap rounded-lg bg-grp-primary px-4 text-[14px] font-semibold text-white transition-colors hover:bg-grp-primary-dark disabled:opacity-50"
                     >
                       {joinMutation.isPending ? t('common.loading') : t('groups.joinAction')}
                     </button>
@@ -538,22 +530,22 @@ const GroupDetail: React.FC = () => {
           {/* Three-column Stats Row between horizontal hairlines */}
           <section
             aria-label={t('groups.overview')}
-            className="grid grid-cols-3 divide-x divide-grp-hairline border-y border-grp-hairline py-3.5 text-center"
+            className="grid grid-cols-3 divide-x divide-grp-hairline border-y border-grp-hairline py-2 text-center"
           >
             <div className="px-2">
-              <p className="text-[20px] font-bold leading-tight text-grp-text tabular-nums">
+              <p className="text-[18px] font-bold leading-tight text-grp-text tabular-nums">
                 {localizeDigits(group.total_xp, language)}
               </p>
               <p className="mt-0.5 text-[12px] text-grp-muted">{t('groups.totalXp')}</p>
             </div>
             <div className="px-2">
-              <p className="text-[20px] font-bold leading-tight text-grp-text tabular-nums">
+              <p className="text-[18px] font-bold leading-tight text-grp-text tabular-nums">
                 {localizeDigits(group.current_streak, language)}
               </p>
               <p className="mt-0.5 text-[12px] text-grp-muted">{t('groups.streak')}</p>
             </div>
             <div className="px-2">
-              <p className="text-[20px] font-bold leading-tight text-grp-text tabular-nums">
+              <p className="text-[18px] font-bold leading-tight text-grp-text tabular-nums">
                 {localizeDigits(group.member_count, language)}
               </p>
               <p className="mt-0.5 text-[12px] text-grp-muted">{t('groups.members')}</p>
@@ -562,15 +554,12 @@ const GroupDetail: React.FC = () => {
 
           {/* Tinted Invite Box (members only when current rules allow — owner holds join-code permission) */}
           {isMember && isOwner && (
-            <section className="rounded-2xl bg-grp-surface-tint p-4">
-              <h2 className="text-[16px] font-bold leading-snug text-grp-text">
-                {t('groups.inviteFriends')}
-              </h2>
-              <p className="mt-0.5 text-[13px] leading-snug text-grp-muted">
-                {t('groups.inviteHint')}
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <div className="flex min-h-[44px] min-w-0 flex-1 items-center justify-center rounded-xl bg-grp-bg px-3">
+            <section className="rounded-xl bg-grp-surface-tint p-2">
+              <div className="flex items-center gap-1.5">
+                <div
+                  title={t('groups.inviteFriends')}
+                  className="flex min-h-[40px] min-w-0 flex-1 items-center justify-center rounded-lg bg-grp-bg px-3"
+                >
                   <code className="truncate font-mono text-[15px] font-semibold tracking-[0.24em] text-grp-text">
                     {activeJoinCode ?? '········'}
                   </code>
@@ -579,7 +568,7 @@ const GroupDetail: React.FC = () => {
                   type="button"
                   disabled={!activeJoinCode}
                   onClick={() => void copyJoinCode()}
-                  className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl border border-grp-primary/40 bg-grp-bg px-4 text-[14px] font-semibold text-grp-primary transition-colors hover:bg-grp-primary-tint disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+                  className="min-h-[40px] shrink-0 whitespace-nowrap rounded-lg border border-grp-primary/40 bg-grp-bg px-3.5 text-[13px] font-semibold text-grp-primary transition-colors hover:bg-grp-primary-tint disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
                 >
                   {t('groups.copy')}
                 </button>
@@ -588,7 +577,7 @@ const GroupDetail: React.FC = () => {
                   aria-label={t('groups.shareGroup')}
                   title={t('groups.shareGroup')}
                   onClick={() => void shareGroup(group.visibility === 'code')}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-grp-primary text-white transition-colors hover:bg-grp-primary-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary focus-visible:ring-offset-2"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-grp-primary text-white transition-colors hover:bg-grp-primary-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary focus-visible:ring-offset-2"
                 >
                   <Share2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
                 </button>
@@ -610,7 +599,7 @@ const GroupDetail: React.FC = () => {
             <div
               role="tablist"
               aria-label={group.name}
-              className="no-scrollbar flex items-center gap-6 overflow-x-auto border-b border-grp-hairline"
+              className="no-scrollbar flex items-center gap-5 overflow-x-auto border-b border-grp-hairline"
             >
               {TABS.map((value) => {
                 const active = tab === value;
@@ -630,7 +619,7 @@ const GroupDetail: React.FC = () => {
                     role="tab"
                     aria-selected={active}
                     onClick={() => setTab(value)}
-                    className={`relative min-h-[44px] shrink-0 whitespace-nowrap px-0.5 text-[15px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary ${
+                    className={`relative min-h-[40px] shrink-0 whitespace-nowrap px-0.5 text-[14px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary ${
                       active
                         ? 'font-bold text-grp-primary'
                         : 'font-medium text-grp-muted hover:text-grp-text'
@@ -652,7 +641,7 @@ const GroupDetail: React.FC = () => {
           {/* Overview Tab: Single flat Members list */}
           {tab === 'overview' && (
             <section className="space-y-1">
-              <h2 className="text-[17px] font-bold leading-snug text-grp-text">
+              <h2 className="text-[14px] font-semibold leading-snug text-grp-muted">
                 {t('groups.membersTab')}
               </h2>
               <div className="divide-y divide-grp-hairline">
@@ -684,7 +673,7 @@ const GroupDetail: React.FC = () => {
           {tab === 'members' && (
             <section className="space-y-4">
               <div>
-                <h2 className="text-[17px] font-bold leading-snug text-grp-text">
+                <h2 className="text-[14px] font-semibold leading-snug text-grp-muted">
                   {t('groups.membersTab')} ({localizeDigits(members.length, language)})
                 </h2>
                 <div className="mt-1 divide-y divide-grp-hairline">

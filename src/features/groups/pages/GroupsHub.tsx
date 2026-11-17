@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Search, Shield, Trophy } from 'lucide-react';
+import { RefreshCw, Search, Trophy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
@@ -145,33 +145,30 @@ const GroupsHub: React.FC = () => {
 
   return (
     <PullToRefresh onRefresh={refreshAll}>
-      <div className="-m-4 min-h-[calc(100vh-4rem)] bg-grp-bg px-4 pt-5 pb-28 text-grp-text font-hind-bangla md:-m-6 md:px-6 md:pt-6 md:pb-10">
-        <div className="mx-auto max-w-2xl space-y-6">
+      <div className="-m-4 min-h-[calc(100vh-4rem)] bg-grp-bg px-4 pt-3 pb-24 text-grp-text font-hind-bangla md:-m-6 md:px-6 md:pt-6 md:pb-10">
+        <div className="mx-auto max-w-2xl space-y-3">
           {/* Title Row */}
-          <header className="flex items-start justify-between gap-3">
+          <header className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-[26px] font-bold leading-tight text-grp-text">
+              <h1 className="text-[22px] font-bold leading-tight text-grp-text">
                 {t('groups.title')}
               </h1>
-              <p className="mt-0.5 text-[13px] leading-snug text-grp-muted">
-                {t('groups.subtitle')}
-              </p>
             </div>
             <button
               type="button"
               onClick={() => navigate('/groups/leaderboard')}
               aria-label={t('groups.leaderboard')}
               title={t('groups.leaderboard')}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-grp-primary-tint text-grp-primary transition-colors hover:bg-grp-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-grp-primary-tint text-grp-primary transition-colors hover:bg-grp-primary hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
             >
               <Trophy className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
             </button>
           </header>
 
           {/* Join Code Block */}
-          <section className="rounded-2xl bg-grp-surface-tint p-3">
+          <section className="rounded-xl bg-grp-surface-tint p-1.5">
             <form
-              className="flex items-center gap-2.5"
+              className="flex items-center gap-1.5"
               onSubmit={(event) => {
                 event.preventDefault();
                 if (code.trim().length < 4 || joinByCodeMutation.isPending) return;
@@ -189,12 +186,12 @@ const GroupsHub: React.FC = () => {
                 placeholder={t('groups.codePlaceholder')}
                 maxLength={8}
                 autoCapitalize="characters"
-                className="min-h-[44px] min-w-0 flex-1 rounded-xl bg-grp-bg px-3.5 text-[15px] text-grp-text placeholder:text-grp-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+                className="min-h-[40px] min-w-0 flex-1 rounded-lg bg-grp-bg px-3 text-[14px] text-grp-text placeholder:text-grp-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
               />
               <button
                 type="submit"
                 disabled={joinByCodeMutation.isPending}
-                className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl bg-grp-primary px-5 text-[15px] font-semibold text-white transition-colors hover:bg-grp-primary-dark disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary focus-visible:ring-offset-2"
+                className="min-h-[40px] shrink-0 whitespace-nowrap rounded-lg bg-grp-primary px-4 text-[14px] font-semibold text-white transition-colors hover:bg-grp-primary-dark disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary focus-visible:ring-offset-2"
               >
                 {joinByCodeMutation.isPending ? t('common.loading') : t('groups.joinAction')}
               </button>
@@ -202,10 +199,10 @@ const GroupsHub: React.FC = () => {
           </section>
 
           {/* My Groups (Combined Squads & Communities) */}
-          <section className="space-y-2">
+          <section className="space-y-0.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <h2 className="text-[17px] font-bold leading-snug text-grp-text">
+                <h2 className="text-[15px] font-bold leading-snug text-grp-text">
                   {t('groups.myGroups')}
                 </h2>
                 {myGroups.isFetching && !myGroups.isLoading && (
@@ -229,23 +226,14 @@ const GroupsHub: React.FC = () => {
                 <Skeleton className="h-16 w-full rounded-xl" />
               </div>
             ) : myGroupEntries.length === 0 ? (
-              <div className="flex flex-col items-center py-6 text-center">
-                <div
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-grp-primary-tint text-grp-primary"
-                  aria-hidden="true"
-                >
-                  <Shield className="h-6 w-6" strokeWidth={2} />
-                </div>
-                <p className="mt-3 text-[16px] font-bold text-grp-text">
+              <div className="flex items-center justify-between gap-3 py-2">
+                <p className="min-w-0 flex-1 text-[14px] text-grp-muted">
                   {t('groups.noGroups')}
-                </p>
-                <p className="mt-1 text-[13px] leading-snug text-grp-muted">
-                  {t('groups.noGroupsHint')}
                 </p>
                 <button
                   type="button"
                   onClick={() => navigate('/groups/new')}
-                  className="mt-4 min-h-[44px] whitespace-nowrap rounded-xl bg-grp-primary px-6 text-[15px] font-semibold text-white transition-colors hover:bg-grp-primary-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary focus-visible:ring-offset-2"
+                  className="min-h-[40px] shrink-0 whitespace-nowrap rounded-lg bg-grp-primary px-4 text-[14px] font-semibold text-white transition-colors hover:bg-grp-primary-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary focus-visible:ring-offset-2"
                 >
                   {t('groups.createSquad')}
                 </button>
@@ -257,7 +245,7 @@ const GroupsHub: React.FC = () => {
                     key={key}
                     type="button"
                     onClick={() => navigate(`/groups/${group.slug ?? group.id}`)}
-                    className="flex min-h-[64px] w-full items-center gap-3 py-3 text-left transition-colors hover:bg-grp-surface-tint/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary rounded-lg"
+                    className="flex min-h-[52px] w-full items-center gap-3 py-1.5 text-left transition-colors hover:bg-grp-surface-tint/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary rounded-lg"
                   >
                     <GroupShieldTile size="sm" />
                     <div className="min-w-0 flex-1">
@@ -278,12 +266,12 @@ const GroupsHub: React.FC = () => {
           </section>
 
           {/* Discover Section */}
-          <section className="border-t border-grp-hairline pt-2">
+          <section className="border-t border-grp-hairline pt-1">
             {/* Underline Tabs */}
             <div
               role="tablist"
               aria-label={t('groups.discover')}
-              className="flex items-center gap-6 border-b border-grp-hairline"
+              className="flex items-center gap-5 border-b border-grp-hairline"
             >
               {[
                 { value: undefined, label: t('groups.filterAll') },
@@ -298,7 +286,7 @@ const GroupsHub: React.FC = () => {
                     role="tab"
                     aria-selected={active}
                     onClick={() => setType(option.value)}
-                    className={`relative min-h-[44px] whitespace-nowrap px-0.5 text-[15px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary ${
+                    className={`relative min-h-[40px] whitespace-nowrap px-0.5 text-[14px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary ${
                       active
                         ? 'font-bold text-grp-primary'
                         : 'font-medium text-grp-muted hover:text-grp-text'
@@ -317,11 +305,11 @@ const GroupsHub: React.FC = () => {
             </div>
 
             {/* Search Field */}
-            <div className="mt-4">
+            <div className="mt-2.5">
               <label htmlFor="group-search-input" className="sr-only">
                 {t('groups.searchPlaceholder')}
               </label>
-              <div className="flex min-h-[44px] items-center gap-2.5 rounded-2xl bg-grp-surface-tint px-3.5">
+              <div className="flex min-h-[40px] items-center gap-2 rounded-xl bg-grp-surface-tint px-3">
                 <Search className="h-4 w-4 shrink-0 text-grp-muted" strokeWidth={2} aria-hidden="true" />
                 <input
                   id="group-search-input"
@@ -329,7 +317,7 @@ const GroupsHub: React.FC = () => {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder={t('groups.searchPlaceholder')}
-                  className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-grp-text placeholder:text-grp-muted focus:outline-none"
+                  className="min-w-0 flex-1 bg-transparent py-2 text-[14px] text-grp-text placeholder:text-grp-muted focus:outline-none"
                 />
               </div>
             </div>
@@ -369,11 +357,11 @@ const GroupsHub: React.FC = () => {
                         : t('groups.joinAction');
 
                     return (
-                      <div key={group.id} className="flex items-center gap-3 py-3">
+                      <div key={group.id} className="flex items-center gap-3 py-1.5">
                         <button
                           type="button"
                           onClick={() => navigate(`/groups/${group.slug ?? group.id}`)}
-                          className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+                          className="flex min-h-[40px] min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
                         >
                           <GroupShieldTile size="sm" />
                           <div className="min-w-0 flex-1">
@@ -392,7 +380,7 @@ const GroupsHub: React.FC = () => {
                           type="button"
                           onClick={() => joinMutation.mutate(group.id)}
                           disabled={isFull || joinMutation.isPending}
-                          className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl border border-grp-primary/40 px-4 text-[14px] font-semibold text-grp-primary transition-colors hover:bg-grp-primary-tint disabled:border-grp-hairline disabled:text-grp-muted disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+                          className="min-h-[40px] shrink-0 whitespace-nowrap rounded-lg border border-grp-primary/40 px-3.5 text-[13px] font-semibold text-grp-primary transition-colors hover:bg-grp-primary-tint disabled:border-grp-hairline disabled:text-grp-muted disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
                         >
                           {actionText}
                         </button>

@@ -31,10 +31,10 @@ export const MemberRow: React.FC<MemberRowProps> = ({
   const initial = name.charAt(0).toUpperCase();
 
   return (
-    <div className="flex min-h-[60px] items-center gap-3 py-3">
+    <div className="flex min-h-[52px] items-center gap-3 py-2">
       {typeof rank === 'number' && (
         <span
-          className={`w-6 shrink-0 text-center text-[15px] font-bold tabular-nums ${
+          className={`w-5 shrink-0 text-center text-[14px] font-bold tabular-nums ${
             rank === 1 ? 'text-grp-gold-ink' : 'text-grp-muted'
           }`}
         >
@@ -46,12 +46,12 @@ export const MemberRow: React.FC<MemberRowProps> = ({
         <img
           src={profile.avatar_url}
           alt={name}
-          className="h-10 w-10 shrink-0 rounded-full object-cover"
+          className="h-9 w-9 shrink-0 rounded-full object-cover"
           loading="lazy"
         />
       ) : (
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-grp-primary text-[15px] font-bold text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-grp-primary text-[14px] font-bold text-white"
           aria-hidden="true"
         >
           {initial}
@@ -59,27 +59,27 @@ export const MemberRow: React.FC<MemberRowProps> = ({
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-bold leading-snug text-grp-text">
+        <p className="truncate text-[15px] font-semibold leading-snug text-grp-text">
           {name}
         </p>
-        <p className="mt-0.5 truncate text-[13px] leading-snug text-grp-muted tabular-nums">
+        <p className="truncate text-[12px] leading-snug text-grp-muted tabular-nums">
           {t('groups.xp')} {localizeDigits(membership.contribution_xp ?? 0, language)}
           {profile?.institution ? ` · ${profile.institution}` : ''}
         </p>
       </div>
 
       {membership.role === 'admin' && !isPendingRequest && !(showKick && canKick) && (
-        <span className="shrink-0 whitespace-nowrap rounded-md bg-grp-primary-tint px-2.5 py-1 text-[12px] font-semibold text-grp-primary">
+        <span className="shrink-0 whitespace-nowrap rounded-md bg-grp-primary-tint px-2 py-0.5 text-[12px] font-semibold text-grp-primary">
           {t('groups.admin')}
         </span>
       )}
 
       {isPendingRequest && (
         <div className="flex shrink-0 items-center gap-2">
-          <Button size="sm" onClick={onApprove} className="min-h-[44px]">
+          <Button size="sm" onClick={onApprove} className="min-h-[40px]">
             {t('groups.approve')}
           </Button>
-          <Button size="sm" variant="secondary" onClick={onReject} className="min-h-[44px]">
+          <Button size="sm" variant="secondary" onClick={onReject} className="min-h-[40px]">
             {t('groups.reject')}
           </Button>
         </div>
@@ -88,11 +88,11 @@ export const MemberRow: React.FC<MemberRowProps> = ({
       {showKick && canKick && (
         <div className="flex shrink-0 items-center gap-2">
           {membership.role === 'admin' && (
-            <span className="shrink-0 whitespace-nowrap rounded-md bg-grp-primary-tint px-2.5 py-1 text-[12px] font-semibold text-grp-primary">
+            <span className="shrink-0 whitespace-nowrap rounded-md bg-grp-primary-tint px-2 py-0.5 text-[12px] font-semibold text-grp-primary">
               {t('groups.admin')}
             </span>
           )}
-          <Button size="sm" variant="danger" onClick={onKick} className="min-h-[44px]">
+          <Button size="sm" variant="danger" onClick={onKick} className="min-h-[40px]">
             {t('groups.kick')}
           </Button>
         </div>

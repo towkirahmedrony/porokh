@@ -102,22 +102,19 @@ const GroupLeaderboard: React.FC = () => {
 
   return (
     <PullToRefresh onRefresh={() => leaderboard.refetch()}>
-      <div className="-m-4 min-h-[calc(100vh-4rem)] bg-grp-bg px-4 pt-4 pb-36 text-grp-text font-hind-bangla md:-m-6 md:px-6 md:pt-6 md:pb-20">
-        <div className="mx-auto max-w-2xl space-y-4">
-          {/* Back link */}
-          <button
-            type="button"
-            onClick={() => navigate('/groups')}
-            className="-ml-1 inline-flex min-h-[44px] items-center gap-1 rounded-lg px-1 text-[15px] font-medium text-grp-muted transition-colors hover:text-grp-text focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
-          >
-            <ChevronLeft className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
-            <span>{t('groups.title')}</span>
-          </button>
-
-          {/* Title */}
-          <header className="flex items-center gap-2.5">
-            <Trophy className="h-6 w-6 shrink-0 text-grp-primary" strokeWidth={2} aria-hidden="true" />
-            <h1 className="text-[26px] font-bold leading-tight text-grp-text">
+      <div className="-m-4 min-h-[calc(100vh-4rem)] bg-grp-bg px-4 pt-2 pb-32 text-grp-text font-hind-bangla md:-m-6 md:px-6 md:pt-6 md:pb-20">
+        <div className="mx-auto max-w-2xl space-y-2.5">
+          {/* Back + Title */}
+          <header className="-ml-2 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => navigate('/groups')}
+              aria-label={t('groups.title')}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-grp-text transition-colors hover:bg-grp-surface-tint focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+            >
+              <ChevronLeft className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
+            </button>
+            <h1 className="min-w-0 truncate text-[20px] font-bold leading-tight text-grp-text">
               {t('groups.leaderboard')}
             </h1>
           </header>
@@ -126,7 +123,7 @@ const GroupLeaderboard: React.FC = () => {
           <div
             role="tablist"
             aria-label={t('groups.leaderboard')}
-            className="flex items-center rounded-full bg-grp-surface-tint p-1"
+            className="flex items-center rounded-full bg-grp-surface-tint p-0.5"
           >
             {PERIODS.map((option) => {
               const active = period === option.value;
@@ -137,7 +134,7 @@ const GroupLeaderboard: React.FC = () => {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setPeriod(option.value)}
-                  className={`min-h-[44px] flex-1 whitespace-nowrap rounded-full px-3 text-[14px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary ${
+                  className={`min-h-[40px] flex-1 whitespace-nowrap rounded-full px-3 text-[13px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary ${
                     active
                       ? 'bg-grp-primary font-semibold text-white'
                       : 'font-medium text-grp-muted hover:text-grp-text'
@@ -149,7 +146,7 @@ const GroupLeaderboard: React.FC = () => {
             })}
           </div>
 
-          <p className="text-[13px] text-grp-muted">{t('groups.avgXp')}</p>
+          <p className="text-[12px] text-grp-muted">{t('groups.avgXp')}</p>
 
           {leaderboard.isLoading ? (
             <div className="space-y-3 pt-2">
@@ -199,7 +196,7 @@ const GroupLeaderboard: React.FC = () => {
               {/* Top 3 Podium */}
               {podiumSlots.length > 0 && (
                 <div
-                  className={`grid items-end gap-2 border-b border-grp-hairline pt-2 pb-6 ${
+                  className={`grid items-end gap-2 border-b border-grp-hairline pt-1 pb-4 ${
                     podiumSlots.length === 3
                       ? 'grid-cols-3'
                       : podiumSlots.length === 2
@@ -213,17 +210,17 @@ const GroupLeaderboard: React.FC = () => {
                       type="button"
                       onClick={() => openGroup(row)}
                       className={`flex min-h-[44px] min-w-0 flex-col items-center rounded-xl p-1 text-center transition-opacity hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary ${
-                        isFirst ? '' : 'pt-4'
+                        isFirst ? '' : 'pt-3'
                       }`}
                     >
                       <GroupShieldTile
                         size={isFirst ? 'lg' : 'md'}
                         tone={isFirst ? 'gold' : 'tint'}
                       />
-                      <p className="mt-2.5 w-full truncate text-[14px] font-bold leading-snug text-grp-text">
+                      <p className="mt-1.5 w-full truncate text-[13px] font-bold leading-snug text-grp-text">
                         {row.group?.name ?? 'Group'}
                       </p>
-                      <p className="mt-0.5 text-[13px] text-grp-muted tabular-nums">
+                      <p className="mt-0.5 text-[12px] text-grp-muted tabular-nums">
                         {localizeDigits(Math.round(row.avg_xp), language)} {t('groups.xp')}
                       </p>
                     </button>
@@ -246,7 +243,7 @@ const GroupLeaderboard: React.FC = () => {
                         ref={row.is_my_group ? myRowRef : undefined}
                         type="button"
                         onClick={() => openGroup(row)}
-                        className="flex min-h-[64px] w-full items-center gap-3 rounded-lg py-3 text-left transition-colors hover:bg-grp-surface-tint/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
+                        className="flex min-h-[52px] w-full items-center gap-3 rounded-lg py-1.5 text-left transition-colors hover:bg-grp-surface-tint/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-grp-primary"
                       >
                         <span className="w-6 shrink-0 text-center text-[15px] font-bold text-grp-muted tabular-nums">
                           {localizeDigits(row.rank, language)}
@@ -287,7 +284,7 @@ const GroupLeaderboard: React.FC = () => {
 
       {/* Pinned "আপনার গ্রুপ" bar above BottomNav */}
       {showPinnedMyGroup && (
-        <div className="fixed bottom-20 left-0 right-0 z-30 border-t border-grp-hairline bg-grp-primary-tint px-4 py-2.5 font-hind-bangla md:bottom-0 md:left-64">
+        <div className="fixed bottom-20 left-0 right-0 z-30 border-t border-grp-hairline bg-grp-primary-tint px-4 py-1.5 font-hind-bangla md:bottom-0 md:left-64">
           <button
             type="button"
             onClick={() => pinnedGroupTarget && navigate(`/groups/${pinnedGroupTarget}`)}
