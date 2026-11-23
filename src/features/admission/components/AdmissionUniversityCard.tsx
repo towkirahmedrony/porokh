@@ -38,7 +38,7 @@ export const AdmissionUniversityCard: React.FC<AdmissionUniversityCardProps> = (
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 font-['Noto_Sans_Bengali'] text-base font-bold leading-snug text-text-primary group-hover:text-primary">
+          <h3 className="line-clamp-2 font-['Noto_Sans_Bengali'] text-base font-bold leading-[1.55] text-text-primary group-hover:text-primary">
             {name}
           </h3>
 
@@ -53,7 +53,7 @@ export const AdmissionUniversityCard: React.FC<AdmissionUniversityCardProps> = (
       </div>
 
       {university.location && (
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-text-secondary">
+        <p className="mt-3 flex items-center gap-1.5 text-xs leading-[1.55] text-text-secondary">
           <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="truncate">{university.location}</span>
         </p>

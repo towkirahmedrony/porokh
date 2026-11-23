@@ -172,11 +172,11 @@ const AdmissionUnitPage: React.FC = () => {
         />
 
         <div className="min-w-0 flex-1">
-          <p className="truncate font-['Noto_Sans_Bengali'] text-[11px] leading-4 text-text-secondary">
+          <p className="truncate font-['Noto_Sans_Bengali'] text-[11px] leading-[1.55] text-text-secondary">
             {universityName}
           </p>
           <div className="flex items-center gap-1.5">
-            <h1 className="min-w-0 truncate font-['Noto_Sans_Bengali'] text-base font-bold leading-5 text-text-primary">
+            <h1 className="min-w-0 truncate font-['Noto_Sans_Bengali'] text-base font-bold leading-[1.55] text-text-primary">
               {unitName}
             </h1>
             <span className="shrink-0 rounded-md bg-badge-bg px-1.5 py-0.5 text-[10px] font-bold uppercase text-badge-text">

@@ -96,7 +96,7 @@ const AdmissionUnitListPage: React.FC = () => {
           imageClassName="h-5 w-5"
         />
 
-        <h1 className="min-w-0 flex-1 truncate font-['Noto_Sans_Bengali'] text-base font-bold leading-5 text-text-primary sm:text-lg">
+        <h1 className="min-w-0 flex-1 truncate font-['Noto_Sans_Bengali'] text-base font-bold leading-[1.55] text-text-primary sm:text-lg">
           {universityName}
         </h1>
       </header>
