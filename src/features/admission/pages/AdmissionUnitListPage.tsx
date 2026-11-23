@@ -79,31 +79,26 @@ const AdmissionUnitListPage: React.FC = () => {
     <div className="mx-auto w-full max-w-5xl pb-8">
       <AdmissionBreadcrumb items={breadcrumbItems} />
 
-      <header className="mb-4">
+      <header className="mb-3 flex items-center gap-2.5">
         <Link
           to="/admission"
-          className="!no-underline [text-decoration-line:none!important] mb-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg text-sm font-medium text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          aria-label={t('admission.backToAdmission')}
+          className="!no-underline [text-decoration-line:none!important] inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-card-border bg-card-bg text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {t('admission.backToAdmission')}
         </Link>
 
-        <div className="flex items-center gap-3">
-          <UniversityLogo
-            logoUrl={university.logoUrl}
-            name={universityName}
-            shortName={university.shortName}
-            className="h-12 w-12"
-          />
-          <div className="min-w-0">
-            <h1 className="font-['Noto_Sans_Bengali'] text-xl font-bold leading-snug text-text-primary sm:text-2xl">
-              {universityName}
-            </h1>
-            <p className="mt-0.5 font-['Noto_Sans_Bengali'] text-sm text-text-secondary">
-              {t('admission.unitListHint')}
-            </p>
-          </div>
-        </div>
+        <UniversityLogo
+          logoUrl={university.logoUrl}
+          name={universityName}
+          shortName={university.shortName}
+          className="h-8 w-8 shrink-0"
+          imageClassName="h-5 w-5"
+        />
+
+        <h1 className="min-w-0 flex-1 truncate font-['Noto_Sans_Bengali'] text-base font-bold leading-5 text-text-primary sm:text-lg">
+          {universityName}
+        </h1>
       </header>
 
       {university.units.length === 0 ? (

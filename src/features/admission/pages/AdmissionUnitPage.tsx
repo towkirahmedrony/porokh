@@ -6,6 +6,7 @@ import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { AdmissionBreadcrumb } from '../components/AdmissionBreadcrumb';
 import { AdmissionState } from '../components/AdmissionState';
 import AdmissionBankPanel from '../components/AdmissionBankPanel';
+import AdmissionHubPanes from '../components/AdmissionHubPanes';
 import AdmissionHubTabs from '../components/AdmissionHubTabs';
 import AdmissionPaperRow from '../components/AdmissionPaperRow';
 import UniversityLogo from '../components/UniversityLogo';
@@ -117,127 +118,98 @@ const AdmissionUnitPage: React.FC = () => {
     navigate(`/admission/exam/${encodeURIComponent(examId)}`);
   };
 
-  const summary = [
-    content.pastPapers.length > 0
-      ? t('admission.hub.paperCount', { count: content.pastPapers.length })
-      : null,
-    content.modelTests.length > 0
-      ? t('admission.hub.modelCount', { count: content.modelTests.length })
-      : null,
-    content.bank.total > 0
-      ? t('admission.hub.questionsCount', { count: content.bank.total })
-      : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const papersPane = (
+    <div className="space-y-2.5">
+      {content.pastPapers.length === 0 ? (
+        <AdmissionState
+          variant="empty"
+          title={t('admission.hub.emptyPapers')}
+          message={t('admission.hub.emptyPapersHint')}
+        />
+      ) : (
+        content.pastPapers.map((paper) => (
+          <AdmissionPaperRow key={paper.id} paper={paper} onStart={startExam} />
+        ))
+      )}
+    </div>
+  );
+
+  const modelsPane = (
+    <div className="space-y-2.5">
+      {content.modelTests.length === 0 ? (
+        <AdmissionState
+          variant="empty"
+          title={t('admission.hub.emptyModels')}
+          message={t('admission.hub.emptyModelsHint')}
+        />
+      ) : (
+        content.modelTests.map((paper) => (
+          <AdmissionPaperRow key={paper.id} paper={paper} onStart={startExam} />
+        ))
+      )}
+    </div>
+  );
 
   return (
-    <div className="mx-auto w-full max-w-5xl pb-10">
+    <div className="mx-auto w-full max-w-5xl">
       <AdmissionBreadcrumb items={breadcrumbItems} />
 
-      <header className="mb-4 rounded-[20px] border border-card-border bg-card-bg p-4">
+      <header className="flex items-center gap-2.5">
         <Link
           to={`/admission/${encodeURIComponent(content.university.slug)}`}
-          className="!no-underline [text-decoration-line:none!important] mb-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg text-sm font-medium text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          aria-label={t('admission.back')}
+          className="!no-underline [text-decoration-line:none!important] inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-card-border bg-card-bg text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {t('admission.back')}
         </Link>
 
-        <div className="flex items-start gap-3">
-          <UniversityLogo
-            logoUrl={content.university.logoUrl}
-            name={universityName}
-            shortName={content.university.shortName}
-            className="h-12 w-12"
-          />
+        <UniversityLogo
+          logoUrl={content.university.logoUrl}
+          name={universityName}
+          shortName={content.university.shortName}
+          className="h-8 w-8 shrink-0"
+          imageClassName="h-5 w-5"
+        />
 
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-['Noto_Sans_Bengali'] text-xs font-semibold text-text-secondary">
-              {universityName}
-            </p>
-
-            <div className="mt-0.5 flex items-center gap-2">
-              <h1 className="min-w-0 font-['Noto_Sans_Bengali'] text-xl font-bold leading-snug text-text-primary sm:text-2xl">
-                {unitName}
-              </h1>
-              <span className="shrink-0 rounded-md bg-badge-bg px-2 py-0.5 text-[11px] font-bold uppercase text-badge-text">
-                {content.unit.code}
-              </span>
-            </div>
-
-            {content.unit.description && (
-              <p className="mt-1 line-clamp-2 font-['Noto_Sans_Bengali'] text-xs leading-5 text-text-secondary">
-                {content.unit.description}
-              </p>
-            )}
-
-            {summary && (
-              <p className="mt-1.5 text-[11px] font-semibold text-text-secondary">
-                {summary}
-              </p>
-            )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-['Noto_Sans_Bengali'] text-[11px] leading-4 text-text-secondary">
+            {universityName}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <h1 className="min-w-0 truncate font-['Noto_Sans_Bengali'] text-base font-bold leading-5 text-text-primary">
+              {unitName}
+            </h1>
+            <span className="shrink-0 rounded-md bg-badge-bg px-1.5 py-0.5 text-[10px] font-bold uppercase text-badge-text">
+              {content.unit.code}
+            </span>
           </div>
         </div>
+
+        {content.bank.total > 0 && (
+          <span className="shrink-0 text-[11px] font-semibold text-text-secondary">
+            {t('admission.hub.questionsCount', { count: content.bank.total })}
+          </span>
+        )}
       </header>
 
-      <AdmissionHubTabs active={activeTab} onChange={selectTab} />
-
       <div className="mt-3">
-        {activeTab === 'papers' && (
-          <div
-            role="tabpanel"
-            id="admission-hub-panel-papers"
-            aria-labelledby="admission-hub-tab-papers"
-            className="space-y-2.5"
-          >
-            {content.pastPapers.length === 0 ? (
-              <AdmissionState
-                variant="empty"
-                title={t('admission.hub.emptyPapers')}
-                message={t('admission.hub.emptyPapersHint')}
-              />
-            ) : (
-              content.pastPapers.map((paper) => (
-                <AdmissionPaperRow
-                  key={paper.id}
-                  paper={paper}
-                  onStart={startExam}
-                />
-              ))
-            )}
-          </div>
-        )}
-
-        {activeTab === 'models' && (
-          <div
-            role="tabpanel"
-            id="admission-hub-panel-models"
-            aria-labelledby="admission-hub-tab-models"
-            className="space-y-2.5"
-          >
-            {content.modelTests.length === 0 ? (
-              <AdmissionState
-                variant="empty"
-                title={t('admission.hub.emptyModels')}
-                message={t('admission.hub.emptyModelsHint')}
-              />
-            ) : (
-              content.modelTests.map((paper) => (
-                <AdmissionPaperRow
-                  key={paper.id}
-                  paper={paper}
-                  onStart={startExam}
-                />
-              ))
-            )}
-          </div>
-        )}
-
-        {activeTab === 'bank' && (
-          <AdmissionBankPanel unitId={content.unit.id} facets={content.bank} />
-        )}
+        <AdmissionHubTabs active={activeTab} onChange={selectTab} />
       </div>
+
+      <AdmissionHubPanes
+        active={activeTab}
+        onChange={selectTab}
+        panes={[
+          { value: 'papers', content: papersPane },
+          { value: 'models', content: modelsPane },
+          {
+            value: 'bank',
+            content: (
+              <AdmissionBankPanel unitId={content.unit.id} facets={content.bank} />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 };

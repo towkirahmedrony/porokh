@@ -99,12 +99,7 @@ const AdmissionBankPanel: React.FC<AdmissionBankPanelProps> = ({
     bookmarkMutation.variables?.questionId === questionId;
 
   return (
-    <div
-      role="tabpanel"
-      id="admission-hub-panel-bank"
-      aria-labelledby="admission-hub-tab-bank"
-      className="space-y-3"
-    >
+    <div className="space-y-3">
       <div className="rounded-2xl border border-card-border bg-card-bg p-3.5">
         <div className="grid grid-cols-2 gap-2">
           <label className="col-span-1 block">

@@ -52,42 +52,33 @@ const AdmissionUniversitiesPage: React.FC = () => {
         ]}
       />
 
-      <header className="mb-4">
-        <h1 className="font-['Noto_Sans_Bengali'] text-2xl font-bold leading-snug text-text-primary">
-          {t('admission.universityListTitle')}
-        </h1>
-        <p className="mt-1 font-['Noto_Sans_Bengali'] text-sm leading-6 text-text-secondary">
-          {t('admission.universityListHint')}
-        </p>
-
-        <div className="relative mt-3">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary"
-            aria-hidden="true"
-          />
-          <label htmlFor="admission-university-search" className="sr-only">
-            {t('admission.searchLabel')}
-          </label>
-          <input
-            id="admission-university-search"
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t('admission.searchPlaceholder')}
-            className="w-full rounded-xl border border-input-border bg-input-bg py-2.5 pl-9 pr-10 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-focus-ring"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              aria-label={t('admission.clearSearch')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </header>
+      <div className="relative mb-3">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary"
+          aria-hidden="true"
+        />
+        <label htmlFor="admission-university-search" className="sr-only">
+          {t('admission.searchLabel')}
+        </label>
+        <input
+          id="admission-university-search"
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t('admission.searchPlaceholder')}
+          className="w-full rounded-xl border border-input-border bg-input-bg py-2.5 pl-9 pr-10 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-focus-ring"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch('')}
+            aria-label={t('admission.clearSearch')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       {catalogQuery.isError ? (
         <AdmissionState
