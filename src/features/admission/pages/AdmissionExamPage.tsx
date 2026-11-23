@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { beginExamActivity } from '@/features/app-update/examActivity';
 import { localizeDigits } from '@/shared/i18n/messages';
-import QuestionCard from '@/features/exam/components/QuestionCard';
+import { pickLang } from '@/shared/i18n/localize';
 import ExamTimer from '@/features/exam/components/ExamTimer';
-import ExamHeader from '@/features/exam/components/ExamHeader';
 import ConfirmModal from '@/shared/components/feedback/ConfirmModal';
 import {
   buildSubmissionStorageKey,
@@ -20,8 +19,10 @@ import { useAdmissionExamPaper } from '../hooks/useAdmissionCatalog';
 import { useAdmissionExamSession } from '../hooks/useAdmissionExamSession';
 import { useOfflineExam } from '@/features/exam/offline/useOfflineExam';
 import { AdmissionExamSkeleton } from '../components/AdmissionSkeleton';
+import AdmissionExamQuestionCard from '../components/AdmissionExamQuestionCard';
 import { AdmissionQuestionNavigator } from '../components/AdmissionQuestionNavigator';
 import { AdmissionState } from '../components/AdmissionState';
+import { groupQuestionsBySubject } from '../lib/admissionExamSections';
 
 type SessionErrorShape = {
   response?: {
@@ -112,6 +113,13 @@ const AdmissionExamPage: React.FC = () => {
   const serverDeadlineRef = useRef<number | null>(null);
   const autosaveStoppedRef = useRef(false);
 
+  // Single-page exam navigation: the page body owns the question nodes, the
+  // header stays sticky, and scroll position determines the active question.
+  const contentRef = useRef<HTMLElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const scrollFrameRef = useRef<number | null>(null);
+  const restoredAttemptRef = useRef<string | null>(null);
+
   const submissionStorageKey = useMemo(
     () => buildSubmissionStorageKey(`admission-${examId ?? 'unknown'}`),
     [examId]
@@ -121,6 +129,24 @@ const AdmissionExamPage: React.FC = () => {
   );
 
   const paper = paperQuery.data ?? null;
+
+  const sections = useMemo(() => groupQuestionsBySubject(questions), [questions]);
+
+  const scrollToQuestion = useCallback(
+    (index: number, behavior: ScrollBehavior = 'smooth') => {
+      setCurrentIndex(index);
+
+      // Wait one frame so collapsing the navigator has reflowed the page; the
+      // target would otherwise be offset by the panel's height.
+      window.requestAnimationFrame(() => {
+        const node = contentRef.current?.querySelector<HTMLElement>(
+          `[data-admission-question-index="${index}"]`
+        );
+        node?.scrollIntoView({ behavior, block: 'start' });
+      });
+    },
+    []
+  );
 
   // Restore server-held draft answers when the attempt is (re)loaded.
   useEffect(() => {
@@ -133,6 +159,64 @@ const AdmissionExamPage: React.FC = () => {
     );
     setInitializedAttemptId(attempt.id);
   }, [attempt, initializedAttemptId]);
+
+  // Resume at the server-held question once the cards are mounted.
+  useEffect(() => {
+    if (!attempt || initializedAttemptId !== attempt.id || questions.length === 0) {
+      return undefined;
+    }
+    if (restoredAttemptRef.current === attempt.id) return undefined;
+
+    restoredAttemptRef.current = attempt.id;
+    const index = Math.min(
+      Math.max(0, attempt.current_question_index),
+      questions.length - 1
+    );
+    const frame = window.requestAnimationFrame(() => scrollToQuestion(index, 'auto'));
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [attempt, initializedAttemptId, questions.length, scrollToQuestion]);
+
+  // Scroll-spy: the navigator highlights the question the student is viewing.
+  useEffect(() => {
+    if (questions.length === 0) return undefined;
+
+    const handleScroll = () => {
+      if (scrollFrameRef.current !== null) return;
+
+      scrollFrameRef.current = window.requestAnimationFrame(() => {
+        scrollFrameRef.current = null;
+
+        const nodes = contentRef.current?.querySelectorAll<HTMLElement>(
+          '[data-admission-question-index]'
+        );
+        if (!nodes?.length) return;
+
+        const line = (headerRef.current?.offsetHeight ?? 88) + 24;
+        let nextIndex = 0;
+
+        nodes.forEach((node) => {
+          if (node.getBoundingClientRect().top <= line) {
+            nextIndex = Number(node.dataset.admissionQuestionIndex ?? 0);
+          }
+        });
+
+        setCurrentIndex((previous) =>
+          previous === nextIndex ? previous : nextIndex
+        );
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+        scrollFrameRef.current = null;
+      }
+    };
+  }, [questions.length]);
 
   useEffect(() => {
     if (attempt) {
@@ -511,44 +595,106 @@ const AdmissionExamPage: React.FC = () => {
     );
   }
 
-  const currentQuestion = questions[currentIndex] ?? questions[0];
   const answeredCount = questions.filter((question) =>
     Boolean(answers[question.id])
   ).length;
   const total = questions.length;
-  const currentNumber = localizeDigits(currentIndex + 1, language);
+  const unansweredCount = total - answeredCount;
+  const completion = total === 0 ? 0 : Math.round((answeredCount / total) * 100);
   const totalNumber = localizeDigits(total, language);
   const answeredNumber = localizeDigits(answeredCount, language);
+  const unansweredNumber = localizeDigits(unansweredCount, language);
+  const completionNumber = localizeDigits(completion, language);
   const secondsLeft = timeLeft ?? attempt.seconds_remaining ?? 0;
-
-  const goPrevious = () =>
-    setCurrentIndex((previous) => Math.max(0, previous - 1));
-  const goNext = () =>
-    setCurrentIndex((previous) => Math.min(total - 1, previous + 1));
+  const isSubmitDisabled = isSubmitting || submissionQueued;
 
   return (
-    <div className="min-h-screen bg-app pb-32 text-text-primary lg:pb-8">
-      <ExamHeader
-        title={paper.title || t('admission.examHeader')}
-        onBack={() => navigate(-1)}
-        rightContent={<ExamTimer seconds={secondsLeft} layout="compact" />}
-      />
+    <div className="min-h-screen bg-app text-text-primary">
+      <header
+        ref={headerRef}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        className="sticky top-0 z-40 border-b border-border-color bg-surface-elevated/95 backdrop-blur-md"
+      >
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-2.5 py-2 sm:px-4">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label={t('common.back')}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            <ArrowLeft size={20} aria-hidden="true" />
+          </button>
 
-      <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-5 sm:py-6">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-card-border bg-card-bg px-4 py-2.5 text-xs font-semibold text-text-secondary sm:text-sm">
-          <span className="font-['Noto_Sans_Bengali']">
-            {t('admission.questionOf', {
-              current: currentNumber,
-              total: totalNumber,
-            })}
-          </span>
-          <span className="font-['Noto_Sans_Bengali']">
-            {t('admission.answered')}: {answeredNumber} / {totalNumber}
-          </span>
+          <div className="min-w-0 flex-1">
+            <h1
+              title={paper.title || t('admission.examHeader')}
+              className="truncate font-bengali text-[15px] font-semibold leading-tight text-text-primary"
+            >
+              {paper.title || t('admission.examHeader')}
+            </h1>
+          </div>
+
+          <ExamTimer seconds={secondsLeft} layout="compact" />
         </div>
+      </header>
+
+      <main
+        ref={contentRef}
+        className="mx-auto w-full max-w-3xl px-3 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] pt-3 sm:px-4 sm:pt-4"
+      >
+        <section
+          aria-label={t('admission.progressSummary')}
+          className="rounded-xl border border-card-border bg-card-bg px-4 py-3"
+        >
+          <dl className="grid grid-cols-3 divide-x divide-border-color text-center">
+            <div>
+              <dt className="font-bengali text-[10px] font-medium text-text-secondary">
+                {t('admission.progress.total')}
+              </dt>
+              <dd className="mt-0.5 font-bengali text-[17px] font-bold leading-none text-text-primary">
+                {totalNumber}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-bengali text-[10px] font-medium text-text-secondary">
+                {t('admission.progress.answered')}
+              </dt>
+              <dd className="mt-0.5 font-bengali text-[17px] font-bold leading-none text-success">
+                {answeredNumber}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-bengali text-[10px] font-medium text-text-secondary">
+                {t('admission.progress.unanswered')}
+              </dt>
+              <dd className="mt-0.5 font-bengali text-[17px] font-bold leading-none text-text-primary">
+                {unansweredNumber}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-2.5 flex items-center gap-2.5">
+            <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={completion}
+              aria-label={t('admission.progress.completed')}
+              className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary"
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{ width: `${completion}%` }}
+              />
+            </div>
+            <span className="shrink-0 font-bengali text-[11px] font-semibold text-text-secondary">
+              {completionNumber}%
+            </span>
+          </div>
+        </section>
 
         {autosaveInvalidated && (
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/40 bg-surface px-4 py-3 text-xs font-semibold text-accent sm:text-sm">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-accent/40 bg-surface px-3 py-2.5 text-[11px] font-semibold text-accent sm:text-xs">
             <span>{t('admission.exam.noSavingBanner')}</span>
             {autosaveInvalidated.historyId && (
               <button
@@ -556,7 +702,7 @@ const AdmissionExamPage: React.FC = () => {
                 onClick={() =>
                   navigate(`/exam/analysis/${autosaveInvalidated.historyId}`, { replace: true })
                 }
-                className="rounded-lg bg-primary px-3 py-1.5 font-bold text-primary-foreground"
+                className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground"
               >
                 {t('admission.exam.viewResult')}
               </button>
@@ -565,119 +711,99 @@ const AdmissionExamPage: React.FC = () => {
         )}
 
         {submissionQueued && (
-          <div className="mb-3 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300 sm:text-sm">
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 sm:text-xs">
             <CheckCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>{t('admission.exam.submissionQueued')}</span>
           </div>
         )}
 
         {isOfflineMode && !submissionQueued && (
-          <div className="mb-3 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-xs font-semibold text-amber-700 dark:text-amber-300 sm:text-sm">
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 sm:text-xs">
             <span>{t('admission.exam.offlineMode')}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="min-w-0">
-            <QuestionCard
-              question={currentQuestion}
-              selectedOptionId={answers[currentQuestion.id]}
-              onOptionSelect={(optionId) =>
-                handleSelectOption(currentQuestion.id, optionId)
-              }
-              imageAlt={t('admission.questionImageAlt')}
-            />
+        <div className="mt-3">
+          <AdmissionQuestionNavigator
+            sections={sections}
+            activeIndex={currentIndex}
+            answers={answers}
+            onSelect={scrollToQuestion}
+          />
+        </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={goPrevious}
-                disabled={currentIndex === 0}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border-color bg-surface px-4 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                {t('admission.previous')}
-              </button>
+        <div className="mt-5 space-y-6">
+          {sections.map((section, sectionIndex) => {
+            const subjectName =
+              pickLang(language, section.nameBn, section.nameEn) ||
+              (section.subjectId
+                ? t('admission.subjectFallback', {
+                    number: localizeDigits(sectionIndex + 1, language),
+                  })
+                : t('admission.otherSubject'));
+            const headingId = `admission-subject-${section.key}`;
 
-              <button
-                type="button"
-                onClick={goNext}
-                disabled={currentIndex >= total - 1}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border-color bg-surface px-4 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                {t('admission.next')}
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
+            return (
+              <section key={section.key} aria-labelledby={headingId}>
+                <div className="mb-2.5 flex items-baseline justify-between gap-3 border-b border-border-color pb-2">
+                  <h2
+                    id={headingId}
+                    className="min-w-0 truncate font-bengali text-[15px] font-bold text-text-primary"
+                  >
+                    {subjectName}
+                  </h2>
+                  <span className="shrink-0 font-bengali text-[11px] font-medium text-text-secondary">
+                    {t('admission.questions', {
+                      count: localizeDigits(section.entries.length, language),
+                    })}
+                  </span>
+                </div>
 
-            <div className="mt-4 lg:hidden">
-              <AdmissionQuestionNavigator
-                questionIds={questions.map((question) => question.id)}
-                currentIndex={currentIndex}
-                answers={answers}
-                onSelect={setCurrentIndex}
-              />
-            </div>
-          </div>
-
-          <aside className="hidden lg:block">
-            <div className="sticky top-20 space-y-4">
-              <ExamTimer
-                seconds={secondsLeft}
-                layout="card"
-                label={t('admission.timeLeft')}
-              />
-
-              <AdmissionQuestionNavigator
-                questionIds={questions.map((question) => question.id)}
-                currentIndex={currentIndex}
-                answers={answers}
-                onSelect={setCurrentIndex}
-              />
-
-              <button
-                type="button"
-                onClick={() => setIsConfirmOpen(true)}
-                disabled={isSubmitting}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                <CheckCircle className="h-5 w-5" aria-hidden="true" />
-                {isSubmitting ? t('admission.submitting') : t('admission.submit')}
-              </button>
-            </div>
-          </aside>
+                <div className="space-y-3">
+                  {section.entries.map(({ question, index }) => (
+                    <div
+                      key={question.id}
+                      data-admission-question-index={index}
+                      className="scroll-mt-[7.5rem]"
+                    >
+                      <AdmissionExamQuestionCard
+                        question={question}
+                        number={index + 1}
+                        selectedOptionId={answers[question.id]}
+                        onOptionSelect={handleSelectOption}
+                        imageAlt={t('admission.questionImageAlt')}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-color bg-surface-elevated p-3 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={goPrevious}
-            disabled={currentIndex === 0}
-            aria-label={t('admission.previous')}
-            className="flex items-center justify-center rounded-xl border border-border-color bg-surface py-3 text-text-primary disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          >
-            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-          </button>
+      <div
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border-color bg-surface-elevated/95 backdrop-blur-md"
+      >
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-3 py-2.5 sm:px-4">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-bengali text-[11px] font-semibold text-text-primary">
+              {answeredNumber} / {totalNumber} {t('admission.progress.answered')}
+            </p>
+            <p className="truncate font-bengali text-[10px] text-text-secondary">
+              {unansweredNumber} {t('admission.progress.unanswered')} • {completionNumber}%
+            </p>
+          </div>
 
           <button
             type="button"
             onClick={() => setIsConfirmOpen(true)}
-            disabled={isSubmitting}
-            className="col-span-1 rounded-xl bg-primary px-2 py-3 text-xs font-bold text-primary-foreground disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:text-sm"
+            disabled={isSubmitDisabled}
+            className="inline-flex min-h-[2.75rem] min-w-[8.5rem] shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-bengali text-[13px] font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:text-sm"
           >
+            <CheckCircle size={16} aria-hidden="true" />
             {isSubmitting ? t('admission.submitting') : t('admission.submit')}
-          </button>
-
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={currentIndex >= total - 1}
-            aria-label={t('admission.next')}
-            className="flex items-center justify-center rounded-xl border border-border-color bg-surface py-3 text-text-primary disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          >
-            <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -685,7 +811,11 @@ const AdmissionExamPage: React.FC = () => {
       <ConfirmModal
         isOpen={isConfirmOpen}
         title={t('admission.submitTitle')}
-        message={t('admission.submitMessage', { answered: answeredNumber })}
+        message={t('admission.submitMessageDetailed', {
+          total: totalNumber,
+          answered: answeredNumber,
+          unanswered: unansweredNumber,
+        })}
         confirmText={t('admission.submitConfirm')}
         cancelText={t('admission.submitCancel')}
         loadingText={t('admission.submitting')}

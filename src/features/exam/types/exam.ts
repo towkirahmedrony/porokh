@@ -16,6 +16,13 @@ export interface MediaLibrary {
   file_url: string;
 }
 
+export interface QuestionSubject {
+  id: string;
+  name_bn: string | null;
+  name_en: string | null;
+  slug: string | null;
+}
+
 export interface LocalizedQuestionBody {
   text?: string | null;
   text_bn?: string | null;
@@ -46,6 +53,8 @@ export interface Question extends Omit<QuestionRow, 'options' | 'body' | 'exam_r
   text_bn?: string; 
   text_en?: string | null;
   body?: LocalizedQuestionBody | string | null;
+  /** Present on attempt questions (resolved server-side); absent elsewhere. */
+  subject?: QuestionSubject | null;
   exam_references?: unknown; 
   explanation?: LocalizedExplanation | string | null;
 }

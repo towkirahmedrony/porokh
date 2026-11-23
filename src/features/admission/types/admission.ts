@@ -149,9 +149,18 @@ export interface AdmissionAttemptOption {
   image_url?: string | null;
 }
 
+export interface AdmissionAttemptSubject {
+  id: string;
+  name_bn: string | null;
+  name_en: string | null;
+  slug: string | null;
+}
+
 export interface AdmissionAttemptQuestion {
   id: string;
   subject_id?: string | null;
+  /** Resolved by the attempt endpoint so subject-wise grouping also works offline. */
+  subject?: AdmissionAttemptSubject | null;
   type?: string;
   body?: {
     text_bn?: string | null;

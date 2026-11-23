@@ -102,6 +102,7 @@ export const mapAttemptQuestion = (
 
   return {
     ...(question as unknown as Question),
+    subject: question.subject ?? null,
     text_bn: questionTextBn,
     text: body?.text_en ?? questionTextBn,
     body: (body
