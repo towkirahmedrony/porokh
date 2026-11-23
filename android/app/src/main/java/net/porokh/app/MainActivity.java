@@ -16,7 +16,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NotificationSettingsPlugin.class);
         super.onCreate(savedInstanceState);
         applySplashBackgroundToWebView();
-        ensureNotificationChannel();
+        ensureNotificationChannels();
     }
 
     /**
@@ -39,15 +39,14 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Creates both channels before the first message can arrive. The backend
-     * addresses `porokh_default` for normal notifications and `porokh_urgent`
-     * for high-priority ones; an Android 8+ notification naming a channel that
-     * does not exist is dropped, so both must exist up front.
+     * Creates the four channels the backend addresses: exam, security, general
+     * and social. An Android 8+ notification naming a channel that does not
+     * exist is dropped silently, so they must exist before the first message.
      *
-     * The names come from the device locale, so they stay localized. Android
-     * never renames an existing channel, which is why the id is the stable key.
+     * Exam and security are high importance (heads-up, sound); general and
+     * social are default so a busy chat cannot interrupt a study session.
      */
-    private void ensureNotificationChannel() {
+    private void ensureNotificationChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
 
         NotificationManager manager = getSystemService(NotificationManager.class);
@@ -55,15 +54,31 @@ public class MainActivity extends BridgeActivity {
 
         createChannel(
             manager,
-            getString(R.string.default_notification_channel_id),
-            getString(R.string.notification_channel_name),
-            getString(R.string.notification_channel_description)
+            getString(R.string.channel_exam_id),
+            getString(R.string.channel_exam_name),
+            getString(R.string.channel_exam_description),
+            NotificationManager.IMPORTANCE_HIGH
         );
         createChannel(
             manager,
-            getString(R.string.urgent_notification_channel_id),
-            getString(R.string.urgent_notification_channel_name),
-            getString(R.string.urgent_notification_channel_description)
+            getString(R.string.channel_security_id),
+            getString(R.string.channel_security_name),
+            getString(R.string.channel_security_description),
+            NotificationManager.IMPORTANCE_HIGH
+        );
+        createChannel(
+            manager,
+            getString(R.string.channel_general_id),
+            getString(R.string.channel_general_name),
+            getString(R.string.channel_general_description),
+            NotificationManager.IMPORTANCE_DEFAULT
+        );
+        createChannel(
+            manager,
+            getString(R.string.channel_social_id),
+            getString(R.string.channel_social_name),
+            getString(R.string.channel_social_description),
+            NotificationManager.IMPORTANCE_DEFAULT
         );
     }
 
@@ -71,15 +86,12 @@ public class MainActivity extends BridgeActivity {
         NotificationManager manager,
         String channelId,
         String name,
-        String description
+        String description,
+        int importance
     ) {
         if (manager.getNotificationChannel(channelId) != null) return;
 
-        NotificationChannel channel = new NotificationChannel(
-            channelId,
-            name,
-            NotificationManager.IMPORTANCE_HIGH
-        );
+        NotificationChannel channel = new NotificationChannel(channelId, name, importance);
         channel.setDescription(description);
         channel.enableVibration(true);
         manager.createNotificationChannel(channel);

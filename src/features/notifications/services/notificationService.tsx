@@ -3,25 +3,64 @@ import { DBNotificationItem } from '../types/notificationTypes';
 
 // === API Functions (Typed & Hardened) ===
 //
-// Notification delivery is owned by FCM on Android (see native/nativePush), and
-// the records themselves are always read from Supabase through the API.
+// Delivery is owned by FCM on Android (see native/nativePush); the records
+// themselves are read through the API, which applies the user's cursor page in
+// SQL instead of returning the whole inbox.
 
-type NotificationApiResponse = DBNotificationItem[] | { data: DBNotificationItem[] };
+type NotificationPagePayload = {
+  items: DBNotificationItem[];
+  next_cursor: string | null;
+};
 
-export const fetchNotifications = async (): Promise<DBNotificationItem[]> => {
+type NotificationApiResponse =
+  | DBNotificationItem[]
+  | NotificationPagePayload
+  | { data: DBNotificationItem[] | NotificationPagePayload };
+
+export interface NotificationPage {
+  items: DBNotificationItem[];
+  nextCursor: string | null;
+}
+
+const toPage = (payload: NotificationApiResponse | undefined): NotificationPage => {
+  if (!payload) return { items: [], nextCursor: null };
+
+  if (Array.isArray(payload)) return { items: payload, nextCursor: null };
+
+  if ('data' in payload && payload.data) {
+    return toPage(payload.data as NotificationApiResponse);
+  }
+
+  const page = payload as NotificationPagePayload;
+  return {
+    items: Array.isArray(page.items) ? page.items : [],
+    nextCursor: page.next_cursor ?? null,
+  };
+};
+
+export const fetchNotificationPage = async (
+  limit = 30,
+  before?: string | null
+): Promise<NotificationPage> => {
   try {
-    const response = await apiClient.get<NotificationApiResponse>('/notifications');
-    const responseData = response.data;
+    const response = await apiClient.get<NotificationApiResponse>('/notifications', {
+      params: {
+        limit,
+        ...(before ? { before } : {}),
+      },
+    });
 
-    if (Array.isArray(responseData)) {
-      return responseData;
-    }
-
-    return responseData?.data ?? [];
+    return toPage(response.data);
   } catch (error) {
     console.error('[NotificationService] Error fetching notifications:', error);
     throw error;
   }
+};
+
+/** First page only; kept for callers that still expect an array. */
+export const fetchNotifications = async (): Promise<DBNotificationItem[]> => {
+  const page = await fetchNotificationPage();
+  return page.items;
 };
 
 export const markNotificationAsRead = async (
@@ -29,10 +68,14 @@ export const markNotificationAsRead = async (
   isClicked = false
 ): Promise<void> => {
   try {
-    await apiClient.post('/notifications/read', {
-      notification_id: notificationId,
-      is_clicked: isClicked,
-    });
+    if (isClicked) {
+      await apiClient.post(`/notifications/${notificationId}/click`, {
+        platform: 'android',
+      });
+      return;
+    }
+
+    await apiClient.post(`/notifications/${notificationId}/read`);
   } catch (error) {
     console.error('[NotificationService] Error marking notification as read:', error);
     throw error;
@@ -60,8 +103,12 @@ export const fetchUnreadNotificationCount = async (): Promise<number> => {
 
 export interface NotificationPreferences {
   types: Record<string, boolean>;
+  /** Always true; in-app rows cannot be turned off. */
   in_app: boolean;
   push: boolean;
+  quiet_start: string;
+  quiet_end: string;
+  timezone: string;
 }
 
 export const fetchNotificationPreferences = async (): Promise<NotificationPreferences> => {

@@ -1,7 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="notification_channel_name">পরোখ আপডেট</string>
-    <string name="notification_channel_description">পরীক্ষার রিমাইন্ডার, ফলাফল, স্ট্রিক ও অ্যাকাউন্টের আপডেট</string>
-    <string name="urgent_notification_channel_name">জরুরি সতর্কতা</string>
-    <string name="urgent_notification_channel_description">পরীক্ষা শুরুর রিমাইন্ডার ও সময়-sensitive সতর্কতা</string>
+    <string name="channel_exam_name">পরীক্ষার রিমাইন্ডার</string>
+    <string name="channel_exam_description">পরীক্ষা শুরুর রিমাইন্ডার ও প্রকাশিত ফলাফল</string>
+
+    <string name="channel_security_name">অ্যাকাউন্ট নিরাপত্তা</string>
+    <string name="channel_security_description">নতুন ডিভাইসে লগইন ও অ্যাকাউন্ট সতর্কতা</string>
+
+    <string name="channel_general_name">আপডেট</string>
+    <string name="channel_general_description">স্ট্রিক, প্রিমিয়াম ও সাধারণ আপডেট</string>
+
+    <string name="channel_social_name">স্কোয়াড ও ব্যাটল</string>
+    <string name="channel_social_description">স্কোয়াড আমন্ত্রণ, ব্যাটল ও গ্রুপের উত্তর</string>
 </resources>

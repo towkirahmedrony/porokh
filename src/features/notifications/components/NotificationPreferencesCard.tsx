@@ -17,7 +17,8 @@ const TYPE_KEYS = [
   ['security', 'notification.typeSecurity'],
 ] as const;
 
-const LOCKED_TYPES = new Set(['billing', 'security']);
+// Security is the only category the product never lets a user silence.
+const LOCKED_TYPES = new Set(['security']);
 
 const Toggle: React.FC<{
   checked: boolean;
@@ -87,15 +88,47 @@ const NotificationPreferencesCard: React.FC<{ userId: string }> = ({ userId }) =
   return (
     <div className="divide-y divide-border-color/60">
       <Toggle
-        checked={data.in_app}
-        label={t('notification.inApp')}
-        onChange={() => mutation.mutate({ in_app: !data.in_app })}
-      />
-      <Toggle
         checked={data.push}
         label={t('notification.push')}
         onChange={() => mutation.mutate({ push: !data.push })}
       />
+
+      <p className="py-3 text-[13px] leading-5 text-text-secondary">
+        {t('notification.inAppAlways')}
+      </p>
+
+      <div className="space-y-2 py-4">
+        <div>
+          <p className="text-[15px] font-medium text-text-primary">
+            {t('notification.quietHours')}
+          </p>
+          <p className="mt-0.5 text-[13px] leading-5 text-text-secondary">
+            {t('notification.quietHoursHint')}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex flex-1 items-center gap-2 text-[13px] text-text-secondary">
+            <span>{t('notification.quietStart')}</span>
+            <input
+              type="time"
+              value={data.quiet_start}
+              onChange={(event) =>
+                mutation.mutate({ quiet_start: event.target.value })
+              }
+              className="min-h-[40px] w-full rounded-lg border border-input-border bg-input-bg px-2 text-sm text-text-primary"
+            />
+          </label>
+          <label className="flex flex-1 items-center gap-2 text-[13px] text-text-secondary">
+            <span>{t('notification.quietEnd')}</span>
+            <input
+              type="time"
+              value={data.quiet_end}
+              onChange={(event) => mutation.mutate({ quiet_end: event.target.value })}
+              className="min-h-[40px] w-full rounded-lg border border-input-border bg-input-bg px-2 text-sm text-text-primary"
+            />
+          </label>
+        </div>
+      </div>
 
       <div className="pt-1">
         {TYPE_KEYS.map(([type, labelKey]) => {

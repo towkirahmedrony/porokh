@@ -133,6 +133,10 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
   const [busy, setBusy] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The explanation is shown after a successful sign-in, never during the
+  // splash: the Android permission dialog must not be the first thing a new
+  // user sees.
+  const [showIntro, setShowIntro] = useState(false);
 
   const navigateRef = useRef(navigate);
   const tRef = useRef(t);
@@ -259,12 +263,12 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
-  // One non-blocking prompt on the first launch. The marker is written before
-  // asking, so StrictMode double effects and process restarts cannot show the
-  // Android dialog twice. A user who already turned notifications off is left
-  // alone, and later launches rely on the Settings card.
+  // The explanation appears once, after a successful sign-in, and only while
+  // Android can still show its own dialog. The marker is written when the user
+  // answers, so StrictMode and a process restart cannot show it twice. A denial
+  // or an in-app disable is never retried automatically.
   useEffect(() => {
-    if (!available) return;
+    if (!available || authLoading || !userId) return;
 
     let cancelled = false;
 
@@ -276,26 +280,42 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
       if (cancelled) return;
 
       if (
-        !shouldAskOnFirstLaunch(
+        shouldAskOnFirstLaunch(
           permission,
           hasAskedForNativePush(),
           isDeviceNotificationsDisabled()
         )
       ) {
-        await refreshPermission();
+        setShowIntro(true);
         return;
       }
 
-      markNativePushAsked();
-      await requestNativePushPermission();
-      if (cancelled) return;
       await refreshPermission();
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [available, refreshPermission]);
+  }, [available, authLoading, refreshPermission, userId]);
+
+  const acceptIntro = useCallback(async () => {
+    markNativePushAsked();
+    setShowIntro(false);
+
+    await requestNativePushPermission();
+    const permission = await refreshPermission();
+
+    // Granting is not registering: the token still has to reach the backend.
+    if (permission === 'granted') {
+      syncedTokenRef.current = null;
+      await syncRegistration();
+    }
+  }, [refreshPermission, syncRegistration]);
+
+  const declineIntro = useCallback(() => {
+    markNativePushAsked();
+    setShowIntro(false);
+  }, []);
 
   // Listeners live for the app lifetime; handlers read refs so a navigation or
   // language change never re-binds them.
@@ -598,6 +618,51 @@ export const NativePushProvider: React.FC<{ children: ReactNode }> = ({
   return (
     <NativePushContext.Provider value={value}>
       {children}
+
+      {showIntro && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="push-intro-title"
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4"
+        >
+          <div
+            className="w-full max-w-md rounded-3xl p-5"
+            style={{ backgroundColor: 'var(--dyn-card)' }}
+          >
+            <h2
+              id="push-intro-title"
+              className="text-lg font-bold"
+              style={{ color: 'var(--dyn-text)' }}
+            >
+              {t('notification.introTitle')}
+            </h2>
+            <p
+              className="mt-2 text-sm leading-6"
+              style={{ color: 'color-mix(in srgb, var(--dyn-text) 72%, transparent)' }}
+            >
+              {t('notification.introBody')}
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={declineIntro}
+                className="flex-1 rounded-full px-4 py-3 text-sm font-semibold"
+                style={{ color: 'color-mix(in srgb, var(--dyn-text) 70%, transparent)' }}
+              >
+                {t('notification.introLater')}
+              </button>
+              <button
+                type="button"
+                onClick={() => void acceptIntro()}
+                className="flex-1 rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground"
+              >
+                {t('notification.introEnable')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </NativePushContext.Provider>
   );
 };

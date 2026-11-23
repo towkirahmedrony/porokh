@@ -129,7 +129,7 @@ const getAndroidDeviceLabel = (): string => {
  * account.
  */
 export const registerNativePushDevice = async (token: string): Promise<void> => {
-  await apiClient.post('/notifications/device-token', {
+  await apiClient.post('/notifications/devices', {
     device_id: getDeviceId(),
     device_name: getAndroidDeviceLabel(),
     os_or_browser: navigator.userAgent,
@@ -143,9 +143,9 @@ export const registerNativePushDevice = async (token: string): Promise<void> => 
  * device row survives so the security history and the login dedupe key stay.
  */
 export const deactivateNativePushDevice = async (): Promise<void> => {
-  await apiClient.delete('/notifications/device-token', {
-    data: { device_id: getDeviceId() },
-  });
+  await apiClient.delete(
+    `/notifications/devices/${encodeURIComponent(getDeviceId())}`
+  );
 };
 
 /**

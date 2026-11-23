@@ -4,10 +4,23 @@
     <string name="title_activity_main">Porokh</string>
     <string name="package_name">net.porokh.app</string>
     <string name="custom_url_scheme">net.porokh.app</string>
-    <string name="default_notification_channel_id">porokh_default</string>
-    <string name="notification_channel_name">Porokh updates</string>
-    <string name="notification_channel_description">Exam reminders, results, streak and account updates</string>
-    <string name="urgent_notification_channel_id">porokh_urgent</string>
-    <string name="urgent_notification_channel_name">Urgent alerts</string>
-    <string name="urgent_notification_channel_description">Exam start reminders and time-critical account alerts</string>
+
+    <!-- Fallback channel for a push that names none. -->
+    <string name="default_notification_channel_id">general</string>
+
+    <string name="channel_exam_id">exam</string>
+    <string name="channel_exam_name">Exam reminders</string>
+    <string name="channel_exam_description">Exam start reminders and published results</string>
+
+    <string name="channel_security_id">security</string>
+    <string name="channel_security_name">Account security</string>
+    <string name="channel_security_description">New device sign-ins and account alerts</string>
+
+    <string name="channel_general_id">general</string>
+    <string name="channel_general_name">Updates</string>
+    <string name="channel_general_description">Streak, premium and general updates</string>
+
+    <string name="channel_social_id">social</string>
+    <string name="channel_social_name">Squad and battles</string>
+    <string name="channel_social_description">Squad invites, battles and group replies</string>
 </resources>
