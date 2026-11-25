@@ -86,6 +86,7 @@ const Contact = lazy(() =>
 );
 
 const Notifications = lazy(() => import('@/features/notifications/pages/Notifications'));
+const NotificationPrivacy = lazy(() => import('@/features/profile/pages/NotificationPrivacy'));
 const Notices = lazy(() => import('@/features/notices/pages/Notices'));
 const NoticeDetail = lazy(() => import('@/features/notices/pages/NoticeDetail'));
 const SupportCenter = lazy(() => import('@/features/support/pages/SupportCenter'));
@@ -478,6 +479,14 @@ const AppRoutes: React.FC = () => {
           element={
             <PermissionGuard>
               <Notifications />
+            </PermissionGuard>
+          }
+        />
+        <Route
+          path="/notifications-privacy"
+          element={
+            <PermissionGuard>
+              <NotificationPrivacy />
             </PermissionGuard>
           }
         />
