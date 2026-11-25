@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, type ReactNode } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, Suspense, type ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -80,10 +80,18 @@ const updateSeoMeta = (
 export const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { language, t } = useLanguage();
+  const mainRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     updateSeoMeta(location.pathname, t);
   }, [location.pathname, language, t]);
+
+  // The shell scrolls inside <main>, not the document, so the offset survives
+  // a route change: a page opened from a scrolled list would start halfway
+  // down with its top hidden under the header. Start every route at the top.
+  useLayoutEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [location.pathname]);
 
 
   return (
@@ -97,6 +105,7 @@ export const MainLayout: React.FC<{ children?: ReactNode }> = ({ children }) => 
         <OfflineBanner />
 
         <main
+          ref={mainRef}
           className="scrollbar-hide flex-1 overflow-y-auto overflow-x-hidden p-4 pb-24 md:p-6 md:pb-6"
           aria-label={t('layout.mainAria')}
         >
