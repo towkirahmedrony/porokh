@@ -1,10 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCheck, Loader2 } from 'lucide-react';
-import { supabase } from '@/shared/lib/supabase';
-import { useAuth } from '../../auth/hooks/useAuth';
 import { DBNotificationItem } from '../types/notificationTypes';
 import NotificationHeader from '../components/NotificationHeader';
 import NotificationItem from '../components/NotificationItem';
@@ -14,14 +11,7 @@ import { resolvePushTarget } from '../native/pushRouting';
 import NoticeList from '@/features/notices/components/NoticeList';
 import { useNotices } from '@/features/notices/hooks/useNotices';
 import PullToRefresh from '../../groups/components/PullToRefresh';
-import {
-  fetchNotificationPage,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  type NotificationPage,
-} from '../services/notificationService';
-
-type MarkReadVariables = { id: string; isClicked?: boolean };
+import { useInbox } from '../inbox/InboxProvider';
 
 /** Postgres timestamps arrive with an offset, not always with `Z`. */
 const parseTimestamp = (iso: string): Date => {
@@ -42,66 +32,27 @@ const isSameLocalDay = (iso: string, reference: Date): boolean => {
 const Notifications: React.FC = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'notifications' | 'notices'>('notifications');
   const [selected, setSelected] = useState<DBNotificationItem | null>(null);
-  const [extraItems, setExtraItems] = useState<DBNotificationItem[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
 
-  const queryKey = useMemo(() => ['notifications', user?.id], [user?.id]);
-  const unreadKey = useMemo(() => ['notifications', 'unreadCount', user?.id], [user?.id]);
+  const {
+    items: notifications,
+    unreadCount,
+    loading,
+    hasMore,
+    loadingMore,
+    refresh,
+    loadMore,
+    markRead,
+    markAllRead,
+  } = useInbox();
 
-  const { data: firstPage, isLoading } = useQuery({
-    queryKey,
-    queryFn: () => fetchNotificationPage(30),
-    enabled: !!user?.id,
-    staleTime: 2 * 60 * 1000,
-  });
-
-  const notifications = useMemo(
-    () => [...(firstPage?.items ?? []), ...extraItems],
-    [firstPage, extraItems]
-  );
-
-  const nextCursor = cursor ?? firstPage?.nextCursor ?? null;
-
-  // A different account must not inherit the previous account's extra pages.
+  // Entering the screen always reconciles with the server: a row saved while
+  // the app was closed has no realtime event to replay.
   useEffect(() => {
-    setExtraItems([]);
-    setCursor(null);
-  }, [user?.id]);
-
-  // Realtime keeps the bell and the list current while the screen is open. The
-  // subscription is best-effort: a project without the notifications table in
-  // its realtime publication still works through the pull-to-refresh path.
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const channel = supabase
-      .channel(`notifications:${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `target_user_id=eq.${user.id}`,
-        },
-        () => {
-          setExtraItems([]);
-          setCursor(null);
-          void queryClient.invalidateQueries({ queryKey });
-          void queryClient.invalidateQueries({ queryKey: unreadKey });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [user?.id, queryClient, queryKey, unreadKey]);
+    void refresh();
+  }, [refresh]);
 
   const {
     data: noticeData,
@@ -132,96 +83,32 @@ const Notifications: React.FC = () => {
     return { today, earlier };
   }, [filteredData]);
 
-  const unreadCount = useMemo(
-    () => filteredData.filter((item) => !item.notification_reads?.[0]?.is_read).length,
-    [filteredData]
-  );
-
-  const markAsReadMutation = useMutation({
-    mutationFn: ({ id, isClicked }: MarkReadVariables) =>
-      markNotificationAsRead(id, isClicked),
-    onMutate: async ({ id }) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousPage = queryClient.getQueryData(queryKey);
-      const markRead = (list: DBNotificationItem[]) =>
-        list.map((n) =>
-          n.id === id
-            ? { ...n, notification_reads: [{ is_read: true, is_clicked: true }] }
-            : n
-        );
-
-      setExtraItems((prev) => markRead(prev));
-      queryClient.setQueryData(queryKey, (old: NotificationPage | undefined) =>
-        old ? { ...old, items: markRead(old.items) } : old
-      );
-
-      return { previousPage };
-    },
-    onError: (err, _variables, context) => {
-      if (context?.previousPage) {
-        queryClient.setQueryData(queryKey, context.previousPage);
-      }
-      console.error('Error updating read status via API:', err);
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: unreadKey });
-    },
-  });
-
-  const markAllMutation = useMutation({
-    mutationFn: markAllNotificationsAsRead,
-    onSuccess: () => {
-      const markAll = (list: DBNotificationItem[]) =>
-        list.map((n) =>
-          n.type === 'global_notice'
-            ? n
-            : { ...n, notification_reads: [{ is_read: true, is_clicked: false }] }
-        );
-
-      setExtraItems(markAll);
-      queryClient.setQueryData(queryKey, (old: NotificationPage | undefined) =>
-        old ? { ...old, items: markAll(old.items) } : old
-      );
-      void queryClient.invalidateQueries({ queryKey: unreadKey });
-    },
-    onError: (error) => {
-      console.error('Error marking all notifications as read:', error);
-    },
-  });
-
-  const handleLoadMore = useCallback(async () => {
-    if (!nextCursor || loadingMore) return;
-
-    setLoadingMore(true);
+  const handleMarkAll = useCallback(async () => {
+    if (markingAll) return;
+    setMarkingAll(true);
     try {
-      const page = await fetchNotificationPage(30, nextCursor);
-      setExtraItems((prev) => [...prev, ...page.items]);
-      setCursor(page.nextCursor);
+      await markAllRead();
     } catch (error) {
-      console.error('Error loading more notifications:', error);
+      console.error('Error marking all notifications as read:', error);
     } finally {
-      setLoadingMore(false);
+      setMarkingAll(false);
     }
-  }, [nextCursor, loadingMore]);
+  }, [markAllRead, markingAll]);
 
   const handleItemClick = useCallback(
     (item: DBNotificationItem) => {
       const isGlobalNotice = item.type === 'global_notice';
       const isRead = item.notification_reads?.[0]?.is_read ?? false;
 
-      if (!isRead && user && !isGlobalNotice) {
-        markAsReadMutation.mutate({
-          id: item.id,
-          isClicked: Boolean(item.action_link),
-        });
+      if (!isRead && !isGlobalNotice) {
+        void markRead(item.id, { clicked: Boolean(item.action_link) });
       }
 
       // The detail sheet validates the stored link before it can navigate, so a
       // notification can never push the app to an arbitrary destination.
       setSelected(item);
     },
-    [user, markAsReadMutation]
+    [markRead]
   );
 
   const handleOpenTarget = useCallback(
@@ -233,12 +120,9 @@ const Notifications: React.FC = () => {
   );
 
   const handleRefresh = useCallback(async () => {
-    setExtraItems([]);
-    setCursor(null);
-    await queryClient.refetchQueries({ queryKey });
-    await queryClient.refetchQueries({ queryKey: unreadKey });
+    await refresh();
     await refetchNotices();
-  }, [queryClient, queryKey, unreadKey, refetchNotices]);
+  }, [refresh, refetchNotices]);
 
   const renderSection = (title: string, items: DBNotificationItem[]) => {
     if (items.length === 0) return null;
@@ -273,8 +157,8 @@ const Notifications: React.FC = () => {
         <div className="flex justify-end px-4 pt-3">
           <button
             type="button"
-            onClick={() => markAllMutation.mutate()}
-            disabled={markAllMutation.isPending}
+            onClick={() => void handleMarkAll()}
+            disabled={markingAll}
             className="inline-flex items-center gap-1.5 rounded-full border border-border-color bg-surface px-3 py-1.5 text-xs font-semibold text-primary disabled:opacity-60"
           >
             <CheckCheck size={14} />
@@ -287,7 +171,7 @@ const Notifications: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
           {activeTab === 'notices' ? (
             <NoticeList notices={noticeData?.items ?? []} isLoading={noticesLoading} />
-          ) : isLoading ? (
+          ) : loading && notifications.length === 0 ? (
             <div className="space-y-3" aria-label={t('common.loading')}>
               {[1, 2, 3, 4, 5].map((i) => (
                 <div
@@ -308,10 +192,10 @@ const Notifications: React.FC = () => {
               {renderSection(t('notification.today'), grouped.today)}
               {renderSection(t('notification.earlier'), grouped.earlier)}
 
-              {activeTab === 'notifications' && nextCursor && (
+              {activeTab === 'notifications' && hasMore && (
                 <button
                   type="button"
-                  onClick={handleLoadMore}
+                  onClick={() => void loadMore()}
                   disabled={loadingMore}
                   className="mx-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-primary disabled:opacity-60"
                 >

@@ -6,7 +6,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { supabase } from '../../lib/supabase';
 import { buildApiUrl } from '../../lib/apiConfig';
-import { fetchUnreadNotificationCount } from '@/features/notifications/services/notificationService';
+import { useInbox } from '@/features/notifications/inbox/InboxProvider';
 import { useUnreadNoticeCount } from '@/features/notices/hooks/useNotices';
 
 const Header: React.FC = () => {
@@ -57,14 +57,9 @@ const Header: React.FC = () => {
     staleTime: 0,
   });
 
-  const { data: notificationUnreadCount = 0 } = useQuery({
-    queryKey: ['notifications', 'unreadCount', user?.id],
-    queryFn: () => (user?.id ? fetchUnreadNotificationCount() : 0),
-    enabled: !!user?.id,
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
-    refetchOnWindowFocus: true,
-  });
+  // One badge number from one store: the inbox provider owns the count and
+  // updates it from realtime, resume and push events instead of polling.
+  const { unreadCount: notificationUnreadCount } = useInbox();
 
   const { data: noticeUnreadCount = 0 } = useUnreadNoticeCount();
 

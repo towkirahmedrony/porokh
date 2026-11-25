@@ -4408,6 +4408,33 @@ export type Database = {
           streak_start_date: string
         }[]
       }
+      get_my_notifications: {
+        Args: {
+          p_limit?: number
+          p_before?: string | null
+          p_before_id?: string | null
+        }
+        Returns: {
+          id: string
+          title_en: string | null
+          title_bn: string | null
+          body_en: string | null
+          body_bn: string | null
+          image_url: string | null
+          action_link: string | null
+          type: string
+          channel: string
+          priority: string | null
+          meta_data: Json | null
+          event_code: string | null
+          created_at: string
+          is_read: boolean
+          read_at: string | null
+          is_clicked: boolean
+          clicked_at: string | null
+        }[]
+      }
+      get_my_unread_notification_count: { Args: never; Returns: number }
       get_mistake_pool: {
         Args: { p_user_id: string }
         Returns: {
@@ -4519,6 +4546,15 @@ export type Database = {
       is_username_available: {
         Args: { p_username: string }
         Returns: boolean
+      }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_notification_clicked: {
+        Args: { p_notification_id: string; p_platform?: string | null }
+        Returns: undefined
+      }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: undefined
       }
       join_group: {
         Args: { p_group_id: string; p_join_code?: string }

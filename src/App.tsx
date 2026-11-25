@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 
 // Components & Providers
 import { NativePushProvider } from '@/features/notifications/native/NativePushProvider';
+import { InboxProvider } from '@/features/notifications/inbox/InboxProvider';
 
 // Layout & Guards
 import { SystemGuard } from '@/shared/components/layout/SystemGuard';
@@ -37,13 +38,18 @@ const App: React.FC = () => (
           {/* Native push lives above the routes so a tap from a cold start can
               navigate once the router is ready. */}
           <NativePushProvider>
-            {/* Runs above the guard so a recovery link is honoured even while the
-                maintenance check is still resolving. */}
-            <PasswordRecoveryRedirect />
-            <NativeAuthCallback />
-            <SystemGuard>
-              <AppRoutes />
-            </SystemGuard>
+            {/* The inbox lives above the routes: its realtime channel and the
+                unread badge must survive navigation, and a push tap needs the
+                cached list already in place. */}
+            <InboxProvider>
+              {/* Runs above the guard so a recovery link is honoured even while
+                  the maintenance check is still resolving. */}
+              <PasswordRecoveryRedirect />
+              <NativeAuthCallback />
+              <SystemGuard>
+                <AppRoutes />
+              </SystemGuard>
+            </InboxProvider>
           </NativePushProvider>
         </PaywallProvider>
         <UpdateBanner />
