@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowLeft, Save, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { ArrowLeft, Save, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
@@ -26,6 +26,7 @@ const EditProfile: React.FC = () => {
   const { language, t } = useLanguage();
 
   const [formData, setFormData] = useState<Partial<UserProfileData>>({});
+  const initialFormRef = useRef<string>('');
 
   // Fetch Latest Profile Data strictly from DB to pre-populate fields
   const { data: dbUser, isLoading: isFetchingDB } = useQuery({
@@ -43,10 +44,30 @@ const EditProfile: React.FC = () => {
   useEffect(() => {
     if (dbUser && !formData.id) {
       setFormData(dbUser);
+      initialFormRef.current = JSON.stringify(dbUser);
     } else if (location.state?.user && !formData.id && !dbUser) {
       setFormData(location.state.user);
+      initialFormRef.current = JSON.stringify(location.state.user);
     }
   }, [dbUser, location.state, formData.id]);
+
+  const isDirty = Boolean(formData.id && initialFormRef.current && JSON.stringify(formData) !== initialFormRef.current);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleBack = () => {
+    if (!isDirty || window.confirm(language === 'bn' ? 'আপনার সংরক্ষণ না করা পরিবর্তন আছে। পেজ থেকে বের হবেন?' : 'You have unsaved changes. Leave this page?')) {
+      navigate(-1);
+    }
+  };
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -147,7 +168,7 @@ const EditProfile: React.FC = () => {
       {/* Header */}
       <div className="sticky top-0 z-20 flex items-center px-4 py-4 backdrop-blur-md bg-surface/90 border-b border-border-color">
         <button 
-          onClick={() => navigate(-1)} 
+          onClick={handleBack}
           disabled={isLoading}
           className="p-2 -ml-2 rounded-full hover:bg-surface-elevated text-text-primary disabled:opacity-50 transition-colors"
         >
@@ -170,6 +191,18 @@ const EditProfile: React.FC = () => {
           currentAvatarUrl={formData.avatar_url} 
           onAvatarUpdate={handleAvatarUpdate} 
         />
+
+        {(authUser?.email || formData.email) && (
+          <div className="rounded-xl border border-card-border bg-card-bg px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs text-text-secondary">{t('profile.fieldEmail')}</p>
+                <p className="truncate text-sm font-medium text-text-primary">{authUser?.email || formData.email}</p>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-success"><CheckCircle2 size={14} />{t('profile.verified')}</span>
+            </div>
+          </div>
+        )}
 
         <section>
           <h3 className="text-xs font-bold mb-3 tracking-wider text-primary">{t('profile.sectionPersonal')}</h3>
