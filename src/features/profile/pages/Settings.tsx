@@ -2,9 +2,9 @@ import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Bell, ChevronRight, Globe, HelpCircle, Info, LifeBuoy, Lock, LogOut, Megaphone,
-  Moon, MonitorSmartphone, Palette, Pencil, Puzzle, Shield, Sun, User,
-  Users,
+  Bell, ChevronRight, Globe, GraduationCap, HelpCircle, Info, LifeBuoy, Lock,
+  LogOut, Megaphone, Moon, MonitorSmartphone, Palette, Pencil, Puzzle, Shield,
+  Sun, User, Users,
 } from 'lucide-react';
 import { BackButton } from '@/shared/components/ui/BackButton';
 import ConfirmModal from '@/shared/components/feedback/ConfirmModal';
@@ -261,6 +261,12 @@ export const Settings: React.FC = () => {
             icon={Pencil}
             title={t('settings.editProfile')}
             onClick={() => navigate('/edit-profile')}
+          />
+          <SettingRow
+            icon={GraduationCap}
+            title={t('settings.academicProfile')}
+            description={t('settings.academicProfileDescription')}
+            onClick={() => navigate('/profile/academic')}
           />
           <SettingRow
             icon={Lock}

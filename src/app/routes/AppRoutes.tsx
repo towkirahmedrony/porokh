@@ -97,6 +97,9 @@ const SupportTicketDetail = lazy(
 const PublicProfile = lazy(() => import('@/features/profile/pages/PublicProfile'));
 const Settings = lazy(() => import('@/features/profile/pages/Settings'));
 const EditProfile = lazy(() => import('@/features/profile/pages/EditProfile'));
+const AcademicProfile = lazy(
+  () => import('@/features/profile/pages/AcademicProfile')
+);
 const Referral = lazy(() => import('@/features/referral/pages/Referral'));
 const Leaderboard = lazy(() => import('@/features/leaderboard/pages/Leaderboard'));
 const PrivacyPolicy = lazy(() => import('@/features/legal/pages/PrivacyPolicy'));
@@ -523,6 +526,15 @@ const AppRoutes: React.FC = () => {
           element={
             <PermissionGuard>
               <EditProfile />
+            </PermissionGuard>
+          }
+        />
+
+        <Route
+          path="/profile/academic"
+          element={
+            <PermissionGuard>
+              <AcademicProfile />
             </PermissionGuard>
           }
         />

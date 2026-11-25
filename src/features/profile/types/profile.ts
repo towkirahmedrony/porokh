@@ -9,6 +9,10 @@ export interface UserProfileData {
   group?: string;
   education_board?: string;
   batch_year?: string;
+  hsc_batch?: string;
+  hsc_group?: string;
+  admission_targets?: string[];
+  other_admission_target?: string | null;
   gender?: string;
   study_goal?: string;
   address?: any;

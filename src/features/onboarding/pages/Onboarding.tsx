@@ -16,8 +16,15 @@ import {
   localizeClassLevel,
 } from '@/features/profile/utils/profileLabels';
 import { MODEL_TRACK_CONFIGS } from '@/features/exam/constants/modelTracks';
+import AcademicProfileForm from '@/features/profile/components/AcademicProfileForm';
+import {
+  normalizeAdmissionTargets,
+  validateAcademicProfile,
+  type AcademicProfileValues,
+} from '@/features/profile/utils/academicProfile';
 import { useUsernameAvailability } from '../hooks/useUsernameAvailability';
 import {
+  ONBOARDING_STEPS,
   buildCompleteOnboardingParams,
   buildOnboardingDraft,
   classLevelNeedsGroup,
@@ -60,6 +67,10 @@ export default function Onboarding() {
       classLevel: user?.class_level ?? '',
       group: user?.group ?? '',
       studyGoal: user?.study_goal ?? '',
+      hscBatch: user?.hsc_batch ?? '',
+      hscGroup: user?.hsc_group ?? '',
+      admissionTargets: user?.admission_targets ?? [],
+      otherAdmissionTarget: user?.other_admission_target ?? '',
     });
   });
   const [error, setError] = useState<AppMessageKey | null>(null);
@@ -156,6 +167,10 @@ export default function Onboarding() {
         class_level: params.p_class_level,
         group: params.p_group,
         study_goal: params.p_study_goal,
+        hsc_batch: params.p_hsc_batch,
+        hsc_group: params.p_hsc_group,
+        admission_targets: params.p_admission_targets,
+        other_admission_target: params.p_other_admission_target,
         onboarding_completed_at: new Date().toISOString(),
       });
       navigate('/dashboard/home', { replace: true });
@@ -166,9 +181,49 @@ export default function Onboarding() {
     }
   };
 
+  const academicValues: AcademicProfileValues = {
+    hscBatch: draft.hscBatch,
+    hscGroup: draft.hscGroup,
+    admissionTargets: draft.admissionTargets,
+    otherAdmissionTarget: draft.otherAdmissionTarget,
+  };
+
+  const updateAcademic = (patch: Partial<AcademicProfileValues>) => {
+    setDraft((prev) => ({
+      ...prev,
+      ...(patch.hscBatch !== undefined ? { hscBatch: patch.hscBatch } : {}),
+      ...(patch.hscGroup !== undefined ? { hscGroup: patch.hscGroup } : {}),
+      ...(patch.admissionTargets !== undefined
+        ? { admissionTargets: normalizeAdmissionTargets(patch.admissionTargets) }
+        : {}),
+      ...(patch.otherAdmissionTarget !== undefined
+        ? { otherAdmissionTarget: patch.otherAdmissionTarget }
+        : {}),
+    }));
+    setError(null);
+  };
+
+  const goToStepThree = () => {
+    updateDraft({ step: 3 });
+  };
+
+  const validateStepThree = (): AppMessageKey | null =>
+    validateAcademicProfile(academicValues);
+
+  const finishOnboarding = () => {
+    const validationError = validateStepThree();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    void complete(false);
+  };
+
   const stepLabel = t('onboarding.stepLabel', {
     current: localizeDigits(step, language),
-    total: localizeDigits(2, language),
+    total: localizeDigits(ONBOARDING_STEPS.length, language),
   });
 
   const usernameStatus = (() => {
@@ -221,10 +276,12 @@ export default function Onboarding() {
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col">
         <header className="px-4 pb-4 pt-5">
           <div className="flex items-center justify-between">
-            {step === 2 ? (
+            {step > 1 ? (
               <button
                 type="button"
-                onClick={() => updateDraft({ step: 1 })}
+                onClick={() =>
+                  updateDraft({ step: (step - 1) as OnboardingDraft['step'] })
+                }
                 disabled={isSaving}
                 className="-ml-2 rounded-full p-2 text-text-primary transition-colors hover:bg-surface-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50"
                 aria-label={t('onboarding.back')}
@@ -241,12 +298,14 @@ export default function Onboarding() {
           </div>
 
           <div className="mt-3 flex gap-2" aria-hidden="true">
-            <span className="h-1.5 flex-1 rounded-full bg-primary" />
-            <span
-              className={`h-1.5 flex-1 rounded-full ${
-                step === 2 ? 'bg-primary' : 'bg-border-color'
-              }`}
-            />
+            {ONBOARDING_STEPS.map((stepNumber) => (
+              <span
+                key={stepNumber}
+                className={`h-1.5 flex-1 rounded-full ${
+                  stepNumber <= step ? 'bg-primary' : 'bg-border-color'
+                }`}
+              />
+            ))}
           </div>
         </header>
 
@@ -345,7 +404,7 @@ export default function Onboarding() {
               </button>
             </form>
           </main>
-        ) : (
+        ) : step === 2 ? (
           <main className="flex-1 px-4 pb-10 pt-2">
             <h1 className="text-2xl font-bold tracking-tight">
               {t('onboarding.step2Title')}
@@ -438,9 +497,69 @@ export default function Onboarding() {
             <div className="mt-8 space-y-3">
               <button
                 type="button"
-                onClick={() => void complete(false)}
+                onClick={goToStepThree}
                 disabled={isSaving}
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3.5 text-lg font-bold text-primary-foreground transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {t('onboarding.next')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  updateDraft({
+                    classLevel: '',
+                    group: '',
+                    studyGoal: '',
+                    step: 3,
+                  })
+                }
+                disabled={isSaving}
+                className="w-full rounded-full px-4 py-3 text-base font-semibold text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {t('onboarding.skip')}
+              </button>
+            </div>
+          </main>
+        ) : (
+          <main className="flex-1 px-4 pb-10 pt-2">
+            <h1 className="text-2xl font-bold tracking-tight">
+              {t('onboarding.step3Title')}
+            </h1>
+            <p className="mt-1.5 text-[15px] leading-6 text-text-secondary">
+              {t('onboarding.step3Subtitle')}
+            </p>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                finishOnboarding();
+              }}
+              className="mt-6"
+              noValidate
+            >
+              <AcademicProfileForm
+                idPrefix="onboarding-academic"
+                values={academicValues}
+                onChange={updateAcademic}
+                disabled={isSaving}
+              />
+
+              {error && (
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="mt-6 flex items-start gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2.5 text-sm text-accent"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <p className="font-medium leading-5">{t(error)}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3.5 text-lg font-bold text-primary-foreground transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSaving ? (
                   <>
@@ -451,16 +570,7 @@ export default function Onboarding() {
                   t('onboarding.finish')
                 )}
               </button>
-
-              <button
-                type="button"
-                onClick={() => void complete(true)}
-                disabled={isSaving}
-                className="w-full rounded-full px-4 py-3 text-base font-semibold text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {t('onboarding.skip')}
-              </button>
-            </div>
+            </form>
           </main>
         )}
       </div>

@@ -1,4 +1,9 @@
-import { localizeDigits, type AppLanguage } from '@/shared/i18n/messages';
+import { localizeDigits, type AppLanguage, type AppMessageKey } from '@/shared/i18n/messages';
+import {
+  ADMISSION_TARGET_OPTIONS,
+  HSC_GROUP_OPTIONS,
+  type AdmissionTarget,
+} from './academicProfile';
 
 const BOARD_LABELS_BN: Record<string, string> = {
   Dhaka: 'ঢাকা',
@@ -40,3 +45,33 @@ export const localizeClassLevel = (
   language === 'bn'
     ? localizeDigits(level.replace(/HSC/g, 'এইচএসসি'), language)
     : level;
+
+const HSC_GROUP_LABEL_KEYS: Record<string, AppMessageKey> = Object.fromEntries(
+  HSC_GROUP_OPTIONS.map((option) => [option.value, option.labelKey])
+);
+
+const ADMISSION_TARGET_LABEL_KEYS: Record<string, AppMessageKey> =
+  Object.fromEntries(
+    ADMISSION_TARGET_OPTIONS.map((option) => [option.value, option.labelKey])
+  );
+
+export const localizeHscGroup = (
+  group: string,
+  t: (key: AppMessageKey) => string
+): string => {
+  const key = HSC_GROUP_LABEL_KEYS[group];
+  return key ? t(key) : group;
+};
+
+export const localizeAdmissionTarget = (
+  target: string,
+  t: (key: AppMessageKey) => string
+): string => {
+  const key = ADMISSION_TARGET_LABEL_KEYS[target];
+  return key ? t(key) : target;
+};
+
+export const localizeAdmissionTargets = (
+  targets: readonly AdmissionTarget[],
+  t: (key: AppMessageKey) => string
+): string => targets.map((target) => localizeAdmissionTarget(target, t)).join(', ');

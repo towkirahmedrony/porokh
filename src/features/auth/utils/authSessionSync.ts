@@ -52,10 +52,25 @@ export function mergeSessionUser(
     class_level: previous.class_level ?? next.class_level ?? null,
     group: previous.group ?? next.group ?? null,
     study_goal: previous.study_goal ?? next.study_goal ?? null,
+    hsc_batch: previous.hsc_batch ?? next.hsc_batch ?? null,
+    hsc_group: previous.hsc_group ?? next.hsc_group ?? null,
+    admission_targets: previous.admission_targets ?? next.admission_targets ?? [],
+    other_admission_target:
+      previous.other_admission_target ?? next.other_admission_target ?? null,
     onboarding_completed_at:
       previous.onboarding_completed_at ?? next.onboarding_completed_at ?? null,
   };
 }
+
+const sameStringArray = (
+  a: readonly string[] | null | undefined,
+  b: readonly string[] | null | undefined
+): boolean => {
+  const left = a ?? [];
+  const right = b ?? [];
+
+  return left.length === right.length && left.every((value, i) => value === right[i]);
+};
 
 const sameMetadataValue = (
   a: Record<string, unknown> | undefined,
@@ -88,6 +103,11 @@ export function isSameAppUser(
     a.class_level === b.class_level &&
     a.group === b.group &&
     a.study_goal === b.study_goal &&
+    (a.hsc_batch ?? null) === (b.hsc_batch ?? null) &&
+    (a.hsc_group ?? null) === (b.hsc_group ?? null) &&
+    sameStringArray(a.admission_targets, b.admission_targets) &&
+    (a.other_admission_target ?? null) ===
+      (b.other_admission_target ?? null) &&
     a.onboarding_completed_at === b.onboarding_completed_at &&
     (a.total_xp ?? 0) === (b.total_xp ?? 0) &&
     (a.total_score ?? 0) === (b.total_score ?? 0) &&
@@ -119,6 +139,10 @@ export function applyCachedProfile(
     class_level: cached.class_level,
     group: cached.group,
     study_goal: cached.study_goal,
+    hsc_batch: cached.hsc_batch,
+    hsc_group: cached.hsc_group,
+    admission_targets: cached.admission_targets,
+    other_admission_target: cached.other_admission_target,
     onboarding_completed_at: cached.onboarding_completed_at,
     total_xp: cached.total_xp ?? 0,
     total_score: cached.total_xp ?? 0,

@@ -1,7 +1,12 @@
 import { normalizeUsername } from '@/features/auth/utils/username';
+import {
+  buildAcademicProfileRpcParams,
+  normalizeAdmissionTargets,
+  type AdmissionTarget,
+} from '@/features/profile/utils/academicProfile';
 import type { AppMessageKey } from '@/shared/i18n/messages';
 
-export const ONBOARDING_STEPS = [1, 2] as const;
+export const ONBOARDING_STEPS = [1, 2, 3] as const;
 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
@@ -12,6 +17,10 @@ export type OnboardingDraft = {
   classLevel: string;
   group: string;
   studyGoal: string;
+  hscBatch: string;
+  hscGroup: string;
+  admissionTargets: AdmissionTarget[];
+  otherAdmissionTarget: string;
 };
 
 export type CompleteOnboardingParams = {
@@ -20,6 +29,10 @@ export type CompleteOnboardingParams = {
   p_class_level: string | null;
   p_group: string | null;
   p_study_goal: string | null;
+  p_hsc_batch: string;
+  p_hsc_group: string;
+  p_admission_targets: string[];
+  p_other_admission_target: string | null;
 };
 
 export const EMPTY_ONBOARDING_DRAFT: OnboardingDraft = {
@@ -29,6 +42,10 @@ export const EMPTY_ONBOARDING_DRAFT: OnboardingDraft = {
   classLevel: '',
   group: '',
   studyGoal: '',
+  hscBatch: '',
+  hscGroup: '',
+  admissionTargets: [],
+  otherAdmissionTarget: '',
 };
 
 export const normalizeFullName = (value: string): string =>
@@ -44,6 +61,10 @@ export type OnboardingProfileDefaults = {
   classLevel: string;
   group: string;
   studyGoal: string;
+  hscBatch: string;
+  hscGroup: string;
+  admissionTargets: string[];
+  otherAdmissionTarget: string;
 };
 
 /**
@@ -59,6 +80,7 @@ export const buildOnboardingDraft = (
     return {
       ...EMPTY_ONBOARDING_DRAFT,
       ...profile,
+      admissionTargets: normalizeAdmissionTargets(profile.admissionTargets),
       group: classLevelNeedsGroup(profile.classLevel) ? profile.group : '',
     };
   }
@@ -70,6 +92,14 @@ export const buildOnboardingDraft = (
     classLevel: saved.classLevel || profile.classLevel,
     group: saved.group || profile.group,
     studyGoal: saved.studyGoal || profile.studyGoal,
+    hscBatch: saved.hscBatch || profile.hscBatch,
+    hscGroup: saved.hscGroup || profile.hscGroup,
+    admissionTargets:
+      saved.admissionTargets.length > 0
+        ? normalizeAdmissionTargets(saved.admissionTargets)
+        : normalizeAdmissionTargets(profile.admissionTargets),
+    otherAdmissionTarget:
+      saved.otherAdmissionTarget || profile.otherAdmissionTarget,
   };
 
   return {
@@ -90,6 +120,12 @@ export const buildCompleteOnboardingParams = (
       ? null
       : draft.group || null,
   p_study_goal: skipStepTwo ? null : draft.studyGoal || null,
+  ...buildAcademicProfileRpcParams({
+    hscBatch: draft.hscBatch,
+    hscGroup: draft.hscGroup,
+    admissionTargets: draft.admissionTargets,
+    otherAdmissionTarget: draft.otherAdmissionTarget,
+  }),
 });
 
 export const mapCompleteOnboardingError = (error: unknown): AppMessageKey => {
@@ -103,6 +139,18 @@ export const mapCompleteOnboardingError = (error: unknown): AppMessageKey => {
   }
   if (message.includes('invalid goal')) {
     return 'onboarding.goalInvalid';
+  }
+  if (message.includes('invalid hsc batch')) {
+    return 'academic.batchRequired';
+  }
+  if (message.includes('invalid hsc group')) {
+    return 'academic.groupRequired';
+  }
+  if (message.includes('invalid admission target')) {
+    return 'academic.targetsRequired';
+  }
+  if (message.includes('invalid other admission target')) {
+    return 'academic.otherTooLong';
   }
   if (message.includes('not authenticated')) {
     return 'onboarding.sessionExpired';

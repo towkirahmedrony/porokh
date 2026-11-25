@@ -28,6 +28,10 @@ export interface CachedProfileFields {
   class_level: string | null;
   group: string | null;
   study_goal: string | null;
+  hsc_batch: string | null;
+  hsc_group: string | null;
+  admission_targets: string[];
+  other_admission_target: string | null;
   onboarding_completed_at: string | null;
 }
 
@@ -49,6 +53,11 @@ const toNullableString = (value: unknown): string | null =>
 const toNullableNumber = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
+const toStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+
 /**
  * Accepts a raw profile row and keeps only known, correctly typed fields. A
  * malformed or partial row still produces a usable profile object rather than
@@ -66,6 +75,10 @@ export const normalizeCachedProfile = (
   class_level: toNullableString(input.class_level),
   group: toNullableString(input.group),
   study_goal: toNullableString(input.study_goal),
+  hsc_batch: toNullableString(input.hsc_batch),
+  hsc_group: toNullableString(input.hsc_group),
+  admission_targets: toStringArray(input.admission_targets),
+  other_admission_target: toNullableString(input.other_admission_target),
   onboarding_completed_at: toNullableString(input.onboarding_completed_at),
 });
 

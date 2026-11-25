@@ -4,6 +4,7 @@ import {
   EMPTY_ONBOARDING_DRAFT,
   type OnboardingDraft,
 } from './onboarding';
+import { normalizeAdmissionTargets } from '@/features/profile/utils/academicProfile';
 
 const draftKey = (userId: string) =>
   `${STORAGE_KEYS.SIGNUP_ONBOARDING_DRAFT_PREFIX}${userId}` as const;
@@ -14,7 +15,7 @@ const readDraft = (value: unknown): OnboardingDraft | null => {
   if (!value || typeof value !== 'object') return null;
 
   const draft = value as Record<string, unknown>;
-  if (draft.step !== 1 && draft.step !== 2) return null;
+  if (draft.step !== 1 && draft.step !== 2 && draft.step !== 3) return null;
 
   return {
     step: draft.step,
@@ -23,6 +24,14 @@ const readDraft = (value: unknown): OnboardingDraft | null => {
     classLevel: isString(draft.classLevel) ? draft.classLevel : '',
     group: isString(draft.group) ? draft.group : '',
     studyGoal: isString(draft.studyGoal) ? draft.studyGoal : '',
+    hscBatch: isString(draft.hscBatch) ? draft.hscBatch : '',
+    hscGroup: isString(draft.hscGroup) ? draft.hscGroup : '',
+    admissionTargets: Array.isArray(draft.admissionTargets)
+      ? normalizeAdmissionTargets(draft.admissionTargets.filter(isString))
+      : [],
+    otherAdmissionTarget: isString(draft.otherAdmissionTarget)
+      ? draft.otherAdmissionTarget
+      : '',
   };
 };
 

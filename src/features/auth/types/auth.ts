@@ -15,6 +15,10 @@ export interface AppUser extends SupabaseUser {
   class_level?: string | null;
   group?: string | null;
   study_goal?: string | null;
+  hsc_batch?: string | null;
+  hsc_group?: string | null;
+  admission_targets?: string[] | null;
+  other_admission_target?: string | null;
   onboarding_completed_at?: string | null;
 }
 
@@ -47,6 +51,10 @@ export interface AuthContextType {
         | 'class_level'
         | 'group'
         | 'study_goal'
+        | 'hsc_batch'
+        | 'hsc_group'
+        | 'admission_targets'
+        | 'other_admission_target'
         | 'onboarding_completed_at'
       >
     >

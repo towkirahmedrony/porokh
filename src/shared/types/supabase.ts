@@ -2701,6 +2701,7 @@ export type Database = {
           account_status: Database["public"]["Enums"]["user_status"] | null
           achievements: Json | null
           address: Json | null
+          admission_targets: string[]
           auto_purge_at: string | null
           avatar_url: string | null
           batch_year: string | null
@@ -2720,6 +2721,8 @@ export type Database = {
           gender: string | null
           group: string | null
           guardian_phone: string | null
+          hsc_batch: string | null
+          hsc_group: string | null
           id: string
           institution: string | null
           institution_id: string | null
@@ -2731,6 +2734,7 @@ export type Database = {
           last_streak_reset_at: string | null
           mastery: Json | null
           onboarding_completed_at: string | null
+          other_admission_target: string | null
           phone_number: string | null
           pvp_matches_played: number | null
           pvp_matches_won: number | null
@@ -2750,6 +2754,7 @@ export type Database = {
           account_status?: Database["public"]["Enums"]["user_status"] | null
           achievements?: Json | null
           address?: Json | null
+          admission_targets?: string[]
           auto_purge_at?: string | null
           avatar_url?: string | null
           batch_year?: string | null
@@ -2769,6 +2774,8 @@ export type Database = {
           gender?: string | null
           group?: string | null
           guardian_phone?: string | null
+          hsc_batch?: string | null
+          hsc_group?: string | null
           id: string
           institution?: string | null
           institution_id?: string | null
@@ -2780,6 +2787,7 @@ export type Database = {
           last_streak_reset_at?: string | null
           mastery?: Json | null
           onboarding_completed_at?: string | null
+          other_admission_target?: string | null
           phone_number?: string | null
           pvp_matches_played?: number | null
           pvp_matches_won?: number | null
@@ -2799,6 +2807,7 @@ export type Database = {
           account_status?: Database["public"]["Enums"]["user_status"] | null
           achievements?: Json | null
           address?: Json | null
+          admission_targets?: string[]
           auto_purge_at?: string | null
           avatar_url?: string | null
           batch_year?: string | null
@@ -2818,6 +2827,8 @@ export type Database = {
           gender?: string | null
           group?: string | null
           guardian_phone?: string | null
+          hsc_batch?: string | null
+          hsc_group?: string | null
           id?: string
           institution?: string | null
           institution_id?: string | null
@@ -2829,6 +2840,7 @@ export type Database = {
           last_streak_reset_at?: string | null
           mastery?: Json | null
           onboarding_completed_at?: string | null
+          other_admission_target?: string | null
           phone_number?: string | null
           pvp_matches_played?: number | null
           pvp_matches_won?: number | null
@@ -4318,9 +4330,13 @@ export type Database = {
       cancel_group_battle: { Args: { p_battle_id: string }; Returns: undefined }
       complete_onboarding: {
         Args: {
+          p_admission_targets?: string[] | null
           p_class_level?: string | null
           p_full_name: string
           p_group?: string | null
+          p_hsc_batch?: string | null
+          p_hsc_group?: string | null
+          p_other_admission_target?: string | null
           p_study_goal?: string | null
           p_username: string
         }
@@ -4677,6 +4693,15 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      update_academic_profile: {
+        Args: {
+          p_admission_targets?: string[] | null
+          p_hsc_batch?: string | null
+          p_hsc_group?: string | null
+          p_other_admission_target?: string | null
+        }
+        Returns: undefined
       }
       update_user_progress: {
         Args: { p_coins: number; p_user_id: string; p_xp: number }

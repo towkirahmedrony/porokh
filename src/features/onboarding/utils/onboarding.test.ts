@@ -15,6 +15,10 @@ const draft = {
   classLevel: 'HSC 26',
   group: 'Science',
   studyGoal: 'engineering',
+  hscBatch: '2026',
+  hscGroup: 'science' as const,
+  admissionTargets: ['engineering' as const],
+  otherAdmissionTarget: '',
 };
 
 test('step two saves normalized name, username and the three optional fields', () => {
@@ -25,6 +29,10 @@ test('step two saves normalized name, username and the three optional fields', (
     p_class_level: 'HSC 26',
     p_group: 'Science',
     p_study_goal: 'engineering',
+    p_hsc_batch: '2026',
+    p_hsc_group: 'science',
+    p_admission_targets: ['engineering'],
+    p_other_admission_target: null,
   });
 });
 
@@ -35,7 +43,27 @@ test('skipping step two sends nulls for class, group and goal', () => {
     p_class_level: null,
     p_group: null,
     p_study_goal: null,
+    p_hsc_batch: '2026',
+    p_hsc_group: 'science',
+    p_admission_targets: ['engineering'],
+    p_other_admission_target: null,
   });
+});
+
+test('the other admission target is only saved when Other is selected', () => {
+  const withoutOther = buildCompleteOnboardingParams({
+    ...draft,
+    otherAdmissionTarget: 'Pharmacy',
+  });
+  assert.equal(withoutOther.p_other_admission_target, null);
+
+  const withOther = buildCompleteOnboardingParams({
+    ...draft,
+    admissionTargets: ['medical', 'other'],
+    otherAdmissionTarget: '  Pharmacy  ',
+  });
+  assert.deepEqual(withOther.p_admission_targets, ['medical', 'other']);
+  assert.equal(withOther.p_other_admission_target, 'Pharmacy');
 });
 
 test('a group is only saved for HSC-level classes', () => {
@@ -53,6 +81,10 @@ const profileDefaults = {
   classLevel: 'HSC 26',
   group: 'Science',
   studyGoal: 'medical',
+  hscBatch: '2026',
+  hscGroup: 'science',
+  admissionTargets: ['medical'],
+  otherAdmissionTarget: '',
 };
 
 test('an existing profile prefills every onboarding field', () => {
@@ -70,6 +102,10 @@ test('a saved draft keeps what the user typed and fills only its gaps', () => {
     classLevel: '',
     group: 'Science',
     studyGoal: 'engineering',
+    hscBatch: '',
+    hscGroup: '',
+    admissionTargets: [],
+    otherAdmissionTarget: '',
   };
 
   assert.deepEqual(buildOnboardingDraft(saved, profileDefaults), {
@@ -79,6 +115,10 @@ test('a saved draft keeps what the user typed and fills only its gaps', () => {
     classLevel: 'HSC 26',
     group: 'Science',
     studyGoal: 'engineering',
+    hscBatch: '2026',
+    hscGroup: 'science',
+    admissionTargets: ['medical'],
+    otherAdmissionTarget: '',
   });
 });
 
