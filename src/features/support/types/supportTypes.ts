@@ -96,6 +96,8 @@ export interface SupportTicketDraft {
 
 export interface SupportListParams {
   status?: SupportStatus;
+  /** One chip can cover several database statuses. */
+  statuses?: SupportStatus[];
   category?: SupportCategory;
   search?: string;
   limit?: number;

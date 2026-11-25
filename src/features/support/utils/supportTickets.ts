@@ -29,14 +29,38 @@ export const STATUS_LABEL_KEYS: Record<SupportStatus, AppMessageKey> = {
   closed: 'support.statusClosed',
 };
 
-export const FILTER_STATUSES: Array<{ value: SupportStatus | 'all'; labelKey: AppMessageKey }> = [
+/**
+ * The student sees three buckets, not five database statuses. Old rows keep
+ * their stored status; this maps them onto the same two buckets.
+ */
+export type SupportFilter = 'all' | 'active' | 'resolved';
+
+export const SUPPORT_FILTERS: Array<{
+  value: SupportFilter;
+  labelKey: AppMessageKey;
+  statuses?: SupportStatus[];
+}> = [
   { value: 'all', labelKey: 'support.filterAll' },
-  { value: 'open', labelKey: 'support.statusOpen' },
-  { value: 'in_progress', labelKey: 'support.statusInProgress' },
-  { value: 'awaiting_student', labelKey: 'support.statusAwaiting' },
-  { value: 'resolved', labelKey: 'support.statusResolved' },
-  { value: 'closed', labelKey: 'support.statusClosed' },
+  {
+    value: 'active',
+    labelKey: 'support.filterAwaiting',
+    statuses: ['open', 'in_progress', 'awaiting_student'],
+  },
+  {
+    value: 'resolved',
+    labelKey: 'support.filterResolved',
+    statuses: ['resolved', 'closed'],
+  },
 ];
+
+/** `closed` counts as resolved everywhere the student sees a label. */
+export const statusGroup = (status: SupportStatus): 'active' | 'resolved' =>
+  status === 'resolved' || status === 'closed' ? 'resolved' : 'active';
+
+export const STATUS_GROUP_LABEL_KEYS: Record<'active' | 'resolved', AppMessageKey> = {
+  active: 'support.filterAwaiting',
+  resolved: 'support.filterResolved',
+};
 
 export const isSupportCategory = (value: unknown): value is SupportCategory =>
   typeof value === 'string' &&

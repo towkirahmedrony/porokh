@@ -10,6 +10,8 @@ import {
   validateAttachmentFile,
   validateTicketDraft,
   buildNewTicketPath,
+  statusGroup,
+  SUPPORT_FILTERS,
   MAX_SUPPORT_ATTACHMENT_BYTES,
 } from './supportTickets.ts';
 
@@ -28,6 +30,21 @@ test('students can reply until the ticket is closed', () => {
   assert.equal(canReopen('closed'), false);
   assert.equal(isActiveStatus('awaiting_student'), true);
   assert.equal(isActiveStatus('resolved'), false);
+});
+
+test('three chips cover every stored status', () => {
+  assert.deepEqual(
+    SUPPORT_FILTERS.map((option) => option.value),
+    ['all', 'active', 'resolved']
+  );
+
+  const active = SUPPORT_FILTERS.find((option) => option.value === 'active')?.statuses;
+  const resolved = SUPPORT_FILTERS.find((option) => option.value === 'resolved')?.statuses;
+
+  assert.deepEqual(active, ['open', 'in_progress', 'awaiting_student']);
+  assert.deepEqual(resolved, ['resolved', 'closed']);
+  assert.equal(statusGroup('closed'), 'resolved');
+  assert.equal(statusGroup('awaiting_student'), 'active');
 });
 
 test('attachments are limited by type, size and count', () => {

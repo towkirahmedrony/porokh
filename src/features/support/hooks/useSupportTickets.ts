@@ -40,10 +40,10 @@ export const useSupportTicket = (ticketId: string | undefined) => {
     enabled: Boolean(user?.id && ticketId),
     staleTime: 15 * 1000,
     refetchOnWindowFocus: true,
-    refetchInterval: (query) => {
-      const status = query.state.data?.ticket.status;
-      return status === 'closed' || status === 'resolved' ? false : ACTIVE_POLL_MS;
-    },
+    // Keep polling on `resolved` too: the admin may resolve or reply while the
+    // student is reading the thread, and only a closed ticket is final.
+    refetchInterval: (query) =>
+      query.state.data?.ticket.status === 'closed' ? false : ACTIVE_POLL_MS,
   });
 };
 

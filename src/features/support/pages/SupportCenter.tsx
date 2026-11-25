@@ -6,10 +6,7 @@ import PullToRefresh from '@/features/groups/components/PullToRefresh';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
 import SupportTicketCard from '../components/SupportTicketCard';
 import { useSupportTickets } from '../hooks/useSupportTickets';
-import { FILTER_STATUSES } from '../utils/supportTickets';
-import type { SupportStatus } from '../types/supportTypes';
-
-type FilterValue = SupportStatus | 'all';
+import { SUPPORT_FILTERS, type SupportFilter } from '../utils/supportTickets';
 
 const PAGE_SIZE = 20;
 
@@ -17,14 +14,14 @@ const SupportCenter: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  const [filter, setFilter] = useState<FilterValue>('all');
+  const [filter, setFilter] = useState<SupportFilter>('all');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   const params = useMemo(
     () => ({
-      status: filter === 'all' ? undefined : filter,
+      statuses: SUPPORT_FILTERS.find((option) => option.value === filter)?.statuses,
       search: search || undefined,
       limit,
       offset: 0,
@@ -38,7 +35,7 @@ const SupportCenter: React.FC = () => {
   const total = data?.total ?? 0;
   const canLoadMore = tickets.length < total;
 
-  const applyFilter = (next: FilterValue) => {
+  const applyFilter = (next: SupportFilter) => {
     setFilter(next);
     setLimit(PAGE_SIZE);
   };
@@ -96,7 +93,7 @@ const SupportCenter: React.FC = () => {
         </form>
 
         <div className="flex gap-2 overflow-x-auto px-4 pb-3">
-          {FILTER_STATUSES.map((option) => (
+          {SUPPORT_FILTERS.map((option) => (
             <button
               key={option.value}
               type="button"
