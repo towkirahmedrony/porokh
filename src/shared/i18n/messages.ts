@@ -1327,7 +1327,7 @@ const bn = {
 
   // --------------------------------- Streak ---------------------------------
   'streak.title': 'আপনার স্ট্রিক',
-  'streak.subtitle': 'প্রতিদিন পরীক্ষা দিন!',
+  'streak.subtitle': 'যেকোনো একটি পরীক্ষা দিলেই দিনটি স্ট্রিকে গণনা হবে।',
   'streak.days': 'দিন',
   'streak.current': 'বর্তমান স্ট্রিক',
   'streak.longest': 'সর্বোচ্চ রেকর্ড',
@@ -3071,7 +3071,7 @@ const en: Record<AppMessageKey, string> = {
 
   // --------------------------------- Streak ---------------------------------
   'streak.title': 'Your streak',
-  'streak.subtitle': 'Take an exam every day!',
+  'streak.subtitle': 'Any exam you finish counts for the day.',
   'streak.days': 'days',
   'streak.current': 'Current streak',
   'streak.longest': 'Best record',
