@@ -4,12 +4,12 @@ import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
 import {
   ADMISSION_TARGET_OPTIONS,
-  HSC_BATCH_OPTIONS,
   HSC_GROUP_OPTIONS,
   OTHER_ADMISSION_TARGET_MAX_LENGTH,
   hasOtherAdmissionTarget,
   type AcademicProfileValues,
 } from '../utils/academicProfile';
+import { useHscBatches } from '../hooks/useHscBatches';
 
 interface AcademicProfileFormProps {
   values: AcademicProfileValues;
@@ -34,6 +34,8 @@ export default function AcademicProfileForm({
   idPrefix,
 }: AcademicProfileFormProps) {
   const { language, t } = useLanguage();
+  const { batches, isLoading: batchesLoading, isError: batchesError, refetch: reloadBatches } =
+    useHscBatches();
 
   const toggleTarget = (target: string) => {
     const selected = values.admissionTargets.includes(target);
@@ -55,15 +57,17 @@ export default function AcademicProfileForm({
           <select
             id={`${idPrefix}-batch`}
             required
-            disabled={disabled}
+            disabled={disabled || batchesLoading || batchesError}
             className={selectClasses}
             value={values.hscBatch}
             onChange={(event) => onChange({ hscBatch: event.target.value })}
           >
             <option value="" disabled>
-              {t('academic.hscBatchPlaceholder')}
+              {batchesLoading
+                ? t('academic.hscBatchLoading')
+                : t('academic.hscBatchPlaceholder')}
             </option>
-            {HSC_BATCH_OPTIONS.map((batch) => (
+            {batches.map((batch) => (
               <option key={batch} value={batch}>
                 {localizeDigits(batch, language)}
               </option>
@@ -74,9 +78,19 @@ export default function AcademicProfileForm({
             className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary"
           />
         </div>
-        <p className="text-xs leading-5 text-text-secondary">
-          {t('academic.hscBatchHint')}
-        </p>
+        {batchesError ? (
+          <button
+            type="button"
+            onClick={reloadBatches}
+            className="text-left text-xs font-semibold text-primary underline underline-offset-2"
+          >
+            {t('academic.hscBatchLoadError')}
+          </button>
+        ) : (
+          <p className="text-xs leading-5 text-text-secondary">
+            {t('academic.hscBatchHint')}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

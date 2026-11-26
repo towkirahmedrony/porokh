@@ -4,18 +4,18 @@ import { Shield, Swords } from 'lucide-react';
 import { PROFILE_DEFAULTS } from '../../utils/profileConstants';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
-import { localizeClassLevel } from '../../utils/profileLabels';
+import { formatStudentAcademicLabel } from '@/shared/lib/academic';
 
 export interface PublicProfile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-  batch_year: string | null;
   bio: string | null;
   total_xp: number | null;
   pvp_rating: number | null;
   institution?: string | null;
-  class_level?: string | null;
+  hsc_batch?: string | null;
+  study_goal?: string | null;
 }
 
 interface ProfileHeroProps {
@@ -26,6 +26,11 @@ interface ProfileHeroProps {
 
 const ProfileHero: React.FC<ProfileHeroProps> = ({ profile, onChallenge, isOwnProfile = false }) => {
   const { language, t } = useLanguage();
+  const academicLabel = formatStudentAcademicLabel(
+    { hsc_batch: profile.hsc_batch, study_goal: profile.study_goal },
+    language
+  );
+
   return (
     <div className="relative pb-8 pt-6 px-4 overflow-hidden rounded-b-[2rem] border-b bg-app border-border-color">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full blur-[80px] pointer-events-none bg-primary/15"></div>
@@ -55,19 +60,20 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ profile, onChallenge, isOwnPr
           {profile.full_name || t('profile.anonymousUser')}
         </h1>
 
-        {/* 🟢 ডায়নামিক শিক্ষাপ্রতিষ্ঠান ও ক্লাস */}
-        {(profile.institution || profile.class_level) && (
-          <p className="text-sm font-medium mb-1 font-['Noto_Sans_Bengali'] text-primary">
-            {profile.institution || ''} {profile.class_level ? `• ${localizeClassLevel(profile.class_level, language)}` : ''}
+        {/* Batch and goal, through the shared helper: never a raw value. */}
+        {(profile.institution || academicLabel) && (
+          <p className="mb-1 text-sm font-medium font-['Noto_Sans_Bengali'] text-primary">
+            {[profile.institution, academicLabel].filter(Boolean).join(' • ')}
           </p>
         )}
 
-        <p className="text-sm mb-5 font-['Noto_Sans_Bengali'] text-text-secondary">
-          {profile.batch_year
-            ? t('profile.batchValue', { year: localizeDigits(profile.batch_year, language) })
-            : ''}{' '}
-          {profile.bio ? `• ${profile.bio}` : ''}
-        </p>
+        {profile.bio ? (
+          <p className="mb-5 text-sm font-['Noto_Sans_Bengali'] text-text-secondary">
+            {profile.bio}
+          </p>
+        ) : (
+          <div className="mb-5" />
+        )}
 
         {/* 🟢 নিজের প্রোফাইল হলে ব্যাটল বাটন হাইড করা */}
         {!isOwnProfile && (

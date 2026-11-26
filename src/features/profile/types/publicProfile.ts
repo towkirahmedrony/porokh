@@ -3,8 +3,9 @@ export interface PublicProfile {
   full_name: string | null;
   avatar_url: string | null;
   bio: string | null;
-  batch_year: string | null; 
-  
+  hsc_batch?: string | null;
+  study_goal?: string | null;
+
   // Database fields directly from 'profiles' table (Replacing league_info)
   pvp_rating: number | null;
   total_xp: number | null;

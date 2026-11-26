@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { UserProfileData } from '../types/profile';
-import { EDUCATION_BOARDS, CLASS_LEVELS, ACADEMIC_GROUPS } from '../utils/profileConstants';
+import { EDUCATION_BOARDS } from '../utils/profileConstants';
 import apiClient from '../../../shared/lib/apiClient';
 import { supabase } from '../../../shared/lib/supabase';
 import { QUERY_KEYS } from '../../../shared/constants/storageKeys';
@@ -16,7 +16,7 @@ import FormSelectGroup from '../components/FormSelectGroup';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { MessageError } from '@/shared/i18n/localize';
 import ProfileAvatarEdit from '../components/ProfileAvatarEdit';
-import { localizeAcademicGroup, localizeClassLevel, localizeEducationBoard } from '../utils/profileLabels';
+import { localizeEducationBoard } from '../utils/profileLabels';
 
 const EditProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -126,11 +126,7 @@ const EditProfile: React.FC = () => {
       full_name: formData.full_name,
       bio: formData.bio,
       institution: formData.institution,
-      class_level: formData.class_level,
-      group: formData.group,
       education_board: formData.education_board,
-      batch_year: formData.batch_year,
-      study_goal: formData.study_goal,
       gender: formData.gender,
       date_of_birth: formData.date_of_birth,
       guardian_phone: formData.guardian_phone,
@@ -235,18 +231,14 @@ const EditProfile: React.FC = () => {
           <h3 className="text-xs font-bold mb-3 tracking-wider text-primary">{t('profile.sectionAcademic')}</h3>
           <div className="space-y-3">
             <FormInputGroup label={t('profile.fieldInstitution')} name="institution" value={formData.institution || ''} onChange={handleChange} disabled={isLoading} />
-            <div className="grid grid-cols-2 gap-3">
-              <FormSelectGroup label={t('profile.fieldClass')} name="class_level" value={formData.class_level || ''} onChange={handleChange}
-                options={CLASS_LEVELS.map(c => ({ label: localizeClassLevel(c, language), value: c }))} disabled={isLoading} />
-              <FormSelectGroup label={t('profile.fieldGroup')} name="group" value={formData.group || ''} onChange={handleChange}
-                options={ACADEMIC_GROUPS.map(g => ({ label: localizeAcademicGroup(g, language), value: g }))} disabled={isLoading} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FormSelectGroup label={t('profile.fieldBoard')} name="education_board" value={formData.education_board || ''} onChange={handleChange}
-                options={EDUCATION_BOARDS.map(b => ({ label: localizeEducationBoard(b, language), value: b }))} disabled={isLoading} />
-              <FormInputGroup label={t('profile.fieldBatch')} name="batch_year" value={formData.batch_year || ''} onChange={handleChange} placeholder={t('profile.batchPlaceholder')} disabled={isLoading} />
-            </div>
-            <FormInputGroup label={t('profile.fieldStudyGoal')} name="study_goal" value={formData.study_goal || ''} onChange={handleChange} placeholder={t('profile.studyGoalPlaceholder')} disabled={isLoading} />
+            <FormSelectGroup label={t('profile.fieldBoard')} name="education_board" value={formData.education_board || ''} onChange={handleChange}
+              options={EDUCATION_BOARDS.map(b => ({ label: localizeEducationBoard(b, language), value: b }))} disabled={isLoading} />
+            {/* Batch, group and goal live on the academic screen and the goal
+                sheet, so this form cannot write a stale class or a raw value. */}
+            <button type="button" onClick={() => navigate('/profile/academic')} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-card-border bg-card-bg px-4 py-3 text-left">
+              <span className="text-sm font-semibold text-text-primary">{t('settings.academicProfile')}</span>
+              <span className="text-sm text-primary">{t('common.edit')}</span>
+            </button>
           </div>
         </section>
       </form>

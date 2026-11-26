@@ -4,13 +4,9 @@ import type { AppMessageKey } from '@/shared/i18n/messages';
  * Academic profile vocabulary shared by registration/onboarding and the
  * "complete it later" page.
  *
- * Batch options are code, not free text: they are the single list the new-user
- * form renders, so adding next year's batch is a one-line change here (plus the
- * matching DB constraint if the accepted set ever needs narrowing).
+ * The batch list is NOT here: it is admin-owned data in `hsc_batches` and is
+ * read by `useHscBatches()`. This module only validates the shape of a year.
  */
-export const HSC_BATCH_OPTIONS = ['2024', '2025', '2026', '2027', '2028'] as const;
-
-export type HscBatch = (typeof HSC_BATCH_OPTIONS)[number];
 
 export const HSC_GROUP_OPTIONS = [
   { value: 'science', labelKey: 'academic.groupScience' },
@@ -33,7 +29,6 @@ export const ADMISSION_TARGET_OPTIONS = [
 
 export type AdmissionTarget = (typeof ADMISSION_TARGET_OPTIONS)[number]['value'];
 
-const HSC_BATCHES: readonly string[] = HSC_BATCH_OPTIONS;
 const HSC_GROUPS: readonly string[] = HSC_GROUP_OPTIONS.map((option) => option.value);
 const ADMISSION_TARGETS: readonly string[] = ADMISSION_TARGET_OPTIONS.map(
   (option) => option.value
@@ -63,8 +58,7 @@ export const EMPTY_ACADEMIC_PROFILE: AcademicProfileValues = {
   otherAdmissionTarget: '',
 };
 
-export const isKnownHscBatch = (value: string): boolean =>
-  HSC_BATCHES.includes(value);
+export const isKnownHscBatch = (value: string): boolean => /^20[0-9]{2}$/.test(value);
 
 export const isKnownHscGroup = (value: string): value is HscGroup =>
   HSC_GROUPS.includes(value);

@@ -25,7 +25,6 @@ export interface CachedProfileFields {
   institution: string | null;
   total_xp: number | null;
   language_preference: string | null;
-  class_level: string | null;
   group: string | null;
   study_goal: string | null;
   hsc_batch: string | null;
@@ -72,7 +71,6 @@ export const normalizeCachedProfile = (
   institution: toNullableString(input.institution),
   total_xp: toNullableNumber(input.total_xp),
   language_preference: toNullableString(input.language_preference),
-  class_level: toNullableString(input.class_level),
   group: toNullableString(input.group),
   study_goal: toNullableString(input.study_goal),
   hsc_batch: toNullableString(input.hsc_batch),

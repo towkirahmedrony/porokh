@@ -49,7 +49,6 @@ export function mergeSessionUser(
     // A token refresh carries no profile data. These fields decide the
     // onboarding gate, so dropping them here would send a finished user back
     // to the form until the next full reload.
-    class_level: previous.class_level ?? next.class_level ?? null,
     group: previous.group ?? next.group ?? null,
     study_goal: previous.study_goal ?? next.study_goal ?? null,
     hsc_batch: previous.hsc_batch ?? next.hsc_batch ?? null,
@@ -100,7 +99,6 @@ export function isSameAppUser(
     a.avatar_url === b.avatar_url &&
     a.institution === b.institution &&
     a.language_preference === b.language_preference &&
-    a.class_level === b.class_level &&
     a.group === b.group &&
     a.study_goal === b.study_goal &&
     (a.hsc_batch ?? null) === (b.hsc_batch ?? null) &&
@@ -136,7 +134,6 @@ export function applyCachedProfile(
     avatar_url: cached.avatar_url,
     institution: cached.institution,
     language_preference: cached.language_preference ?? 'bn',
-    class_level: cached.class_level,
     group: cached.group,
     study_goal: cached.study_goal,
     hsc_batch: cached.hsc_batch,

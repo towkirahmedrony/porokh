@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useStage } from '@/features/stage/hooks/useStage';
 import ModelPageHeader from '../components/ModelPageHeader';
 import { useModelTrackSummary } from '../hooks/useModelTrackSummary';
 import {
@@ -15,12 +15,12 @@ import {
 
 const ModelCategoryPage: React.FC = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const stage = useStage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const summaryQuery = useModelTrackSummary();
 
-  const goalTrack = isModelTrack(user?.study_goal) ? user.study_goal : null;
+  const goalTrack = isModelTrack(stage.goal) ? stage.goal : null;
   const orderedCategories = goalTrack
     ? [...MODEL_CATEGORY_CONFIGS].sort(
         (a, b) => Number(b.value === goalTrack) - Number(a.value === goalTrack)

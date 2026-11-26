@@ -5,10 +5,8 @@ export interface UserProfileData {
   avatar_url?: string;
   bio?: string;
   institution?: string;
-  class_level?: string;
   group?: string;
   education_board?: string;
-  batch_year?: string;
   hsc_batch?: string;
   hsc_group?: string;
   admission_targets?: string[];

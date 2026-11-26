@@ -5,6 +5,7 @@ import {
   type AdmissionTarget,
 } from '@/features/profile/utils/academicProfile';
 import type { AppMessageKey } from '@/shared/i18n/messages';
+import { isStudyGoal } from '@/shared/lib/academic';
 
 export const ONBOARDING_STEPS = [1, 2, 3] as const;
 
@@ -14,8 +15,6 @@ export type OnboardingDraft = {
   step: OnboardingStep;
   fullName: string;
   username: string;
-  classLevel: string;
-  group: string;
   studyGoal: string;
   hscBatch: string;
   hscGroup: string;
@@ -26,9 +25,8 @@ export type OnboardingDraft = {
 export type CompleteOnboardingParams = {
   p_full_name: string;
   p_username: string;
-  p_class_level: string | null;
-  p_group: string | null;
-  p_study_goal: string | null;
+  /** Never null: an undecided goal is stored as the `hsc` track. */
+  p_study_goal: string;
   p_hsc_batch: string;
   p_hsc_group: string;
   p_admission_targets: string[];
@@ -39,8 +37,6 @@ export const EMPTY_ONBOARDING_DRAFT: OnboardingDraft = {
   step: 1,
   fullName: '',
   username: '',
-  classLevel: '',
-  group: '',
   studyGoal: '',
   hscBatch: '',
   hscGroup: '',
@@ -51,15 +47,9 @@ export const EMPTY_ONBOARDING_DRAFT: OnboardingDraft = {
 export const normalizeFullName = (value: string): string =>
   value.trim().replace(/\s+/g, ' ');
 
-/** Only HSC-level classes have a group; other levels hide the chips. */
-export const classLevelNeedsGroup = (classLevel: string): boolean =>
-  /^hsc\b/i.test(classLevel.trim());
-
 export type OnboardingProfileDefaults = {
   fullName: string;
   username: string;
-  classLevel: string;
-  group: string;
   studyGoal: string;
   hscBatch: string;
   hscGroup: string;
@@ -81,7 +71,6 @@ export const buildOnboardingDraft = (
       ...EMPTY_ONBOARDING_DRAFT,
       ...profile,
       admissionTargets: normalizeAdmissionTargets(profile.admissionTargets),
-      group: classLevelNeedsGroup(profile.classLevel) ? profile.group : '',
     };
   }
 
@@ -89,8 +78,6 @@ export const buildOnboardingDraft = (
     ...saved,
     fullName: saved.fullName || profile.fullName,
     username: saved.username || profile.username,
-    classLevel: saved.classLevel || profile.classLevel,
-    group: saved.group || profile.group,
     studyGoal: saved.studyGoal || profile.studyGoal,
     hscBatch: saved.hscBatch || profile.hscBatch,
     hscGroup: saved.hscGroup || profile.hscGroup,
@@ -102,24 +89,19 @@ export const buildOnboardingDraft = (
       saved.otherAdmissionTarget || profile.otherAdmissionTarget,
   };
 
-  return {
-    ...merged,
-    group: classLevelNeedsGroup(merged.classLevel) ? merged.group : '',
-  };
+  return merged;
 };
 
+/**
+ * `p_class_level` and `p_group` are gone from this payload: the RPC still
+ * accepts them so older APKs keep working, but this app stops writing them.
+ */
 export const buildCompleteOnboardingParams = (
-  draft: OnboardingDraft,
-  skipStepTwo = false
+  draft: OnboardingDraft
 ): CompleteOnboardingParams => ({
   p_full_name: normalizeFullName(draft.fullName),
   p_username: normalizeUsername(draft.username),
-  p_class_level: skipStepTwo ? null : draft.classLevel || null,
-  p_group:
-    skipStepTwo || !classLevelNeedsGroup(draft.classLevel)
-      ? null
-      : draft.group || null,
-  p_study_goal: skipStepTwo ? null : draft.studyGoal || null,
+  p_study_goal: isStudyGoal(draft.studyGoal) ? draft.studyGoal : 'hsc',
   ...buildAcademicProfileRpcParams({
     hscBatch: draft.hscBatch,
     hscGroup: draft.hscGroup,

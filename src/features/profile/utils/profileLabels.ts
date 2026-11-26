@@ -1,4 +1,4 @@
-import { localizeDigits, type AppLanguage, type AppMessageKey } from '@/shared/i18n/messages';
+import type { AppLanguage, AppMessageKey } from '@/shared/i18n/messages';
 import {
   ADMISSION_TARGET_OPTIONS,
   HSC_GROUP_OPTIONS,
@@ -37,14 +37,6 @@ export const localizeAcademicGroup = (
   language: AppLanguage
 ): string =>
   language === 'bn' ? GROUP_LABELS_BN[group] ?? group : group;
-
-export const localizeClassLevel = (
-  level: string,
-  language: AppLanguage
-): string =>
-  language === 'bn'
-    ? localizeDigits(level.replace(/HSC/g, 'এইচএসসি'), language)
-    : level;
 
 const HSC_GROUP_LABEL_KEYS: Record<string, AppMessageKey> = Object.fromEntries(
   HSC_GROUP_OPTIONS.map((option) => [option.value, option.labelKey])

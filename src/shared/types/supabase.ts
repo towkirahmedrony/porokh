@@ -2029,6 +2029,38 @@ export type Database = {
         }
         Relationships: []
       }
+      hsc_batches: {
+        Row: {
+          batch_year: string
+          exam_end_date: string | null
+          notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          batch_year: string
+          exam_end_date?: string | null
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          batch_year?: string
+          exam_end_date?: string | null
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hsc_batches_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       institutions: {
         Row: {
           aliases: string[] | null
@@ -2719,6 +2751,7 @@ export type Database = {
           freezes_left: number | null
           full_name: string | null
           gender: string | null
+          goal_confirmed_at: string | null
           group: string | null
           guardian_phone: string | null
           hsc_batch: string | null
@@ -2772,6 +2805,7 @@ export type Database = {
           freezes_left?: number | null
           full_name?: string | null
           gender?: string | null
+          goal_confirmed_at?: string | null
           group?: string | null
           guardian_phone?: string | null
           hsc_batch?: string | null
@@ -2825,6 +2859,7 @@ export type Database = {
           freezes_left?: number | null
           full_name?: string | null
           gender?: string | null
+          goal_confirmed_at?: string | null
           group?: string | null
           guardian_phone?: string | null
           hsc_batch?: string | null

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { localizeDigits } from '@/shared/i18n/messages';
+import { formatBatchLabel } from '@/shared/lib/academic';
 import type { ProgressUser } from '../types/progress';
 
 interface ProgressIdentityProps {
@@ -8,18 +8,16 @@ interface ProgressIdentityProps {
 }
 
 /**
- * Who this report belongs to. The class chip is the stored `class_level` (or
- * `hsc_batch`, or `batch_year`); when none is stored no chip is drawn, so the
- * screen never claims a batch the profile does not have.
+ * Who this report belongs to. The chip is the batch the server sent (the
+ * `class_label` field holds `hsc_batch` now); when none is stored no chip is
+ * drawn, so the screen never claims a batch the profile does not have.
  */
 export const ProgressIdentity: React.FC<ProgressIdentityProps> = ({ user }) => {
   const { language, t } = useLanguage();
 
   const name = user.name?.trim() || t('progress.studentFallback');
   const initial = name.charAt(0).toUpperCase();
-  const classLabel = user.class_label?.trim()
-    ? localizeDigits(user.class_label.trim(), language)
-    : null;
+  const batchLabel = formatBatchLabel(user.class_label?.trim(), language);
 
   return (
     <header className="flex items-center gap-3">
@@ -42,10 +40,10 @@ export const ProgressIdentity: React.FC<ProgressIdentityProps> = ({ user }) => {
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-[16px] font-bold leading-6 text-text-primary">{name}</p>
-        {classLabel ? (
+        {batchLabel ? (
           <div className="mt-1">
             <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
-              {t('progress.classChip', { class: classLabel })}
+              {batchLabel}
             </span>
           </div>
         ) : null}

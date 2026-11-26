@@ -7,7 +7,8 @@ export type AnyStorageKey =
   | StorageKey
   | `${typeof STORAGE_KEYS.EXAM_PROGRESS_PREFIX}${string}`
   | `${typeof STORAGE_KEYS.SIGNUP_ONBOARDING_DRAFT_PREFIX}${string}`
-  | `${typeof STORAGE_KEYS.AUTH_PROFILE_CACHE_PREFIX}${string}`;
+  | `${typeof STORAGE_KEYS.AUTH_PROFILE_CACHE_PREFIX}${string}`
+  | `${typeof STORAGE_KEYS.STAGE_CACHE_PREFIX}${string}`;
 
 export const StorageUtils = {
   get: <T>(key: AnyStorageKey, fallback: T | null = null): T | null => {

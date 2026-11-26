@@ -49,23 +49,23 @@ test('a token refresh keeps the profile name instead of falling back to JWT data
 test('a token refresh keeps the onboarding flag and academic fields', () => {
   const enriched = makeUser({
     onboarding_completed_at: '2026-11-01T08:26:00.000Z',
-    class_level: 'hsc',
     group: 'science',
     study_goal: 'medical',
+    hsc_batch: '2026',
   });
 
   const refreshed = mergeSessionUser(
     makeUser({
       onboarding_completed_at: undefined,
-      class_level: undefined,
       group: undefined,
       study_goal: undefined,
+      hsc_batch: undefined,
     }),
     enriched
   );
 
   assert.equal(refreshed.onboarding_completed_at, '2026-11-01T08:26:00.000Z');
-  assert.equal(refreshed.class_level, 'hsc');
+  assert.equal(refreshed.hsc_batch, '2026');
   assert.equal(refreshed.group, 'science');
   assert.equal(refreshed.study_goal, 'medical');
   assert.equal(isSameAppUser(enriched, refreshed), true);
@@ -113,9 +113,9 @@ test('a cached profile row resolves the gate without any network read', () => {
   const cached = normalizeCachedProfile({
     full_name: 'Rahim Uddin',
     username: 'rahim',
-    class_level: 'hsc',
     group: 'science',
     study_goal: 'medical',
+    hsc_batch: '2026',
     onboarding_completed_at: '2026-11-01T08:26:00.000Z',
     total_xp: 420,
   });
@@ -126,7 +126,7 @@ test('a cached profile row resolves the gate without any network read', () => {
   );
 
   assert.equal(restored.onboarding_completed_at, '2026-11-01T08:26:00.000Z');
-  assert.equal(restored.class_level, 'hsc');
+  assert.equal(restored.hsc_batch, '2026');
   assert.equal(restored.full_name, 'Rahim Uddin');
   assert.equal(restored.total_xp, 420);
   assert.equal(restored.total_score, 420);

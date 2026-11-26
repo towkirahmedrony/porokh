@@ -11,6 +11,8 @@ import {
   debugOnboardingGate,
   decideOnboardingState,
 } from "@/features/onboarding/utils/onboardingGate";
+import { GoalGate } from "@/features/stage/components/GoalGate";
+import { useStage } from "@/features/stage/hooks/useStage";
 
 interface PermissionGuardProps {
   children: ReactNode;
@@ -49,6 +51,7 @@ export function PermissionGuard({
     refreshProfile,
   } = useAuth();
   const location = useLocation();
+  const stage = useStage();
 
   // The onboarding flag comes from the profile row, not the JWT. Until that
   // row has been read the answer is unknown — render a loader instead of
@@ -101,6 +104,18 @@ export function PermissionGuard({
 
   if (onboarding.status === 'incomplete') {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  // A stage that has never been read yet keeps the app on a loader: the gate
+  // must not be decided from a missing answer, and Home must not paint first.
+  if (!stage.stage && (stage.status === 'idle' || stage.status === 'loading')) {
+    return <PermissionGuardLoader />;
+  }
+
+  // The gate replaces the whole shell, so Back, deep links and the bottom nav
+  // cannot reach past it.
+  if (stage.needsGoalGate) {
+    return <GoalGate />;
   }
 
   const safePermissions = Array.isArray(permissions) ? permissions : [];

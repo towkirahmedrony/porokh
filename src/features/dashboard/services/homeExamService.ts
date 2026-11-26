@@ -79,17 +79,6 @@ export const homeExamService = {
     return withQuestionCounts(data ?? []);
   },
 
-  async saveStudyGoal(userId: string, track: HomeExamTrack): Promise<void> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ study_goal: track })
-      .eq('id', userId)
-      .select('id')
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
-    // RLS silently updates zero rows when the policy does not match; that is a
-    // failed save, not a success.
-    if (!data) throw new Error('Study goal was not saved.');
-  },
+  // Saving the goal lives in `useStage().setGoal()`: it goes through the API
+  // that also stamps `goal_confirmed_at`, which a direct table write cannot.
 };

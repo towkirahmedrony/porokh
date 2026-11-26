@@ -7,6 +7,7 @@ import HomeExamsSection from '../components/HomeExamsSection';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { supabase } from '@/shared/lib/supabase';
 import { useHomeGrids } from '../hooks/useHomeGrids';
+import { useStage } from '@/features/stage/hooks/useStage';
 import { matchesHomeGridTargetRules } from '../utils/homeGridTargeting';
 import { useLiveExamActive } from '../hooks/useLiveExamActive';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
@@ -87,6 +88,7 @@ const isWithinSchedule = (banner: HomeBannerRow, now: number) => {
 
 const Home: React.FC = memo(() => {
   const { user, loading: authLoading, profileStatus } = useAuth();
+  const stage = useStage();
   const { features, loading: featuresLoading, error: featuresError, refetch: refetchFeatures } = useHomeGrids();
   const { isLive: isLiveExamActive } = useLiveExamActive();
   const { language, t } = useLanguage();
@@ -133,8 +135,8 @@ const Home: React.FC = memo(() => {
   const visibleBanners = useMemo(() => {
     const now = Date.now();
     const profile = {
-      studyGoal: user?.study_goal ?? null,
-      classLevel: user?.class_level ?? null,
+      studyGoal: stage.goal,
+      hscBatch: stage.batchYear,
       group: user?.group ?? null,
     };
 
@@ -144,7 +146,7 @@ const Home: React.FC = memo(() => {
       if (isLiveExamBanner(banner)) return isLiveExamActive;
       return true;
     });
-  }, [activeBanners, isLiveExamActive, user?.study_goal, user?.class_level, user?.group]);
+  }, [activeBanners, isLiveExamActive, stage.goal, stage.batchYear, user?.group]);
 
   const resolvedProfileName = resolveNamecardName({
     fullName: user?.full_name,

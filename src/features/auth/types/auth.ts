@@ -12,7 +12,6 @@ export interface AppUser extends SupabaseUser {
   avatar_url?: string | null;
   institution?: string | null;
   language_preference?: 'bn' | 'en' | string | null;
-  class_level?: string | null;
   group?: string | null;
   study_goal?: string | null;
   hsc_batch?: string | null;
@@ -48,7 +47,6 @@ export interface AuthContextType {
         | 'full_name'
         | 'username'
         | 'avatar_url'
-        | 'class_level'
         | 'group'
         | 'study_goal'
         | 'hsc_batch'

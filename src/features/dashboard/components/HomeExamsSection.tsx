@@ -15,6 +15,7 @@ import { LOCALE_BY_LANGUAGE, localizeDigits } from '@/shared/i18n/messages';
 import { pickLang } from '@/shared/i18n/localize';
 import { useBackInterceptor } from '@/app/navigation/useBackInterceptor';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useStage } from '@/features/stage/hooks/useStage';
 import { useStartModelPaper } from '@/features/exam/hooks/useStartModelPaper';
 import ModelPaperCard from '@/features/exam/components/ModelPaperCard';
 import PaperLauncher from '@/features/exam/components/PaperLauncher';
@@ -24,11 +25,7 @@ import {
 } from '@/features/exam/constants/modelTracks';
 import type { ModelPaperListItem } from '@/features/exam/services/modelPaperService';
 import { useHomeExams } from '../hooks/useHomeExams';
-import {
-  homeExamService,
-  isHomeExamTrack,
-  type HomeExamTrack,
-} from '../services/homeExamService';
+import { isHomeExamTrack, type HomeExamTrack } from '../services/homeExamService';
 import { formatCountdown, splitHomeExams } from '../utils/homeExamTiming';
 
 /**
@@ -200,9 +197,10 @@ const UpcomingExamCard: React.FC<{
 const TargetSheet: React.FC<{
   current: HomeExamTrack;
   pending: boolean;
+  hscDisabled: boolean;
   onClose: () => void;
   onSelect: (track: HomeExamTrack) => void;
-}> = ({ current, pending, onClose, onSelect }) => {
+}> = ({ current, pending, hscDisabled, onClose, onSelect }) => {
   const { t } = useLanguage();
   useBackInterceptor(onClose);
 
@@ -231,14 +229,17 @@ const TargetSheet: React.FC<{
           {MODEL_CATEGORY_CONFIGS.map((config) => {
             const Icon = config.icon;
             const selected = config.value === current;
+            // After the HSC exam the server refuses the hsc track, so it is
+            // shown as unavailable instead of failing on tap.
+            const unavailable = config.value === 'hsc' && hscDisabled;
 
             return (
               <button
                 key={config.value}
                 type="button"
                 onClick={() => onSelect(config.value)}
-                disabled={pending}
-                className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-surface-elevated active:bg-surface-elevated disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                disabled={pending || unavailable}
+                className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-surface-elevated active:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
                 <span
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${config.accentClass}`}
@@ -367,10 +368,13 @@ const SectionsSkeleton: React.FC = () => {
 const HomeExamsSection: React.FC = () => {
   const { t } = useLanguage();
   const { user, updateUserProfile } = useAuth();
+  const stage = useStage();
   const queryClient = useQueryClient();
   const startMutation = useStartModelPaper();
 
-  const goal = user?.study_goal ?? null;
+  // The goal comes from the stage hook: one source of truth, and a change made
+  // anywhere re-renders this section.
+  const goal = stage.goal;
   const track: HomeExamTrack | null = isHomeExamTrack(goal) ? goal : null;
   const trackConfig = track ? getTrackConfig(track) : null;
 
@@ -381,11 +385,9 @@ const HomeExamsSection: React.FC = () => {
   const [selectedPaper, setSelectedPaper] = useState<ModelPaperListItem | null>(null);
 
   const saveTarget = useMutation({
-    mutationFn: (nextTrack: HomeExamTrack) => {
-      if (!user?.id) throw new Error('Not signed in');
-      return homeExamService.saveStudyGoal(user.id, nextTrack);
-    },
+    mutationFn: (nextTrack: HomeExamTrack) => stage.setGoal(nextTrack),
     onSuccess: (_data, nextTrack) => {
+      // Keep the cached profile row in step for the screens that still read it.
       if (user?.id) updateUserProfile(user.id, { study_goal: nextTrack });
       setPickerOpen(false);
       void queryClient.invalidateQueries({ queryKey: ['home-exams'] });
@@ -507,6 +509,7 @@ const HomeExamsSection: React.FC = () => {
         <TargetSheet
           current={track}
           pending={saveTarget.isPending}
+          hscDisabled={stage.stage !== null && stage.stage !== 'studying'}
           onClose={() => setPickerOpen(false)}
           onSelect={selectTrack}
         />

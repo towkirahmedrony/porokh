@@ -3,6 +3,7 @@ import { useIsRestoring, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/shared/lib/apiClient';
 import { QUERY_KEYS } from '@/shared/constants/storageKeys';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useStage } from '@/features/stage/hooks/useStage';
 import { matchesHomeGridTargetRules } from '../utils/homeGridTargeting';
 
 export type HomeGridTargetRules = Record<string, unknown>;
@@ -82,6 +83,7 @@ const sanitizeGridItems = (input: unknown): GridItem[] => {
 
 export const useHomeGrids = () => {
   const { user } = useAuth();
+  const stage = useStage();
 
   const query = useQuery({
     queryKey: QUERY_KEYS.HOME_GRIDS,
@@ -100,16 +102,18 @@ export const useHomeGrids = () => {
   // Filter against the profile at render time so a profile refresh does not
   // need a second network request for the cards themselves.
   const features = useMemo(() => {
+    // The stage is the server's answer, so the grid follows a goal change
+    // immediately instead of waiting for the cached profile row.
     const profile = {
-      studyGoal: user?.study_goal ?? null,
-      classLevel: user?.class_level ?? null,
+      studyGoal: stage.goal,
+      hscBatch: stage.batchYear,
       group: user?.group ?? null,
     };
 
     return (query.data ?? []).filter((item) =>
       matchesHomeGridTargetRules(item.target_rules, profile)
     );
-  }, [query.data, user?.study_goal, user?.class_level, user?.group]);
+  }, [query.data, stage.goal, stage.batchYear, user?.group]);
 
   // Offline, React Query pauses this fetch instead of failing it. `isLoading`
   // already excludes paused queries, but the dashboard still needs to know that

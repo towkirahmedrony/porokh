@@ -21,8 +21,6 @@ const readDraft = (value: unknown): OnboardingDraft | null => {
     step: draft.step,
     fullName: isString(draft.fullName) ? draft.fullName : '',
     username: isString(draft.username) ? draft.username : '',
-    classLevel: isString(draft.classLevel) ? draft.classLevel : '',
-    group: isString(draft.group) ? draft.group : '',
     studyGoal: isString(draft.studyGoal) ? draft.studyGoal : '',
     hscBatch: isString(draft.hscBatch) ? draft.hscBatch : '',
     hscGroup: isString(draft.hscGroup) ? draft.hscGroup : '',

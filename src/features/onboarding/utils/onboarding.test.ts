@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {
   buildCompleteOnboardingParams,
   buildOnboardingDraft,
-  classLevelNeedsGroup,
   mapCompleteOnboardingError,
   normalizeFullName,
 } from './onboarding';
@@ -12,8 +11,6 @@ const draft = {
   step: 2 as const,
   fullName: '  Towkir   Ahmed ',
   username: ' Towkir_7 ',
-  classLevel: 'HSC 26',
-  group: 'Science',
   studyGoal: 'engineering',
   hscBatch: '2026',
   hscGroup: 'science' as const,
@@ -21,13 +18,11 @@ const draft = {
   otherAdmissionTarget: '',
 };
 
-test('step two saves normalized name, username and the three optional fields', () => {
+test('the payload normalizes the name, the username and the batch', () => {
   assert.equal(normalizeFullName(draft.fullName), 'Towkir Ahmed');
   assert.deepEqual(buildCompleteOnboardingParams(draft), {
     p_full_name: 'Towkir Ahmed',
     p_username: 'towkir_7',
-    p_class_level: 'HSC 26',
-    p_group: 'Science',
     p_study_goal: 'engineering',
     p_hsc_batch: '2026',
     p_hsc_group: 'science',
@@ -36,18 +31,20 @@ test('step two saves normalized name, username and the three optional fields', (
   });
 });
 
-test('skipping step two sends nulls for class, group and goal', () => {
-  assert.deepEqual(buildCompleteOnboardingParams(draft, true), {
-    p_full_name: 'Towkir Ahmed',
-    p_username: 'towkir_7',
-    p_class_level: null,
-    p_group: null,
-    p_study_goal: null,
-    p_hsc_batch: '2026',
-    p_hsc_group: 'science',
-    p_admission_targets: ['engineering'],
-    p_other_admission_target: null,
-  });
+test('an undecided goal is stored as the hsc track, never as null', () => {
+  for (const studyGoal of ['', 'something-else']) {
+    assert.equal(
+      buildCompleteOnboardingParams({ ...draft, studyGoal }).p_study_goal,
+      'hsc'
+    );
+  }
+});
+
+test('class_level and the old group are no longer sent at all', () => {
+  const params = buildCompleteOnboardingParams(draft);
+
+  assert.equal('p_class_level' in params, false);
+  assert.equal('p_group' in params, false);
 });
 
 test('the other admission target is only saved when Other is selected', () => {
@@ -66,20 +63,9 @@ test('the other admission target is only saved when Other is selected', () => {
   assert.equal(withOther.p_other_admission_target, 'Pharmacy');
 });
 
-test('a group is only saved for HSC-level classes', () => {
-  assert.equal(classLevelNeedsGroup('HSC 26'), true);
-  assert.equal(classLevelNeedsGroup('Admission'), false);
-  assert.equal(
-    buildCompleteOnboardingParams({ ...draft, classLevel: 'Admission' }).p_group,
-    null
-  );
-});
-
 const profileDefaults = {
   fullName: 'Towkir Ahmed',
   username: 'towkir',
-  classLevel: 'HSC 26',
-  group: 'Science',
   studyGoal: 'medical',
   hscBatch: '2026',
   hscGroup: 'science',
@@ -99,8 +85,6 @@ test('a saved draft keeps what the user typed and fills only its gaps', () => {
     step: 2 as const,
     fullName: '',
     username: 'towkir',
-    classLevel: '',
-    group: 'Science',
     studyGoal: 'engineering',
     hscBatch: '',
     hscGroup: '',
@@ -112,23 +96,12 @@ test('a saved draft keeps what the user typed and fills only its gaps', () => {
     step: 2,
     fullName: 'Towkir Ahmed',
     username: 'towkir',
-    classLevel: 'HSC 26',
-    group: 'Science',
     studyGoal: 'engineering',
     hscBatch: '2026',
     hscGroup: 'science',
     admissionTargets: ['medical'],
     otherAdmissionTarget: '',
   });
-});
-
-test('a prefilled group is dropped when the level does not use one', () => {
-  const prefilled = buildOnboardingDraft(null, {
-    ...profileDefaults,
-    classLevel: 'Admission',
-  });
-
-  assert.equal(prefilled.group, '');
 });
 
 test('RPC exceptions map to friendly onboarding messages', () => {

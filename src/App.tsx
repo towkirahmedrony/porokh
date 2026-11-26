@@ -12,6 +12,7 @@ import { PaywallProvider } from '@/features/access/context/PaywallProvider';
 import { PasswordRecoveryRedirect } from '@/features/auth/components/PasswordRecoveryRedirect';
 import { NativeAuthCallback } from '@/features/auth/components/NativeAuthCallback';
 import { UpdateProvider } from '@/features/app-update/UpdateProvider';
+import { StageProvider } from '@/features/stage/context/StageProvider';
 import { UpdateBanner } from '@/features/app-update/UpdateBanner';
 import { AndroidBackButton } from '@/app/navigation/AndroidBackButton';
 
@@ -42,13 +43,17 @@ const App: React.FC = () => (
                 unread badge must survive navigation, and a push tap needs the
                 cached list already in place. */}
             <InboxProvider>
-              {/* Runs above the guard so a recovery link is honoured even while
-                  the maintenance check is still resolving. */}
-              <PasswordRecoveryRedirect />
-              <NativeAuthCallback />
-              <SystemGuard>
-                <AppRoutes />
-              </SystemGuard>
+              {/* The stage is read once here and shared by the goal gate, Home,
+                  Profile and Progress, so no screen derives its own answer. */}
+              <StageProvider>
+                {/* Runs above the guard so a recovery link is honoured even while
+                    the maintenance check is still resolving. */}
+                <PasswordRecoveryRedirect />
+                <NativeAuthCallback />
+                <SystemGuard>
+                  <AppRoutes />
+                </SystemGuard>
+              </StageProvider>
             </InboxProvider>
           </NativePushProvider>
         </PaywallProvider>

@@ -37,7 +37,6 @@ const profileFor = (overrides: Record<string, unknown> = {}) =>
     institution: 'Dhaka College',
     total_xp: 420,
     language_preference: 'bn',
-    class_level: 'hsc',
     group: 'science',
     study_goal: 'medical',
     onboarding_completed_at: '2026-11-01T08:26:00.000Z',

@@ -108,7 +108,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { data: profile, error } = await supabase
         .from('profiles')
         .select(
-          'id, username, full_name, avatar_url, institution, total_xp, language_preference, class_level, group, study_goal, hsc_batch, hsc_group, admission_targets, other_admission_target, onboarding_completed_at'
+          'id, username, full_name, avatar_url, institution, total_xp, language_preference, group, study_goal, hsc_batch, hsc_group, admission_targets, other_admission_target, onboarding_completed_at'
         )
         .eq('id', authUser.id)
         .single();
@@ -140,7 +140,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           avatar_url: profile.avatar_url ?? (prev as any).avatar_url ?? null,
           institution: profile.institution ?? (prev as any).institution ?? null,
           language_preference: profile.language_preference ?? (prev as any).language_preference ?? 'bn',
-          class_level: profile.class_level ?? null,
           group: profile.group ?? null,
           study_goal: profile.study_goal ?? null,
           hsc_batch: profile.hsc_batch ?? null,
@@ -200,7 +199,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         | 'full_name'
         | 'username'
         | 'avatar_url'
-        | 'class_level'
         | 'group'
         | 'study_goal'
         | 'hsc_batch'

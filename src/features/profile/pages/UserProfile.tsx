@@ -14,6 +14,7 @@ import {
   Settings,
   Store,
   Sun,
+  Target,
   User,
   Users,
 } from 'lucide-react';
@@ -23,7 +24,13 @@ import type { UserProfileData } from '../types/profile';
 import { QUERY_KEYS } from '@/shared/constants/storageKeys';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
-import { localizeClassLevel } from '../utils/profileLabels';
+import {
+  formatBatchLabel,
+  formatStudentAcademicLabel,
+  goalLabel,
+} from '@/shared/lib/academic';
+import { useStage } from '@/features/stage/hooks/useStage';
+import { GoalPickerSheet } from '@/features/stage/components/GoalPickerSheet';
 import { useTheme } from '@/shared/hooks/useTheme';
 import useAccess from '@/features/access/hooks/useAccess';
 import ConfirmModal from '@/shared/components/feedback/ConfirmModal';
@@ -36,9 +43,8 @@ const completionFields: Array<keyof UserProfileData> = [
   'guardian_phone',
   'address',
   'institution',
-  'class_level',
-  'group',
-  'batch_year',
+  'hsc_batch',
+  'hsc_group',
   'education_board',
   'study_goal',
 ];
@@ -84,7 +90,9 @@ const UserProfile: React.FC = () => {
   const { language, t, setLanguage } = useLanguage();
   const { resolvedTheme, toggleTheme } = useTheme();
   const { access, examFeature, isLoading: accessLoading } = useAccess();
+  const stage = useStage();
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [goalOpen, setGoalOpen] = useState(false);
 
   const profileQuery = useQuery({
     queryKey: [...QUERY_KEYS.USER_PROFILE, authUser?.id ?? null],
@@ -107,10 +115,13 @@ const UserProfile: React.FC = () => {
   const name = user?.full_name || user?.user_metadata?.full_name || t('profile.anonymousUser');
   const avatarUrl = user?.avatar_url || user?.user_metadata?.avatar_url;
   const initials = name.trim().charAt(0).toUpperCase() || 'P';
+  const academicLabel = formatStudentAcademicLabel(
+    { hsc_batch: user?.hsc_batch, study_goal: user?.study_goal },
+    language
+  );
   const subtitle = [
     user?.username ? `@${user.username}` : null,
-    user?.class_level ? localizeClassLevel(user.class_level, language) : null,
-    user?.study_goal || null,
+    academicLabel || null,
   ].filter(Boolean).join(' · ');
   const streak = user?.current_streak ?? 0;
   const examUsage = examFeature?.unlimited ? '∞' : examFeature ? `${localizeDigits(examFeature.used, language)} / ${localizeDigits(examFeature.limit, language)}` : '—';
@@ -146,11 +157,12 @@ const UserProfile: React.FC = () => {
       <section className="rounded-xl border border-card-border bg-card-bg p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs text-text-secondary">{copy.plan}</p><h2 className="mt-1 text-lg font-semibold text-text-primary">{access?.premium ? access.tier : copy.free}</h2><p className="mt-1 text-sm text-text-secondary">{copy.today}: {examUsage}</p>{expiry && <p className="mt-1 text-xs text-text-secondary">{copy.expires}: {expiry}</p>}</div><button type="button" onClick={() => navigate('/premium')} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">{copy.upgrade}</button></div>{accessLoading && <div className="mt-3 h-1.5 animate-pulse rounded-full bg-surface" />}</section>
 
       <Section title={copy.offers}><AccountRow icon={<Gift size={20} />} label={t('profile.referral')} onClick={() => navigate('/referral')} /><AccountRow icon={<Store size={20} />} label={t('profile.marketplace')} onClick={() => navigate('/dashboard/marketplace')} /></Section>
-      <Section title={copy.account}><AccountRow icon={<User size={20} />} label={copy.personal} onClick={() => navigate('/edit-profile')} /><AccountRow icon={<GraduationCap size={20} />} label={t('settings.academicProfile')} value={user.hsc_batch ? localizeDigits(user.hsc_batch, language) : undefined} onClick={() => navigate('/profile/academic')} /><AccountRow icon={<Lock size={20} />} label={t('profile.changePassword')} onClick={() => navigate('/change-password')} /><AccountRow icon={<Languages size={20} />} label={copy.language} value={language === 'bn' ? 'বাংলা' : 'English'} onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')} /><AccountRow icon={isDark ? <Moon size={20} /> : <Sun size={20} />} label={copy.dark} value={isDark ? copy.enabled : ''} onClick={toggleTheme} trailing={<span className={`relative h-6 w-11 rounded-full p-1 transition-colors ${isDark ? 'bg-primary' : 'bg-surface-elevated border border-border-color'}`}><span className={`block h-4 w-4 rounded-full bg-surface shadow-sm transition-transform ${isDark ? 'translate-x-5' : ''}`}><span className="sr-only">{copy.dark}</span></span></span>} /></Section>
+      <Section title={copy.account}><AccountRow icon={<User size={20} />} label={copy.personal} onClick={() => navigate('/edit-profile')} /><AccountRow icon={<Target size={20} />} label={t('profile.goalRow')} value={stage.goal ? goalLabel(stage.goal, language) : undefined} onClick={() => setGoalOpen(true)} /><AccountRow icon={<GraduationCap size={20} />} label={t('settings.academicProfile')} value={formatBatchLabel(user.hsc_batch, language) ?? undefined} onClick={() => navigate('/profile/academic')} /><AccountRow icon={<Lock size={20} />} label={t('profile.changePassword')} onClick={() => navigate('/change-password')} /><AccountRow icon={<Languages size={20} />} label={copy.language} value={language === 'bn' ? 'বাংলা' : 'English'} onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')} /><AccountRow icon={isDark ? <Moon size={20} /> : <Sun size={20} />} label={copy.dark} value={isDark ? copy.enabled : ''} onClick={toggleTheme} trailing={<span className={`relative h-6 w-11 rounded-full p-1 transition-colors ${isDark ? 'bg-primary' : 'bg-surface-elevated border border-border-color'}`}><span className={`block h-4 w-4 rounded-full bg-surface shadow-sm transition-transform ${isDark ? 'translate-x-5' : ''}`}><span className="sr-only">{copy.dark}</span></span></span>} /></Section>
       <Section title={copy.help}><AccountRow icon={<Bell size={20} />} label={copy.notification} onClick={() => navigate('/notifications-privacy')} /><AccountRow icon={<Users size={20} />} label={t('profile.supportCenter')} onClick={() => navigate('/support')} /><AccountRow icon={<HelpCircle size={20} />} label={copy.helpLegal} onClick={() => navigate('/faq')} /></Section>
 
       <button type="button" onClick={() => setLogoutOpen(true)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-danger/40 px-4 py-3 font-semibold text-danger transition-colors hover:bg-danger/10"><LogOut size={18} />{copy.logout}</button>
       <p className="text-center text-xs text-text-secondary">{copy.version} 1.0.5</p>
+      <GoalPickerSheet open={goalOpen} onClose={() => setGoalOpen(false)} />
       <ConfirmModal isOpen={logoutOpen} title={t('settings.logoutConfirmTitle')} message={t('settings.logoutConfirmBody')} onCancel={() => setLogoutOpen(false)} onConfirm={async () => { await signOut?.(); setLogoutOpen(false); }} confirmText={t('profile.logout')} cancelText={t('common.cancel')} />
     </div>
   );

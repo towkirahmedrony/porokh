@@ -7,15 +7,8 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isValidUsername, normalizeUsername } from '@/features/auth/utils/username';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits, type AppMessageKey } from '@/shared/i18n/messages';
-import {
-  ACADEMIC_GROUPS,
-  CLASS_LEVELS,
-} from '@/features/profile/utils/profileConstants';
-import {
-  localizeAcademicGroup,
-  localizeClassLevel,
-} from '@/features/profile/utils/profileLabels';
-import { MODEL_TRACK_CONFIGS } from '@/features/exam/constants/modelTracks';
+import { STUDY_GOALS, goalLabel, isStudyGoal } from '@/shared/lib/academic';
+import { useStage } from '@/features/stage/hooks/useStage';
 import AcademicProfileForm from '@/features/profile/components/AcademicProfileForm';
 import {
   normalizeAdmissionTargets,
@@ -27,7 +20,6 @@ import {
   ONBOARDING_STEPS,
   buildCompleteOnboardingParams,
   buildOnboardingDraft,
-  classLevelNeedsGroup,
   mapCompleteOnboardingError,
   normalizeFullName,
   type OnboardingDraft,
@@ -52,6 +44,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { user, updateUserProfile } = useAuth();
   const { language, t } = useLanguage();
+  const { refresh: refreshStage } = useStage();
   const userId = user?.id;
   const completedRef = useRef(false);
 
@@ -59,14 +52,12 @@ export default function Onboarding() {
     const saved = userId ? loadOnboardingDraft(userId) : null;
 
     // Existing profile values prefill the form so a user who is only missing
-    // the flag does not retype their name, class or goal (and their own
-    // username counts as available).
+    // the flag does not retype their name or goal (and their own username
+    // counts as available).
     return buildOnboardingDraft(saved, {
       fullName: user?.full_name ?? '',
       username: normalizeUsername(user?.username ?? ''),
-      classLevel: user?.class_level ?? '',
-      group: user?.group ?? '',
-      studyGoal: user?.study_goal ?? '',
+      studyGoal: isStudyGoal(user?.study_goal) ? user.study_goal : 'hsc',
       hscBatch: user?.hsc_batch ?? '',
       hscGroup: user?.hsc_group ?? '',
       admissionTargets: user?.admission_targets ?? [],
@@ -91,15 +82,6 @@ export default function Onboarding() {
 
   const updateDraft = (patch: Partial<OnboardingDraft>) => {
     setDraft((prev) => ({ ...prev, ...patch }));
-    setError(null);
-  };
-
-  const selectClass = (value: string) => {
-    setDraft((prev) => ({
-      ...prev,
-      classLevel: prev.classLevel === value ? '' : value,
-      group: prev.classLevel === value ? '' : classLevelNeedsGroup(value) ? prev.group : '',
-    }));
     setError(null);
   };
 
@@ -134,7 +116,7 @@ export default function Onboarding() {
     updateDraft({ step: 2 });
   };
 
-  const complete = async (skipStepTwo: boolean) => {
+  const complete = async () => {
     if (!userId) {
       setError('onboarding.sessionExpired');
       return;
@@ -143,7 +125,7 @@ export default function Onboarding() {
     setIsSaving(true);
     setError(null);
 
-    const params = buildCompleteOnboardingParams(draft, skipStepTwo);
+    const params = buildCompleteOnboardingParams(draft);
 
     try {
       const { error: rpcError } = await supabase.rpc('complete_onboarding', params);
@@ -164,8 +146,6 @@ export default function Onboarding() {
       updateUserProfile(userId, {
         full_name: params.p_full_name,
         username: params.p_username,
-        class_level: params.p_class_level,
-        group: params.p_group,
         study_goal: params.p_study_goal,
         hsc_batch: params.p_hsc_batch,
         hsc_group: params.p_hsc_group,
@@ -173,6 +153,9 @@ export default function Onboarding() {
         other_admission_target: params.p_other_admission_target,
         onboarding_completed_at: new Date().toISOString(),
       });
+      // A student whose exam already ended must meet the goal gate on the very
+      // next screen, not after the next cold start.
+      void refreshStage();
       navigate('/dashboard/home', { replace: true });
     } catch {
       setError('onboarding.saveFailed');
@@ -218,7 +201,7 @@ export default function Onboarding() {
       return;
     }
 
-    void complete(false);
+    void complete();
   };
 
   const stepLabel = t('onboarding.stepLabel', {
@@ -414,71 +397,37 @@ export default function Onboarding() {
             </p>
 
             <div className="mt-7 space-y-7">
-              <section>
-                <h2 className="mb-3 text-sm font-semibold text-text-secondary">
-                  {t('onboarding.classLabel')}
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {CLASS_LEVELS.map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      aria-pressed={draft.classLevel === level}
-                      onClick={() => selectClass(level)}
-                      disabled={isSaving}
-                      className={chipClasses(draft.classLevel === level)}
-                    >
-                      {localizeClassLevel(level, language)}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {classLevelNeedsGroup(draft.classLevel) && (
-                <section>
-                  <h2 className="mb-3 text-sm font-semibold text-text-secondary">
-                    {t('onboarding.groupLabel')}
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {ACADEMIC_GROUPS.map((group) => (
-                      <button
-                        key={group}
-                        type="button"
-                        aria-pressed={draft.group === group}
-                        onClick={() =>
-                          updateDraft({ group: draft.group === group ? '' : group })
-                        }
-                        disabled={isSaving}
-                        className={chipClasses(draft.group === group)}
-                      >
-                        {localizeAcademicGroup(group, language)}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
+              {/* The batch is chosen on the last step, from the admin-owned
+                  list. The class chip is gone: it never described a batch. */}
               <section>
                 <h2 className="mb-3 text-sm font-semibold text-text-secondary">
                   {t('onboarding.goalLabel')}
                 </h2>
+                <p className="mb-3 text-xs leading-5 text-text-secondary">
+                  {t('onboarding.goalOptionalHint')}
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {MODEL_TRACK_CONFIGS.map((config) => (
+                  {STUDY_GOALS.map((goal) => (
                     <button
-                      key={config.value}
+                      key={goal}
                       type="button"
-                      aria-pressed={draft.studyGoal === config.value}
-                      onClick={() =>
-                        updateDraft({
-                          studyGoal: draft.studyGoal === config.value ? '' : config.value,
-                        })
-                      }
+                      aria-pressed={draft.studyGoal === goal}
+                      onClick={() => updateDraft({ studyGoal: goal })}
                       disabled={isSaving}
-                      className={chipClasses(draft.studyGoal === config.value)}
+                      className={chipClasses(draft.studyGoal === goal)}
                     >
-                      {t(config.labelKey)}
+                      {goalLabel(goal, language)}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    aria-pressed={draft.studyGoal === ''}
+                    onClick={() => updateDraft({ studyGoal: '' })}
+                    disabled={isSaving}
+                    className={chipClasses(draft.studyGoal === '')}
+                  >
+                    {t('onboarding.goalNotDecided')}
+                  </button>
                 </div>
               </section>
             </div>
@@ -506,14 +455,7 @@ export default function Onboarding() {
 
               <button
                 type="button"
-                onClick={() =>
-                  updateDraft({
-                    classLevel: '',
-                    group: '',
-                    studyGoal: '',
-                    step: 3,
-                  })
-                }
+                onClick={() => updateDraft({ studyGoal: '', step: 3 })}
                 disabled={isSaving}
                 className="w-full rounded-full px-4 py-3 text-base font-semibold text-text-secondary transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
               >
