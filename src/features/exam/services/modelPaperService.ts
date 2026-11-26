@@ -45,7 +45,7 @@ export interface ModelAttemptStart {
   exam_id: string | null;
 }
 
-const MODEL_PAPER_SELECT = `
+export const MODEL_PAPER_SELECT = `
   id,
   title,
   title_en,
@@ -124,7 +124,7 @@ export const getModelPaperAvailability = (
   return 'available';
 };
 
-async function fetchQuestionCounts(examIds: string[]): Promise<Map<string, number>> {
+export async function fetchQuestionCounts(examIds: string[]): Promise<Map<string, number>> {
   const counts = new Map<string, number>();
   if (examIds.length === 0) return counts;
 

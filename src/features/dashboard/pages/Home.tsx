@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SunMedium } from 'lucide-react';
 import FeatureGrid, { ThemeConfig } from '../components/FeatureGrid';
 import DynamicBanner from '../components/DynamicBanner';
+import HomeExamsSection from '../components/HomeExamsSection';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { supabase } from '@/shared/lib/supabase';
 import { useHomeGrids } from '../hooks/useHomeGrids';
@@ -227,6 +228,8 @@ const Home: React.FC = memo(() => {
             offline={isOffline}
           />
         </section>
+
+        <HomeExamsSection />
       </main>
     </div>
   );
