@@ -19,6 +19,7 @@ import {
   getModelPaperAvailability,
   type ModelPaperListItem,
 } from '../services/modelPaperService';
+import { getMarksPerQuestion, syncInstructionMarks } from '../utils/paperMarks';
 
 interface PaperDetailsSheetProps {
   paper: ModelPaperListItem;
@@ -58,7 +59,14 @@ const PaperDetailsSheet: React.FC<PaperDetailsSheetProps> = ({
     : null;
 
   const syllabus = pickLang(language, paper.syllabus_details, paper.syllabus_details_en);
-  const instructions = pickLang(language, paper.instructions, paper.instructions_en);
+  const marksPerQuestion = getMarksPerQuestion(paper);
+  const rawInstructions = pickLang(language, paper.instructions, paper.instructions_en);
+  // `pickLang` can fall back to the other language, so localize the digits for
+  // the language actually present in the text rather than the UI language.
+  const instructionLanguage = /[\u0980-\u09FF]/.test(rawInstructions) ? 'bn' : 'en';
+  const instructions = marksPerQuestion
+    ? syncInstructionMarks(rawInstructions, marksPerQuestion, instructionLanguage)
+    : rawInstructions;
 
   const handlePrimary = () => {
     if (isLocked) {
