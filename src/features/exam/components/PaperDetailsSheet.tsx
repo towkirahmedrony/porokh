@@ -176,11 +176,11 @@ const PaperDetailsSheet: React.FC<PaperDetailsSheetProps> = ({
 
         {syllabus && (
           <section className="mt-5">
-            <h3 className="flex items-center gap-2 text-sm font-bold text-text-primary">
+            <h3 className="flex items-center gap-2 font-bengali text-sm font-bold text-text-primary">
               <BookOpen className="h-4 w-4 text-primary" aria-hidden="true" />
               {t('exam.syllabus')}
             </h3>
-            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-text-secondary">
+            <p className="mt-2 whitespace-pre-line font-bengali text-sm leading-6 text-text-secondary">
               {syllabus}
             </p>
           </section>
@@ -188,8 +188,10 @@ const PaperDetailsSheet: React.FC<PaperDetailsSheetProps> = ({
 
         {instructions && (
           <section className="mt-5">
-            <h3 className="text-sm font-bold text-text-primary">{t('exam.instructionsTitle')}</h3>
-            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-text-secondary">
+            <h3 className="font-bengali text-sm font-bold text-text-primary">
+              {t('exam.instructionsTitle')}
+            </h3>
+            <p className="mt-2 whitespace-pre-line font-bengali text-sm leading-6 text-text-secondary">
               {instructions}
             </p>
           </section>
