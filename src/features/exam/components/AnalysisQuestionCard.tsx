@@ -1,30 +1,20 @@
 import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from 'react';
-import { CheckCircle2, XCircle, MinusCircle, ChevronDown, AlertCircle, Flag, Bookmark, Sparkles } from 'lucide-react';
+import {
+  Check,
+  X,
+  Minus,
+  ChevronDown,
+  Bookmark,
+  Flag,
+  HelpCircle,
+} from 'lucide-react';
 import { Question } from '../types/exam';
-import { formatBoardRef } from '../../leaderboard/utils/xpCalculator';
 import MathDisplay from '@/shared/components/content/MathDisplay';
 import QuestionText from '@/shared/components/content/QuestionText';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { getLocalized, pickLang } from '@/shared/i18n/localize';
-import { parseQuestion } from '@/shared/utils/questionFormat';
-
-const AI_COPY = {
-  bn: {
-    show: 'AI ব্যাখ্যা দেখুন',
-    hide: 'ব্যাখ্যা লুকান',
-    thinking: 'AI উত্তরটি বিশ্লেষণ করছে',
-    title: 'AI ব্যাখ্যা',
-  },
-  en: {
-    show: 'See AI explanation',
-    hide: 'Hide explanation',
-    thinking: 'AI is analysing the answer',
-    title: 'AI explanation',
-  },
-} as const;
-
-// Purely visual "thinking" pause the first time a card's explanation opens.
-const AI_THINK_MS = 800;
+import { pickLang } from '@/shared/i18n/localize';
+import { localizeDigits } from '@/shared/i18n/messages';
+import { resolveDisplayText } from '@/shared/utils/localizedText';
 
 export interface AnalysisQuestionCardProps {
   question: Question;
@@ -37,6 +27,8 @@ export interface AnalysisQuestionCardProps {
   onBookmark?: (questionId: string, isNowBookmarked: boolean) => Promise<unknown> | void;
 }
 
+const OPTION_LABELS = ['ক', 'খ', 'গ', 'ঘ', 'ঙ', 'চ', 'ছ', 'জ'];
+
 const normalizeId = (value: string | number | null | undefined): string =>
   value === null || value === undefined ? '' : String(value).trim();
 
@@ -46,359 +38,314 @@ const isCorrectFlag = (option: Question['options'][number]): boolean =>
   String(option.isCorrect).toLowerCase() === 'true' ||
   String(option.is_correct).toLowerCase() === 'true';
 
-const AnalysisQuestionCard: React.FC<AnalysisQuestionCardProps> = memo(({
-  question,
-  index,
-  userAnswerId,
-  status,
-  showCorrectAnswers = true,
-  initialBookmarked = false,
-  onReport,
-  onBookmark
-}) => {
-  const { language, t } = useLanguage();
-  const [aiPhase, setAiPhase] = useState<'closed' | 'thinking' | 'open'>('closed');
-  const hasThoughtRef = useRef<boolean>(false);
-  const aiTimerRef = useRef<number | undefined>(undefined);
-  const [isBookmarked, setIsBookmarked] = useState<boolean>(initialBookmarked);
-  const [isBookmarkUpdating, setIsBookmarkUpdating] = useState<boolean>(false);
+const AnalysisQuestionCard: React.FC<AnalysisQuestionCardProps> = memo(
+  ({
+    question,
+    index,
+    userAnswerId,
+    status,
+    showCorrectAnswers = true,
+    initialBookmarked = false,
+    onReport,
+    onBookmark,
+  }) => {
+    const { language, t } = useLanguage();
+    const [explanationOpen, setExplanationOpen] = useState(false);
+    const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
+    const [isBookmarkUpdating, setIsBookmarkUpdating] = useState(false);
 
-  // Mount the heavy body (KaTeX question text + options) only once the card is
-  // near the viewport. Long exams otherwise create thousands of DOM nodes at
-  // once, which exhausts GPU tile memory on low-end phones.
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [bodyReady, setBodyReady] = useState<boolean>(index < 3);
+    // Long exams otherwise mount thousands of KaTeX nodes at once, which
+    // exhausts GPU tile memory on low-end phones.
+    const rootRef = useRef<HTMLElement>(null);
+    const [bodyReady, setBodyReady] = useState(index < 3);
 
-  useEffect(() => {
-    if (bodyReady) return;
-    const el = rootRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setBodyReady(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setBodyReady(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '900px 0px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [bodyReady]);
-
-  useEffect(() => () => window.clearTimeout(aiTimerRef.current), []);
-
-  // Sync with parent unless an optimistic update is still in flight.
-  useEffect(() => {
-    if (!isBookmarkUpdating) {
-      setIsBookmarked(initialBookmarked);
-    }
-  }, [initialBookmarked, isBookmarkUpdating]);
-  
-  const correctOption = useMemo(
-    () => question.options?.find((opt) => isCorrectFlag(opt)) ?? null,
-    [question.options]
-  );
-  const correctOptionId = normalizeId(correctOption?.id);
-  const normalizedAnswerId = normalizeId(userAnswerId);
-
-  const isSkipped = !normalizedAnswerId;
-  const isCorrect = !!normalizedAnswerId && !!correctOptionId && normalizedAnswerId === correctOptionId;
-
-  const resolvedStatus = useMemo(() => {
-    if (status) return status;
-    if (isSkipped) return 'skipped';
-    if (!showCorrectAnswers) return 'unknown';
-    return isCorrect ? 'correct' : 'wrong';
-  }, [status, isSkipped, showCorrectAnswers, isCorrect]);
-
-  // Using standard Tailwind semantic classes where applicable, preserving red/emerald for explicit pass/fail states
-  const statusConfig = useMemo(() => {
-    if (resolvedStatus === 'skipped') return { 
-      textClass: 'text-text-secondary',
-      bgClass: 'bg-surface-elevated',
-      borderClass: 'border-border-color',
-      icon: <MinusCircle size={16} />, 
-      label: t('analysis.skipped')
-    };
-    if (resolvedStatus === 'correct') return { 
-      textClass: 'text-emerald-600',
-      bgClass: 'bg-emerald-500/10',
-      borderClass: 'border-emerald-500/30',
-      icon: <CheckCircle2 size={16} />, 
-      label: t('analysis.correct')
-    };
-    if (resolvedStatus === 'wrong') return { 
-      textClass: 'text-red-600',
-      bgClass: 'bg-red-500/10',
-      borderClass: 'border-red-500/30',
-      icon: <XCircle size={16} />, 
-      label: t('analysis.wrong')
-    };
-    if (resolvedStatus === 'question_not_found') return {
-      textClass: 'text-text-secondary',
-      bgClass: 'bg-surface-elevated',
-      borderClass: 'border-border-color',
-      icon: <AlertCircle size={16} />,
-      label: t('analysis.questionNotFound')
-    };
-    return { 
-      textClass: 'text-text-secondary',
-      bgClass: 'bg-surface-elevated',
-      borderClass: 'border-border-color',
-      icon: <MinusCircle size={16} />, 
-      label: t('analysis.submitted')
-    };
-  }, [resolvedStatus, t]);
-  
-  const rawExamRef = question.exam_references ? JSON.stringify(question.exam_references) : question.board_ref;
-  const boardTag = formatBoardRef(rawExamRef || '', language);
-
-  const questionText = useMemo(() => {
-    let text = pickLang(language, question.text_bn, question.text_en) || question.text || '';
-    const body = question.body;
-    if (body && typeof body === 'object') {
-      const b = body as Record<string, unknown>;
-      text = pickLang(language, String(b.text_bn ?? ''), String(b.text_en ?? '')) || String(b.text ?? '') || text;
-    } else if (typeof body === 'string' && body.trim() !== '') {
-      text = body || text;
-    }
-    return text;
-  }, [language, question.text_bn, question.text_en, question.text, question.body]);
-
-  const parsedQuestion = useMemo(() => parseQuestion(questionText), [questionText]);
-
-  const explanationText = useMemo(
-    () => {
-      if (question.explanation && typeof question.explanation === 'object') {
-        return getLocalized(question.explanation, language).trim() || t('analysis.explanationFallback');
+    useEffect(() => {
+      if (bodyReady) return;
+      const element = rootRef.current;
+      if (!element || typeof IntersectionObserver === 'undefined') {
+        setBodyReady(true);
+        return;
       }
-      return typeof question.explanation === 'string' && question.explanation.trim()
-        ? question.explanation.trim()
-        : t('analysis.explanationFallback');
-    },
-    [language, question.explanation, t]
-  );
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            setBodyReady(true);
+            observer.disconnect();
+          }
+        },
+        { rootMargin: '900px 0px' }
+      );
+      observer.observe(element);
+      return () => observer.disconnect();
+    }, [bodyReady]);
 
-  const copy = String(language).startsWith('en') ? AI_COPY.en : AI_COPY.bn;
-  const hasRealExplanation = explanationText !== t('analysis.explanationFallback');
+    // Keep the local toggle in sync unless an optimistic update is in flight.
+    useEffect(() => {
+      if (!isBookmarkUpdating) setIsBookmarked(initialBookmarked);
+    }, [initialBookmarked, isBookmarkUpdating]);
 
-  const handleAiToggle = useCallback(() => {
-    window.clearTimeout(aiTimerRef.current);
-    if (aiPhase !== 'closed') {
-      setAiPhase('closed');
-      return;
-    }
-    if (hasThoughtRef.current) {
-      setAiPhase('open');
-      return;
-    }
-    setAiPhase('thinking');
-    aiTimerRef.current = window.setTimeout(() => {
-      hasThoughtRef.current = true;
-      setAiPhase('open');
-    }, AI_THINK_MS);
-  }, [aiPhase]);
+    const questionText = useMemo(() => {
+      let value = pickLang(language, question.text_bn, question.text_en) || question.text || '';
+      const body = question.body;
+      if (body && typeof body === 'object') {
+        const record = body as Record<string, unknown>;
+        value =
+          pickLang(language, String(record.text_bn ?? ''), String(record.text_en ?? '')) ||
+          String(record.text ?? '') ||
+          value;
+      } else if (typeof body === 'string' && body.trim() !== '') {
+        value = body;
+      }
+      return value;
+    }, [language, question.text_bn, question.text_en, question.text, question.body]);
 
-  const imageUrl = question.image_url || question.media_library?.file_url;
+    const explanationText = useMemo(
+      () => resolveDisplayText(question.explanation, language),
+      [question.explanation, language]
+    );
 
-  const handleBookmark = useCallback(async () => {
-    if (isBookmarkUpdating) return;
+    const correctOption = useMemo(
+      () => question.options?.find((option) => isCorrectFlag(option)) ?? null,
+      [question.options]
+    );
+    const correctOptionId = normalizeId(correctOption?.id);
+    const selectedId = normalizeId(userAnswerId);
+    const isSkipped = !selectedId;
 
-    const newState = !isBookmarked;
-    setIsBookmarked(newState);
-    setIsBookmarkUpdating(true);
+    const resolvedStatus = useMemo(() => {
+      if (status) return status;
+      if (isSkipped) return 'skipped';
+      if (!showCorrectAnswers) return 'unknown';
+      return selectedId === correctOptionId ? 'correct' : 'wrong';
+    }, [status, isSkipped, showCorrectAnswers, selectedId, correctOptionId]);
 
-    try {
-      await onBookmark?.(question.id, newState);
-    } catch {
-      // Roll back the optimistic state when the server rejects the change.
-      setIsBookmarked(!newState);
-    } finally {
-      setIsBookmarkUpdating(false);
-    }
-  }, [onBookmark, question.id, isBookmarked, isBookmarkUpdating]);
+    const statusBadge = useMemo(() => {
+      if (resolvedStatus === 'correct') {
+        return {
+          label: t('analysis.correct'),
+          className: 'bg-success/10 text-emerald-700 dark:text-emerald-300',
+          icon: <Check size={13} aria-hidden="true" />,
+        };
+      }
+      if (resolvedStatus === 'wrong') {
+        return {
+          label: t('analysis.wrong'),
+          className: 'bg-danger/10 text-red-700 dark:text-red-300',
+          icon: <X size={13} aria-hidden="true" />,
+        };
+      }
+      if (resolvedStatus === 'question_not_found') {
+        return {
+          label: t('analysis.questionNotFound'),
+          className: 'bg-app text-text-secondary',
+          icon: <HelpCircle size={13} aria-hidden="true" />,
+        };
+      }
+      return {
+        label: resolvedStatus === 'submitted' ? t('analysis.submitted') : t('analysis.skipped'),
+        className: 'bg-app text-text-secondary',
+        icon: <Minus size={13} aria-hidden="true" />,
+      };
+    }, [resolvedStatus, t]);
 
-  return (
-    <div
-      ref={rootRef}
-      className={`rounded-xl overflow-hidden border bg-card-bg [content-visibility:auto] [contain-intrinsic-size:auto_560px] ${statusConfig.borderClass}`}
-    >
-      <div className="flex justify-between items-center p-3 sm:p-4 border-b border-border-color">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold px-2.5 py-1 rounded-md shadow-sm bg-badge-bg text-badge-text">
-            Q{index + 1}
-          </span>
-          {boardTag && (
-             <span className="text-[10px] px-2 py-1 rounded-md border border-border-color bg-badge-bg text-badge-text font-mono tracking-tight">
-               {boardTag}
-             </span>
-          )}
-        </div>
+    const hasCorrectAnswer = showCorrectAnswers && correctOptionId.length > 0;
+    const imageUrl = question.image_url || question.media_library?.file_url;
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 border-r border-border-color pr-3 mr-1">
-            <button 
+    const handleBookmark = useCallback(async () => {
+      if (isBookmarkUpdating) return;
+
+      const next = !isBookmarked;
+      setIsBookmarked(next);
+      setIsBookmarkUpdating(true);
+
+      try {
+        await onBookmark?.(question.id, next);
+      } catch {
+        setIsBookmarked(!next);
+      } finally {
+        setIsBookmarkUpdating(false);
+      }
+    }, [onBookmark, question.id, isBookmarked, isBookmarkUpdating]);
+
+    return (
+      <article
+        ref={rootRef}
+        className="overflow-hidden rounded-[20px] bg-card-bg [content-visibility:auto] [contain-intrinsic-size:auto_520px]"
+      >
+        <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 text-[12px] font-bold leading-5 text-text-secondary">
+              {t('analysis.questionNumber', {
+                index: localizeDigits(index + 1, language),
+              })}
+            </span>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-4 ${statusBadge.className}`}
+            >
+              {statusBadge.icon}
+              {statusBadge.label}
+            </span>
+          </div>
+
+          <div className="flex shrink-0 items-center">
+            <button
               type="button"
               onClick={() => void handleBookmark()}
               disabled={isBookmarkUpdating}
               aria-pressed={isBookmarked}
               aria-busy={isBookmarkUpdating}
-              className={`p-1.5 rounded-full transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-focus-ring disabled:opacity-50 ${
-                isBookmarked 
-                  ? 'bg-accent text-text-primary' 
-                  : 'text-text-secondary hover:bg-surface-elevated hover:text-text-primary'
+              aria-label={
+                isBookmarked ? t('analysis.bookmarkRemove') : t('analysis.bookmarkAria')
+              }
+              className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50 ${
+                isBookmarked ? 'text-primary' : 'text-text-secondary'
               }`}
-              title={t('analysis.bookmark')}
             >
-              <Bookmark size={16} fill={isBookmarked ? "currentColor" : "none"} strokeWidth={2} />
-            </button>
-            <button 
-              onClick={() => onReport?.(question.id)} 
-              className="p-1.5 rounded-full transition-all active:scale-95 text-text-secondary hover:bg-surface-elevated hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-focus-ring" 
-              title={t('analysis.report')}
-            >
-              <Flag size={16} strokeWidth={2} />
-            </button>
-          </div>
-          <div className={`flex items-center gap-1.5 text-xs sm:text-sm font-bold px-2 py-1 rounded-md ${statusConfig.textClass} ${statusConfig.bgClass}`}>
-            {statusConfig.label} {statusConfig.icon}
-          </div>
-        </div>
-      </div>
-
-      {bodyReady ? (
-      <div className="p-4 sm:p-5 bg-surface">
-        <div className="font-['Noto_Sans_Bengali'] text-[15px] sm:text-base mb-5 leading-relaxed text-text-primary">
-          {parsedQuestion.statements.length > 0 ? (
-            <>
-              <QuestionText text={parsedQuestion.stem} />
-              <div className="mt-2 space-y-1">
-                {parsedQuestion.statements.map((statement) => (
-                  <div key={statement.label} className="whitespace-pre-line">
-                    <span className="font-semibold">{statement.label}.</span>{' '}
-                    <QuestionText text={statement.text} />
-                  </div>
-                ))}
-              </div>
-              {parsedQuestion.tail && <div className="mt-2"><QuestionText text={parsedQuestion.tail} /></div>}
-            </>
-          ) : (
-            <QuestionText text={questionText} />
-          )}
-          {imageUrl && (
-            <img 
-              src={imageUrl} 
-              alt={t('exam.questionImageAlt')}
-              className="mt-4 rounded-xl max-h-56 object-contain border border-border-color bg-surface-elevated mx-auto" 
-            />
-          )}
-        </div>
-
-        <div className="space-y-2.5">
-          {question.options?.map((opt) => {
-            const isSelected = !!normalizedAnswerId && normalizedAnswerId === normalizeId(opt.id);
-            const isAns = showCorrectAnswers && isCorrectFlag(opt);
-            
-            let containerClasses = "border-border-color bg-surface-elevated";
-            let textClasses = "text-text-primary";
-            
-            if (isAns) {
-              containerClasses = "border-emerald-500/50 bg-emerald-500/10";
-              textClasses = "text-emerald-700";
-            } else if (isSelected && showCorrectAnswers) {
-              containerClasses = "border-red-500/50 bg-red-500/10";
-              textClasses = "text-red-700/80 line-through";
-            } else if (isSelected) {
-              containerClasses = "border-focus-ring bg-surface-elevated";
-              textClasses = "text-text-primary font-semibold";
-            }
-
-            return (
-              <div 
-                key={opt.id} 
-                className={`p-3.5 sm:p-4 rounded-xl border text-sm sm:text-base flex justify-between items-start gap-3 transition-colors ${containerClasses}`}
-              >
-                <div className={`font-['Noto_Sans_Bengali'] flex-1 ${textClasses}`}>
-                  <MathDisplay content={pickLang(language, opt.text_bn, opt.text_en) || opt.text || ''} />
-                </div>
-                {isAns && <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />}
-                {isSelected && showCorrectAnswers && !isAns && <XCircle size={18} className="shrink-0 mt-0.5 text-red-500" />}
-                {isSelected && !showCorrectAnswers && <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-text-primary" />}
-              </div>
-            );
-          })}
-        </div>
-
-        {showCorrectAnswers && (
-          <div className="mt-5 pt-4 border-t border-border-color">
-            <button
-              type="button"
-              onClick={handleAiToggle}
-              aria-expanded={aiPhase !== 'closed'}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-3 text-sm font-bold text-primary transition-colors active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-focus-ring"
-            >
-              <span className="flex items-center gap-2">
-                <Sparkles size={18} className="shrink-0" />
-                <span className="font-['Noto_Sans_Bengali']">
-                  {aiPhase === 'closed' ? copy.show : copy.hide}
-                </span>
-              </span>
-              <ChevronDown
-                size={16}
-                className={`shrink-0 transition-transform duration-200 ${aiPhase === 'closed' ? '' : 'rotate-180'}`}
+              <Bookmark
+                size={18}
+                fill={isBookmarked ? 'currentColor' : 'none'}
+                aria-hidden="true"
               />
             </button>
 
-            {aiPhase === 'thinking' && (
-              <div
-                role="status"
-                className="mt-3 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 animate-in fade-in"
+            {onReport ? (
+              <button
+                type="button"
+                onClick={() => onReport(question.id)}
+                aria-label={t('analysis.reportAria')}
+                className="flex h-11 w-11 items-center justify-center rounded-full text-text-secondary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
-                <Sparkles size={18} className="shrink-0 text-primary animate-pulse motion-reduce:animate-none" />
-                <span className="font-['Noto_Sans_Bengali'] text-sm text-text-secondary">{copy.thinking}</span>
-                <span className="flex items-center gap-1" aria-hidden="true">
-                  {[0, 150, 300].map((delay) => (
-                    <span
-                      key={delay}
-                      className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce motion-reduce:animate-none"
-                      style={{ animationDelay: `${delay}ms` }}
-                    />
-                  ))}
-                </span>
-              </div>
-            )}
+                <Flag size={17} aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+        </header>
 
-            {aiPhase === 'open' && (
-              <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:p-5 animate-in fade-in slide-in-from-top-2 duration-300">
-                {hasRealExplanation && (
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Sparkles size={14} />
+        {bodyReady ? (
+          <div className="px-4 pb-4">
+            <div className="font-bengali text-[14px] leading-6 text-text-primary">
+              <QuestionText text={questionText} />
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt={t('exam.questionImageAlt')}
+                  width={320}
+                  height={180}
+                  loading="lazy"
+                  className="mx-auto mt-3 max-h-56 w-auto rounded-xl border border-border-color object-contain"
+                />
+              ) : null}
+            </div>
+
+            <ul className="mt-3 space-y-2">
+              {question.options?.map((option, optionIndex) => {
+                const optionId = normalizeId(option.id);
+                const isSelected = !!selectedId && selectedId === optionId;
+                const isAnswer = hasCorrectAnswer && optionId === correctOptionId;
+
+                const selectedWrong = isSelected && hasCorrectAnswer && !isAnswer;
+
+                return (
+                  <li
+                    key={option.id}
+                    className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-[13px] leading-6 ${
+                      isAnswer
+                        ? 'border-success/50 bg-success/10 text-text-primary'
+                        : selectedWrong
+                          ? 'border-danger/50 bg-danger/10 text-text-primary'
+                          : isSelected
+                            ? 'border-primary/60 bg-primary/5 text-text-primary'
+                            : 'border-border-color bg-surface text-text-primary'
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                        isAnswer
+                          ? 'bg-emerald-700 text-white dark:bg-emerald-400 dark:text-emerald-950'
+                          : selectedWrong
+                            ? 'bg-red-700 text-white dark:bg-red-400 dark:text-red-950'
+                            : isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      {OPTION_LABELS[optionIndex] ?? optionIndex + 1}
                     </span>
-                    <span className="font-['Noto_Sans_Bengali'] text-sm font-bold text-text-primary">{copy.title}</span>
-                    <span className="rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-primary">
-                      AI
-                    </span>
+
+                    <div className="min-w-0 flex-1 font-bengali">
+                      <MathDisplay
+                        content={pickLang(language, option.text_bn, option.text_en) || option.text || ''}
+                      />
+                      <div className="mt-0.5 flex flex-wrap gap-x-2">
+                        {isSelected ? (
+                          <span className="text-[10px] font-semibold leading-4 text-text-secondary">
+                            {t('analysis.yourAnswer')}
+                          </span>
+                        ) : null}
+                        {isAnswer ? (
+                          <span className="text-[10px] font-semibold leading-4 text-emerald-700 dark:text-emerald-300">
+                            {t('analysis.correctAnswer')}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {isAnswer ? (
+                      <Check size={16} className="mt-1 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                    ) : selectedWrong ? (
+                      <X size={16} className="mt-1 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+
+            {!hasCorrectAnswer ? (
+              <p className="mt-2 text-[11px] leading-4 text-text-secondary">
+                {t('analysis.correctAnswerHidden')}
+              </p>
+            ) : null}
+
+            {explanationText ? (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setExplanationOpen((open) => !open)}
+                  aria-expanded={explanationOpen}
+                  className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-xl bg-app px-3 text-left text-[12px] font-semibold text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                >
+                  {explanationOpen
+                    ? t('analysis.hideExplanation')
+                    : t('analysis.showExplanationShort')}
+                  <ChevronDown
+                    size={16}
+                    aria-hidden="true"
+                    className={`shrink-0 transition-transform motion-reduce:transition-none ${
+                      explanationOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {explanationOpen ? (
+                  <div className="mt-2 rounded-xl bg-surface px-3 py-2.5 font-bengali text-[13px] leading-6 text-text-primary">
+                    <MathDisplay content={explanationText} className="whitespace-pre-line" />
                   </div>
-                )}
-                <div className="text-sm sm:text-base font-['Noto_Sans_Bengali'] leading-relaxed text-text-primary">
-                  <MathDisplay content={explanationText} className="whitespace-pre-line" />
-                </div>
+                ) : null}
               </div>
+            ) : (
+              <p className="mt-3 text-[11px] leading-4 text-text-secondary">
+                {t('analysis.explanationFallback')}
+              </p>
             )}
           </div>
+        ) : (
+          <div className="min-h-[320px] bg-surface" aria-hidden="true" />
         )}
-      </div>
-      ) : (
-        <div className="min-h-[380px] bg-surface" aria-hidden="true" />
-      )}
-    </div>
-  );
-});
+      </article>
+    );
+  }
+);
 
 AnalysisQuestionCard.displayName = 'AnalysisQuestionCard';
 

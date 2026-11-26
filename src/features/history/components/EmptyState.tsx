@@ -1,7 +1,6 @@
 import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Lottie from 'lottie-react';
-import { ArrowRight } from 'lucide-react';
 import { TabType } from '../types/history';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { type AppMessageKey } from '@/shared/i18n/messages';
@@ -49,9 +48,8 @@ export const EmptyState: React.FC<Props> = memo(({ type }) => {
   if (!current) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center py-10 px-4 text-center animate-in fade-in zoom-in duration-500">
-      
-      <div className="w-48 h-48 md:w-60 md:h-60 mb-2 pointer-events-none">
+    <div className="flex flex-col items-center justify-center rounded-[20px] bg-card-bg px-5 py-10 text-center animate-in fade-in duration-300 motion-reduce:animate-none">
+      <div className="pointer-events-none mb-2 h-44 w-44" aria-hidden="true">
         <Lottie 
           animationData={searchAnim}
           loop={true}
@@ -60,23 +58,20 @@ export const EmptyState: React.FC<Props> = memo(({ type }) => {
         />
       </div>
 
-      <h3 className="text-text-primary text-xl font-bold mb-2 font-['Noto_Sans_Bengali']">
+      <h3 className="mb-1 text-[15px] font-bold leading-6 text-text-primary">
         {t(current.titleKey)}
       </h3>
-      <p className="text-text-secondary max-w-xs mx-auto mb-8 font-['Noto_Sans_Bengali'] text-sm">
+      <p className="mx-auto mb-6 max-w-xs text-[13px] leading-6 text-text-secondary">
         {t(current.descKey)}
       </p>
 
-      <button 
+      <button
+        type="button"
         onClick={() => navigate(current.link)}
-        className="bg-card-bg border border-border-color hover:bg-surface-elevated group flex items-center space-x-2 px-6 py-3 rounded-full shadow-sm transition-all duration-300 hover:shadow-md active:scale-95"
+        className="min-h-[44px] rounded-xl bg-primary px-6 text-[13px] font-bold text-primary-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
-        <span className="text-primary text-sm font-semibold font-['Noto_Sans_Bengali'] transition-colors">
-          {t(current.btnKey)}
-        </span>
-        <ArrowRight className="text-primary w-4 h-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+        {t(current.btnKey)}
       </button>
-
     </div>
   );
 });

@@ -1,29 +1,28 @@
-import React, { useEffect, useState, useCallback, memo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft } from 'lucide-react';
+import toast from 'react-hot-toast';
+
 import AnalysisQuestionCard from '../components/AnalysisQuestionCard';
+import { ResultSummary } from '../components/ResultSummary';
 import ReportModal, {
   QuestionMetaData,
   ReportPayload as ModalReportPayload,
 } from '@/shared/components/feedback/ReportModal';
-import { apiClient } from '@/shared/lib/apiClient';
 import { Skeleton } from '@/shared/components/ui/Skeleton';
-import { ExamResultPayload, Question } from '../types/exam';
-import toast from 'react-hot-toast';
-import {
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
-  Trophy,
-  ArrowLeft,
-  Home,
-  HelpCircle,
-} from 'lucide-react';
+import { apiClient } from '@/shared/lib/apiClient';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import type { AppMessageKey } from '@/shared/i18n/messages';
+import {
+  formatAttemptDate,
+  formatCount,
+} from '@/shared/lib/attemptFormat';
+import { AttemptPracticeActions } from '@/features/practice/components/AttemptPracticeActions';
+import type { PracticeMode } from '@/features/practice/types/practice';
+import type { HistoryItem } from '@/features/history/types/history';
+import { resolveHistoryTitle } from '@/features/history/utils/historyCard';
+import type { ExamResultPayload, Question } from '../types/exam';
 import { buildQuestionReportData } from '../utils/questionReport';
-
-type TranslateFn = (key: AppMessageKey) => string;
 
 type ResultDetailItem = {
   question_id: string;
@@ -37,37 +36,27 @@ type ResultDetailItem = {
   status?: 'correct' | 'wrong' | 'skipped' | 'question_not_found' | string;
 };
 
-const ActionButtons = memo(({ onHome, onBack }: { onHome: () => void; onBack: () => void }) => {
-  const { t } = useLanguage();
-  return (
-  <>
-    <button
-      type="button"
-      onClick={onHome}
-      className="flex-1 font-bold py-3.5 md:py-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 text-sm md:text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring bg-secondary text-text-primary border border-border-color"
-    >
-      <Home size={18} />
-      {t('analysis.home')}
-    </button>
+type AnalysisState = (ExamResultPayload & { historySummary?: HistoryItem }) | { historySummary: HistoryItem } | null;
 
-    <button
-      type="button"
-      onClick={onBack}
-      className="flex-1 font-bold py-3.5 md:py-4 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-sm md:text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring bg-primary text-primary-foreground"
-    >
-      <ArrowLeft size={18} />
-      {t('analysis.back')}
-    </button>
-  </>
-  );
-});
-ActionButtons.displayName = 'ActionButtons';
+type QuestionFilter = 'all' | 'correct' | 'wrong' | 'skipped' | 'bookmarked';
 
-const getSafeDetailsJson = (result: any) => {
-  const raw = result?.details_json;
+interface AttemptSummary {
+  title: string;
+  submittedAt: string | null;
+  timeTaken: number;
+  score: number;
+  totalMarks: number;
+  correct: number;
+  wrong: number;
+  skipped: number;
+  rank: number | null;
+  practiceMode: PracticeMode | null;
+  isTimeout: boolean;
+}
 
+const getSafeDetailsJson = (result: ExamResultPayload | null): any => {
+  const raw: unknown = result?.details_json;
   if (!raw) return {};
-
   if (typeof raw === 'string') {
     try {
       return JSON.parse(raw);
@@ -75,54 +64,15 @@ const getSafeDetailsJson = (result: any) => {
       return {};
     }
   }
-
-  if (typeof raw === 'object') return raw;
-
-  return {};
+  return typeof raw === 'object' ? raw : {};
 };
 
-const getStatusText = (item: ResultDetailItem, t: TranslateFn) => {
-  if (item.status === 'question_not_found') return t('analysis.questionNotFound');
-  if (item.status === 'skipped' || item.is_correct === null) return t('analysis.skipped');
-  if (item.is_correct === true || item.status === 'correct') return t('analysis.correct');
-  if (item.is_correct === false || item.status === 'wrong') return t('analysis.wrong');
-  return t('analysis.unknown');
-};
-
-const getStatusIcon = (item: ResultDetailItem) => {
-  if (item.status === 'question_not_found') {
-    return <HelpCircle size={22} className="text-text-secondary" />;
-  }
-
-  if (item.status === 'skipped' || item.is_correct === null) {
-    return <MinusCircle size={22} className="text-text-secondary" />;
-  }
-
-  if (item.is_correct === true || item.status === 'correct') {
-    return <CheckCircle2 size={22} className="text-text-primary" />;
-  }
-
-  if (item.is_correct === false || item.status === 'wrong') {
-    return <XCircle size={22} className="text-text-primary" />;
-  }
-
-  return <HelpCircle size={22} className="text-text-secondary" />;
-};
-
-const getStatusCardClass = (item: ResultDetailItem) => {
-  if (item.status === 'skipped' || item.is_correct === null) {
-    return 'border-border-color bg-surface';
-  }
-
-  if (item.is_correct === true || item.status === 'correct') {
-    return 'border-border-color bg-surface';
-  }
-
-  if (item.is_correct === false || item.status === 'wrong') {
-    return 'border-border-color bg-surface';
-  }
-
-  return 'border-border-color bg-surface';
+const hasUsableDetails = (result: ExamResultPayload | null): boolean => {
+  const details = getSafeDetailsJson(result);
+  return (
+    (Array.isArray(details.questions) && details.questions.length > 0) ||
+    (Array.isArray(details.details) && details.details.length > 0)
+  );
 };
 
 const Analysis: React.FC = () => {
@@ -132,122 +82,175 @@ const Analysis: React.FC = () => {
   const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
 
-  const stateResult = (location.state as ExamResultPayload) || null;
-  const stateHasDetails = Boolean(
-    stateResult?.details_json &&
-      ((Array.isArray(stateResult.details_json.questions) &&
-        stateResult.details_json.questions.length > 0) ||
-        (Array.isArray(stateResult.details_json.details) &&
-          stateResult.details_json.details.length > 0))
-  );
+  const locationState = (location.state as AnalysisState) ?? null;
+  const stateResult =
+    locationState && 'details_json' in locationState
+      ? (locationState as ExamResultPayload)
+      : null;
+  const stateHistory =
+    locationState && 'historySummary' in locationState
+      ? (locationState as { historySummary: HistoryItem }).historySummary
+      : null;
 
   const [result, setResult] = useState<ExamResultPayload | null>(
-    stateHasDetails ? stateResult : null
+    hasUsableDetails(stateResult) ? stateResult : null
   );
-  const [isLoading, setIsLoading] = useState(!stateHasDetails);
+  const [historySummary, setHistorySummary] = useState<HistoryItem | null>(stateHistory);
+  const [isLoading, setIsLoading] = useState(!hasUsableDetails(stateResult));
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [filter, setFilter] = useState<QuestionFilter>('all');
+  const [reloadToken, setReloadToken] = useState(0);
+  const loadAttemptedRef = useRef<string | null>(null);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportQuestionData, setReportQuestionData] = useState<QuestionMetaData | null>(null);
 
   useEffect(() => {
-    if (result) {
+    if (hasUsableDetails(result)) {
       setIsLoading(false);
       return;
     }
 
     if (!id) {
-      navigate('/dashboard/home', { replace: true });
+      setIsLoading(false);
+      setLoadFailed(true);
       return;
     }
 
+    // One load per id: a result without a question snapshot must not re-trigger
+    // the effect on every render.
+    if (loadAttemptedRef.current === id) return;
+    loadAttemptedRef.current = id;
+
     let cancelled = false;
 
-    const loadResult = async () => {
-      try {
-        try {
-          const res = await apiClient.get(`/exams/user/result/${id}`);
-          const fetched = res?.data?.data;
+    const load = async () => {
+      setIsLoading(true);
+      setLoadFailed(false);
 
-          if (!cancelled && fetched) {
-            setResult(fetched);
-            return;
-          }
-        } catch {
-          // Fall back to the history list below (older backend deployments).
-        }
+      const [resultOutcome, historyOutcome] = await Promise.allSettled([
+        apiClient.get(`/exams/user/result/${id}`),
+        historySummary ? Promise.resolve(null) : apiClient.get('/history/exams'),
+      ]);
 
-        try {
-          const res = await apiClient.get('/history/exams');
-          const historyList = res?.data?.data;
-          const found = Array.isArray(historyList)
-            ? historyList.find(
-                (item: ExamResultPayload) => item && (item.id === id || item.exam_id === id)
-              )
-            : null;
+      if (cancelled) return;
 
-          if (cancelled) return;
+      const fetched =
+        resultOutcome.status === 'fulfilled' ? resultOutcome.value?.data?.data : null;
 
-          if (found) {
-            setResult(found);
-            return;
-          }
-
-          toast.error(t('exam.resultsLoadFailed'));
-          navigate('/dashboard/home', { replace: true });
-        } catch {
-          if (!cancelled) {
-            toast.error(t('exam.resultsLoadError'));
-            navigate('/dashboard/home', { replace: true });
-          }
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
+      if (fetched) {
+        setResult(fetched as ExamResultPayload);
       }
+
+      if (
+        !historySummary &&
+        historyOutcome.status === 'fulfilled' &&
+        historyOutcome.value
+      ) {
+        const list = historyOutcome.value?.data?.data;
+        const found = Array.isArray(list)
+          ? (list as HistoryItem[]).find((item) => item.id === id)
+          : null;
+        if (found) setHistorySummary(found);
+      }
+
+      if (!fetched) setLoadFailed(true);
+      setIsLoading(false);
     };
 
-    loadResult();
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, result, historySummary, reloadToken]);
+
+  const retryLoad = useCallback(() => {
+    loadAttemptedRef.current = null;
+    setReloadToken((token) => token + 1);
+  }, []);
+
+  // A result opened straight from submission carries the questions but not the
+  // paper title. The history summary supplies it without touching details_json.
+  useEffect(() => {
+    if (historySummary || !result?.id) return;
+
+    let cancelled = false;
+
+    apiClient
+      .get('/history/exams')
+      .then((response) => {
+        if (cancelled) return;
+        const list = response?.data?.data;
+        const found = Array.isArray(list)
+          ? (list as HistoryItem[]).find((item) => item.id === result.id)
+          : null;
+        if (found) setHistorySummary(found);
+      })
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
     };
-  }, [result, id, navigate, t]);
+  }, [historySummary, result?.id]);
 
-  const reportMutation = useMutation({
-    mutationFn: async (payload: ModalReportPayload) => {
-      const response = await apiClient.post('/reports', payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success(t('exam.reportSubmitted'));
-    },
-    onError: () => {
-      toast.error(t('exam.reportSubmitFailed'));
-    },
-  });
+  const detailsJson = getSafeDetailsJson(result);
 
-  const bookmarkMutation = useMutation({
-    mutationFn: async (payload: { questionId: string; bookmarked: boolean }) => {
-      const response = await apiClient.post('/exams/bookmark', payload);
-      return response.data;
-    },
-    onSuccess: (data, variables) => {
-      queryClient.setQueryData<string[]>(['exams', 'bookmarks'], (current) => {
-        const next = new Set(current ?? []);
-        if (variables.bookmarked) {
-          next.add(variables.questionId);
-        } else {
-          next.delete(variables.questionId);
-        }
-        return Array.from(next);
-      });
-      queryClient.invalidateQueries({ queryKey: ['history', 'bookmarks'] });
-      queryClient.invalidateQueries({ queryKey: ['question-bank', 'questions'] });
-      toast.success(data?.message || t('exam.bookmarkUpdated'));
-    },
-    onError: () => {
-      toast.error(t('exam.bookmarkFailed'));
-    },
-  });
+  const examQuestions: Question[] = Array.isArray(detailsJson.questions)
+    ? detailsJson.questions
+    : [];
+  const resultDetails: ResultDetailItem[] = Array.isArray(detailsJson.details)
+    ? detailsJson.details
+    : [];
+
+  const userAnswers: Record<string, string> =
+    detailsJson.userAnswers &&
+    typeof detailsJson.userAnswers === 'object' &&
+    !Array.isArray(detailsJson.userAnswers)
+      ? detailsJson.userAnswers
+      : detailsJson.answers && typeof detailsJson.answers === 'object' && !Array.isArray(detailsJson.answers)
+        ? detailsJson.answers
+        : {};
+
+  const summary: AttemptSummary | null = useMemo(() => {
+    const source = result ?? historySummary;
+    if (!source) return null;
+
+    const historyItem =
+      historySummary ??
+      (result
+        ? ({
+            id: result.id,
+            score: result.score,
+            total_marks: result.total_marks,
+            correct_count: result.correct_count,
+            wrong_count: result.wrong_count,
+            skipped_count: result.skipped_count,
+            exam_id: result.exam_id ?? null,
+          } as HistoryItem)
+        : null);
+
+    if (!historyItem) return null;
+
+    return {
+      title: resolveHistoryTitle(historyItem, language, t).title,
+      submittedAt:
+        historyItem.submitted_at ||
+        historyItem.created_at ||
+        historyItem.taken_at ||
+        source.submitted_at ||
+        source.created_at ||
+        null,
+      timeTaken: Number(source.time_taken ?? 0),
+      score: Number(source.score ?? 0),
+      totalMarks: Number(source.total_marks ?? 0),
+      correct: Number(source.correct_count ?? 0),
+      wrong: Number(source.wrong_count ?? 0),
+      skipped: Number(source.skipped_count ?? 0),
+      rank: typeof source.rank === 'number' ? source.rank : null,
+      practiceMode: historyItem.practice_mode ?? source.practice_mode ?? null,
+      isTimeout: Boolean(source.is_timeout),
+    };
+  }, [result, historySummary, language, t]);
 
   const bookmarksQuery = useQuery({
     queryKey: ['exams', 'bookmarks'],
@@ -262,28 +265,114 @@ const Analysis: React.FC = () => {
     staleTime: 30 * 1000,
   });
 
-  const handleReport = useCallback((questionId: string) => {
-    const details = getSafeDetailsJson(result);
-    const questions = Array.isArray(details.questions)
-      ? (details.questions as Question[])
-      : [];
-    const question = questions.find(
-      (item) => String(item?.id) === String(questionId)
-    );
+  const bookmarkMutation = useMutation({
+    mutationFn: async (payload: { questionId: string; bookmarked: boolean }) => {
+      const response = await apiClient.post('/exams/bookmark', payload);
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData<string[]>(['exams', 'bookmarks'], (current) => {
+        const next = new Set(current ?? []);
+        if (variables.bookmarked) next.add(variables.questionId);
+        else next.delete(variables.questionId);
+        return Array.from(next);
+      });
+      queryClient.invalidateQueries({ queryKey: ['history', 'bookmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['question-bank', 'questions'] });
+      toast.success(data?.message || t('exam.bookmarkUpdated'));
+    },
+    onError: () => {
+      toast.error(t('exam.bookmarkFailed'));
+    },
+  });
 
-    setReportQuestionData(
-      question
-        ? buildQuestionReportData(question, language, result?.exam_id ?? undefined)
-        : { questionId }
-    );
-    setIsReportModalOpen(true);
-  }, [result, language]);
+  const reportMutation = useMutation({
+    mutationFn: async (payload: ModalReportPayload) => {
+      const response = await apiClient.post('/reports', payload);
+      return response.data;
+    },
+    onSuccess: () => toast.success(t('exam.reportSubmitted')),
+    onError: () => toast.error(t('exam.reportSubmitFailed')),
+  });
+
+  const resultBookmarkedIds: string[] = Array.isArray(detailsJson.bookmarked_ids)
+    ? detailsJson.bookmarked_ids
+    : [];
+  const bookmarkedIds = useMemo(
+    () =>
+      new Set(
+        bookmarksQuery.isSuccess ? bookmarksQuery.data : resultBookmarkedIds
+      ),
+    [bookmarksQuery.isSuccess, bookmarksQuery.data, resultBookmarkedIds]
+  );
+
+  const detailsByQuestionId = useMemo(
+    () => new Map(resultDetails.map((detail) => [String(detail.question_id), detail])),
+    [resultDetails]
+  );
+
+  const showCorrectAnswers = detailsJson.correct_answers_revealed !== false;
+
+  const getSelectedAnswerId = useCallback(
+    (questionId: string): string | undefined => {
+      const detail = detailsByQuestionId.get(String(questionId));
+      const selected =
+        detail?.selected_option ?? userAnswers[String(questionId)] ?? userAnswers[questionId];
+
+      if (selected === null || selected === undefined || String(selected).trim() === '') {
+        return undefined;
+      }
+      return String(selected);
+    },
+    [detailsByQuestionId, userAnswers]
+  );
+
+  const statusFor = useCallback(
+    (questionId: string): string | undefined => {
+      const detail = detailsByQuestionId.get(String(questionId));
+      if (detail?.status) return detail.status;
+      if (detail?.is_correct === true) return 'correct';
+      if (detail?.is_correct === false) return 'wrong';
+      if (detail && !getSelectedAnswerId(questionId)) return 'skipped';
+      return undefined;
+    },
+    [detailsByQuestionId, getSelectedAnswerId]
+  );
+
+  const filteredQuestions = useMemo(() => {
+    if (filter === 'all') return examQuestions;
+    if (filter === 'bookmarked') {
+      return examQuestions.filter((question) => bookmarkedIds.has(question.id));
+    }
+    return examQuestions.filter((question) => {
+      const status = statusFor(question.id);
+      if (filter === 'correct') return status === 'correct';
+      if (filter === 'wrong') return status === 'wrong';
+      return (
+        status === 'skipped' ||
+        (status === undefined && !getSelectedAnswerId(question.id))
+      );
+    });
+  }, [examQuestions, filter, bookmarkedIds, statusFor, getSelectedAnswerId]);
 
   const handleBookmark = useCallback(
     async (questionId: string, bookmarked: boolean) => {
       await bookmarkMutation.mutateAsync({ questionId, bookmarked });
     },
     [bookmarkMutation]
+  );
+
+  const handleReport = useCallback(
+    (questionId: string) => {
+      const question = examQuestions.find((item) => String(item.id) === String(questionId));
+      setReportQuestionData(
+        question
+          ? buildQuestionReportData(question, language, result?.exam_id ?? undefined)
+          : { questionId }
+      );
+      setIsReportModalOpen(true);
+    },
+    [examQuestions, language, result?.exam_id]
   );
 
   const handleCloseModal = useCallback(() => {
@@ -298,287 +387,285 @@ const Analysis: React.FC = () => {
     [reportMutation]
   );
 
-  const handleHomeNav = useCallback(() => navigate('/dashboard/home'), [navigate]);
-  const handleBackNav = useCallback(() => navigate(-1), [navigate]);
+  const goBack = useCallback(() => {
+    if (location.key === 'default') {
+      navigate('/history', { replace: true });
+      return;
+    }
+    navigate(-1);
+  }, [location.key, navigate]);
 
-  if (isLoading) {
+  const outcomeText = useMemo(() => {
+    if (!summary) return '';
+    const total = summary.correct + summary.wrong + summary.skipped;
+    if (total > 0 && summary.skipped === total) return t('analysis.outcomeAllSkipped');
+    if (summary.correct === 0) return t('analysis.outcomeZero');
+    const accuracy = total > 0 ? (summary.correct / total) * 100 : 0;
+    if (accuracy < 40) return t('analysis.outcomeLow');
+    if (accuracy < 75) return t('analysis.outcomeMid');
+    return t('analysis.outcomeHigh');
+  }, [summary, t]);
+
+  const filters: { id: QuestionFilter; label: string }[] = [
+    { id: 'all', label: t('analysis.filterAll') },
+    { id: 'correct', label: t('analysis.correct') },
+    { id: 'wrong', label: t('analysis.wrong') },
+    { id: 'skipped', label: t('analysis.skipped') },
+    { id: 'bookmarked', label: t('analysis.filterBookmarked') },
+  ];
+
+  if (isLoading && !summary) {
     return (
-      <div className="min-h-screen pb-28 flex flex-col items-center bg-app">
-        <div className="w-full pt-6 pb-8 px-4 border-b border-card-border bg-card-bg">
-          <div className="max-w-3xl mx-auto flex flex-col items-center">
-            <Skeleton className="w-14 h-14 rounded-full mb-4 opacity-50" />
-            <Skeleton className="w-48 h-8 rounded-lg mb-6 opacity-50" />
-
-            <div className="grid grid-cols-3 gap-3 md:gap-5 w-full mb-6">
-              <Skeleton className="h-28 rounded-xl opacity-40" />
-              <Skeleton className="h-28 rounded-xl opacity-40" />
-              <Skeleton className="h-28 rounded-xl opacity-40" />
+      <div className="min-h-screen bg-app px-4 pb-32 pt-4">
+        <div className="mx-auto w-full max-w-2xl space-y-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-11 w-11 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
             </div>
-
-            <Skeleton className="w-32 h-12 rounded-xl opacity-50" />
           </div>
-        </div>
-
-        <div className="w-full max-w-3xl px-4 mt-8 space-y-5">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl overflow-hidden border border-card-border p-4 sm:p-5 bg-card-bg"
-            >
-              <div className="flex justify-between items-center mb-5 pb-4 border-b border-border-color">
-                <Skeleton className="w-12 h-6 rounded-md opacity-40" />
-                <Skeleton className="w-24 h-6 rounded-md opacity-40" />
-              </div>
-
-              <Skeleton className="w-3/4 h-5 rounded-md mb-6 opacity-50" />
-
-              <div className="space-y-3">
-                <Skeleton className="w-full h-12 rounded-xl opacity-40" />
-                <Skeleton className="w-full h-12 rounded-xl opacity-40" />
-                <Skeleton className="w-full h-12 rounded-xl opacity-40" />
-                <Skeleton className="w-full h-12 rounded-xl opacity-40" />
-              </div>
-            </div>
+          <Skeleton className="h-40 rounded-[20px]" />
+          <Skeleton className="h-10 w-full rounded-xl" />
+          {[1, 2].map((row) => (
+            <Skeleton key={row} className="h-56 rounded-[20px]" />
           ))}
         </div>
       </div>
     );
   }
 
-  if (!result) return null;
+  if (!summary && loadFailed) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-app px-6 text-center">
+        <p className="text-[15px] font-bold text-text-primary">{t('history.errorTitle')}</p>
+        <p className="mt-1 text-[13px] leading-6 text-text-secondary">
+          {t('history.errorMessage')}
+        </p>
+        <button
+          type="button"
+          onClick={goBack}
+          className="mt-5 min-h-[44px] rounded-xl bg-primary px-6 text-[13px] font-bold text-primary-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        >
+          {t('analysis.back')}
+        </button>
+      </div>
+    );
+  }
 
-  const detailsJson = getSafeDetailsJson(result);
+  if (!summary) return null;
 
-  const examQuestions: Question[] = Array.isArray(detailsJson.questions)
-    ? detailsJson.questions
-    : [];
-
-  const resultDetails: ResultDetailItem[] = Array.isArray(detailsJson.details)
-    ? detailsJson.details
-    : [];
-
-  const userAnswers: Record<string, string> =
-    detailsJson.userAnswers && typeof detailsJson.userAnswers === 'object' && !Array.isArray(detailsJson.userAnswers)
-      ? detailsJson.userAnswers
-      : detailsJson.answers && typeof detailsJson.answers === 'object' && !Array.isArray(detailsJson.answers)
-        ? detailsJson.answers
-        : {};
-
-  const resultBookmarkedIds: string[] = Array.isArray(detailsJson.bookmarked_ids)
-    ? detailsJson.bookmarked_ids
-    : [];
-  const bookmarkedIds = new Set(
-    bookmarksQuery.isSuccess ? bookmarksQuery.data : resultBookmarkedIds
-  );
-
-  const detailsByQuestionId = new Map<string, ResultDetailItem>(
-    resultDetails.map((detail) => [String(detail.question_id), detail])
-  );
-
-  const showCorrectAnswers = detailsJson.correct_answers_revealed !== false;
-
-  const getSelectedAnswerId = (questionId: string): string | undefined => {
-    const detail = detailsByQuestionId.get(String(questionId));
-    const selected = detail?.selected_option ?? userAnswers[String(questionId)] ?? userAnswers[questionId];
-
-    if (selected === null || selected === undefined || String(selected).trim() === '') {
-      return undefined;
-    }
-
-    return String(selected);
-  };
+  const questionCount = examQuestions.length;
+  const counted = summary.correct + summary.wrong + summary.skipped;
+  const retakeCount = Math.max(counted, questionCount);
+  const practiceCount = summary.wrong + summary.skipped;
+  const hasReview = questionCount > 0;
+  const hasDetailFallback = !hasReview && resultDetails.length > 0;
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-app text-text-primary">
-      <div className="w-full pt-6 pb-8 px-4 border-b shadow-sm relative overflow-hidden bg-card-bg border-card-border">
-        <div className="absolute top-0 left-0 w-full h-1 opacity-50 bg-primary" />
+    <div className={`min-h-screen bg-app pb-44 ${language === 'bn' ? 'font-bengali' : 'font-sans'}`}>
+      <header className="px-4 pb-3 pt-2">
+        <div className="mx-auto w-full max-w-2xl">
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label={t('analysis.backAria')}
+            className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            <ArrowLeft size={21} aria-hidden="true" />
+          </button>
 
-        <div className="max-w-3xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center justify-center p-3 rounded-full mb-4 shadow-inner bg-accent text-text-primary">
-            <Trophy size={28} strokeWidth={2} />
-          </div>
+          <h1 className="mt-1 line-clamp-2 text-xl font-bold leading-7 text-text-primary">
+            {summary.title}
+          </h1>
 
-          <h2 className="text-xl md:text-2xl font-bold mb-6 font-['Noto_Sans_Bengali'] text-text-primary">
-            {t('analysis.title')}
-          </h2>
-
-          <div className="grid grid-cols-3 gap-3 md:gap-5 mb-6">
-            <div className="flex flex-col items-center p-3 md:p-4 rounded-xl border border-border-color bg-surface transition-transform hover:scale-[1.02]">
-              <CheckCircle2 className="text-text-primary mb-1.5" size={24} />
-              <span className="text-xs md:text-sm font-semibold text-text-secondary opacity-90">
-                {t('analysis.correct')}
-              </span>
-              <span className="text-xl md:text-2xl font-bold text-text-primary">
-                {result.correct_count ?? 0}
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center p-3 md:p-4 rounded-xl border border-border-color bg-surface transition-transform hover:scale-[1.02]">
-              <XCircle className="text-text-primary mb-1.5" size={24} />
-              <span className="text-xs md:text-sm font-semibold text-text-secondary opacity-90">
-                {t('analysis.wrong')}
-              </span>
-              <span className="text-xl md:text-2xl font-bold text-text-primary">
-                {result.wrong_count ?? 0}
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center p-3 md:p-4 rounded-xl border border-border-color bg-surface transition-transform hover:scale-[1.02]">
-              <MinusCircle className="text-text-primary mb-1.5" size={24} />
-              <span className="text-xs md:text-sm font-semibold text-text-secondary opacity-90">
-                {t('analysis.skipped')}
-              </span>
-              <span className="text-xl md:text-2xl font-bold text-text-primary">
-                {result.skipped_count ?? 0}
-              </span>
-            </div>
-          </div>
-
-          <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border shadow-sm font-mono text-lg md:text-xl bg-surface border-border-color">
-            <span className="font-semibold opacity-70 text-sm md:text-base font-['Noto_Sans_Bengali'] text-text-secondary">
-              {t('analysis.score')}
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] leading-4 text-text-secondary">
+            <span>
+              {[formatAttemptDate(summary.submittedAt, language), summary.isTimeout ? t('analysis.timeout') : '']
+                .filter(Boolean)
+                .join(' · ')}
             </span>
-            <span className="font-bold text-text-primary">
-              {result.score ?? 0} / {result.total_marks ?? 0}
-            </span>
+            {summary.practiceMode ? (
+              <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-semibold leading-4">
+                {summary.practiceMode === 'retake'
+                  ? t('practice.retakeBadge')
+                  : t('history.badgePractice')}
+              </span>
+            ) : null}
           </div>
+
+          {outcomeText ? (
+            <p className="mt-3 text-[13px] leading-6 text-text-secondary">{outcomeText}</p>
+          ) : null}
         </div>
-      </div>
+      </header>
 
-      <div className="w-full max-w-3xl px-4 mt-8 space-y-5">
-        {examQuestions.length > 0 ? (
-          examQuestions.map((q: Question, idx: number) => (
-            <AnalysisQuestionCard
-              key={q.id}
-              index={idx}
-              question={q}
-              userAnswerId={getSelectedAnswerId(q.id)}
-              status={detailsByQuestionId.get(String(q.id))?.status}
-              showCorrectAnswers={showCorrectAnswers}
-              initialBookmarked={bookmarkedIds.has(q.id)}
-              onReport={handleReport}
-              onBookmark={handleBookmark}
-            />
-          ))
-        ) : resultDetails.length > 0 ? (
+      <div className="mx-auto w-full max-w-2xl space-y-4 px-4">
+        <ResultSummary
+          score={summary.score}
+          totalMarks={summary.totalMarks}
+          correct={summary.correct}
+          wrong={summary.wrong}
+          skipped={summary.skipped}
+          timeTaken={summary.timeTaken}
+          rank={summary.rank}
+        />
+
+        {isLoading ? (
+          <div className="space-y-3" role="status" aria-label={t('history.loading')}>
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-11 w-full rounded-xl" />
+            {[1, 2].map((row) => (
+              <Skeleton key={row} className="h-56 rounded-[20px]" />
+            ))}
+          </div>
+        ) : loadFailed ? (
+          <div className="rounded-[20px] bg-card-bg px-5 py-8 text-center">
+            <p className="text-[13px] font-semibold text-text-primary">
+              {t('history.errorTitle')}
+            </p>
+            <p className="mt-1 text-[12px] leading-5 text-text-secondary">
+              {t('history.errorMessage')}
+            </p>
+            <button
+              type="button"
+              onClick={retryLoad}
+              className="mt-4 min-h-[44px] rounded-xl bg-primary px-5 text-[12px] font-bold text-primary-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              {t('history.retry')}
+            </button>
+          </div>
+        ) : hasReview ? (
           <>
-            <div className="rounded-2xl border border-border-color bg-card-bg p-4">
-              <h3 className="font-bold text-lg mb-1">{t('analysis.answerSummaryTitle')}</h3>
-              <p className="text-sm text-text-secondary opacity-80">
-                {t('analysis.detailsUnavailable')}
-              </p>
+            <div className="flex items-center justify-between gap-3 px-1">
+              <h2 className="text-[15px] font-bold leading-6 text-text-primary">
+                {t('analysis.questionsTitle')}
+              </h2>
+              <span className="text-[11px] leading-4 text-text-secondary">
+                {t('analysis.questionsCount', {
+                  count: formatCount(questionCount, language),
+                })}
+              </span>
             </div>
 
-            {resultDetails.map((item, idx) => {
-              const selectedOption = item.selected_option ?? item.selected_option_id ?? null;
-              const hasSelectedOption =
-                selectedOption !== null &&
-                selectedOption !== undefined &&
-                String(selectedOption).trim() !== '';
+            <div
+              role="group"
+              aria-label={t('analysis.questionsTitle')}
+              className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {filters.map((option) => {
+                const active = filter === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setFilter(option.id)}
+                    aria-pressed={active}
+                    className={`min-h-[44px] shrink-0 rounded-full px-4 text-[12px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                      active
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card-bg text-text-secondary'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
 
-              const selectedAnswerText = item.selected_option_text?.trim()
-                ? item.selected_option_text
-                : hasSelectedOption
-                  ? t('analysis.answerSavedNoDetails')
-                  : t('analysis.notAnswered')
-
-              const correctAnswerText = showCorrectAnswers
-                ? item.correct_option_text?.trim() || null
-                : null;
-
-              return (
-                <div
-                  key={`${item.question_id}-${idx}`}
-                  className={`rounded-2xl border p-4 sm:p-5 ${getStatusCardClass(item)}`}
+            {filteredQuestions.length > 0 ? (
+              <div className="space-y-3">
+                {filteredQuestions.map((question) => {
+                  const index = examQuestions.findIndex((item) => item.id === question.id);
+                  return (
+                    <AnalysisQuestionCard
+                      key={question.id}
+                      index={index >= 0 ? index : 0}
+                      question={question}
+                      userAnswerId={getSelectedAnswerId(question.id)}
+                      status={statusFor(question.id)}
+                      showCorrectAnswers={showCorrectAnswers}
+                      initialBookmarked={bookmarkedIds.has(question.id)}
+                      onReport={handleReport}
+                      onBookmark={handleBookmark}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-[20px] bg-card-bg px-5 py-10 text-center">
+                <p className="text-[13px] font-semibold text-text-primary">
+                  {t('analysis.filterEmptyTitle')}
+                </p>
+                <p className="mt-1 text-[12px] leading-5 text-text-secondary">
+                  {t('analysis.filterEmptyBody')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFilter('all')}
+                  className="mt-4 min-h-[44px] rounded-xl bg-surface-elevated px-5 text-[12px] font-semibold text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <p className="text-xs font-semibold text-text-secondary mb-1">
-                        {t('analysis.questionNumber', { index: idx + 1 })}
-                      </p>
-                      <p className="text-sm text-text-secondary opacity-80">
-                        {t('analysis.questionMissing')}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border-color bg-card-bg text-sm font-bold">
-                      {getStatusIcon(item)}
-              {getStatusText(item, t)}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-border-color bg-card-bg p-3">
-                      <p className="text-xs text-text-secondary mb-1">{t('analysis.yourAnswer')}</p>
-                      <p className="font-bold">{selectedAnswerText}</p>
-                    </div>
-
-                    <div className="rounded-xl border border-border-color bg-card-bg p-3">
-                      <p className="text-xs text-text-secondary mb-1">{t('analysis.marks')}</p>
-                      <p className="font-bold">{item.marks_awarded ?? 0}</p>
-                    </div>
-
-                    {correctAnswerText && (
-                      <div className="rounded-xl border border-border-color bg-card-bg p-3 sm:col-span-2">
-                        <p className="text-xs text-text-secondary mb-1">{t('analysis.correctAnswer')}</p>
-                        <p className="font-bold">{correctAnswerText}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => handleReport(item.question_id)}
-                      className="px-4 py-2 rounded-xl border border-border-color bg-card-bg text-sm font-semibold active:scale-95 transition-all"
-                    >
-                      {t('analysis.report')}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleBookmark(
-                          item.question_id,
-                          !bookmarkedIds.has(item.question_id)
-                        ).catch(() => undefined);
-                      }}
-                      className="px-4 py-2 rounded-xl border border-border-color bg-card-bg text-sm font-semibold active:scale-95 transition-all"
-                    >
-                      {t('analysis.bookmark')}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  {t('analysis.filterAll')}
+                </button>
+              </div>
+            )}
           </>
+        ) : hasDetailFallback ? (
+          <section className="rounded-[20px] bg-card-bg p-4">
+            <h2 className="text-[15px] font-bold leading-6 text-text-primary">
+              {t('analysis.answerSummaryTitle')}
+            </h2>
+            <p className="mt-1 text-[12px] leading-5 text-text-secondary">
+              {t('analysis.detailsUnavailable')}
+            </p>
+            <ul className="mt-3 space-y-2">
+              {resultDetails.map((detail, index) => (
+                <li
+                  key={`${detail.question_id}-${index}`}
+                  className="flex items-start justify-between gap-3 rounded-xl bg-surface px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-text-secondary">
+                      {t('analysis.questionNumber', {
+                        index: formatCount(index + 1, language),
+                      })}
+                    </p>
+                    <p className="mt-0.5 text-[12px] leading-5 text-text-primary">
+                      {detail.selected_option_text?.trim() || t('analysis.notAnswered')}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[11px] font-semibold text-text-secondary">
+                    {detail.status === 'correct'
+                      ? t('analysis.correct')
+                      : detail.status === 'wrong'
+                        ? t('analysis.wrong')
+                        : t('analysis.skipped')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : (
-          <div className="text-center py-16 px-4 rounded-2xl border border-dashed flex flex-col items-center border-border-color">
-            <div className="w-16 h-16 rounded-full mb-4 flex items-center justify-center bg-surface-elevated">
-              <MinusCircle size={32} className="opacity-40" />
-            </div>
-
-            <h3 className="text-lg font-bold opacity-80 mb-1">{t('analysis.noDetails')}</h3>
-            <p className="text-sm opacity-60">
+          <div className="rounded-[20px] bg-card-bg px-5 py-10 text-center">
+            <p className="text-[15px] font-bold text-text-primary">
+              {t('analysis.noDetails')}
+            </p>
+            <p className="mt-1 text-[12px] leading-5 text-text-secondary">
               {t('analysis.noDetailsBody')}
             </p>
           </div>
         )}
       </div>
 
-      <div className="hidden md:flex w-full max-w-3xl px-4 mt-12 mb-16 gap-4 justify-center">
-        <ActionButtons onHome={handleHomeNav} onBack={handleBackNav} />
-      </div>
+      {id ? (
+        <AttemptPracticeActions
+          historyId={id}
+          retakeCount={retakeCount}
+          wrongCount={practiceCount}
+        />
+      ) : null}
 
-      <div className="md:hidden fixed bottom-0 left-0 w-full p-4 z-40 border-t flex justify-center bg-surface border-border-color">
-        <div className="w-full max-w-3xl flex gap-3">
-          <ActionButtons onHome={handleHomeNav} onBack={handleBackNav} />
-        </div>
-      </div>
-
-      <div className="h-24 md:hidden w-full" />
-
-      {isReportModalOpen && reportQuestionData && (
+      {isReportModalOpen && reportQuestionData ? (
         <ReportModal
           isOpen={isReportModalOpen}
           onClose={handleCloseModal}
@@ -586,7 +673,7 @@ const Analysis: React.FC = () => {
           questionData={reportQuestionData}
           onSubmit={handleSubmitReport}
         />
-      )}
+      ) : null}
     </div>
   );
 };

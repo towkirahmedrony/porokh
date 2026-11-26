@@ -102,6 +102,12 @@ export interface ExamResultPayload {
   wrong_count: number;
   skipped_count: number;
   time_taken: number;
+  rank?: number | null;
+  submitted_at?: string | null;
+  created_at?: string | null;
+  is_timeout?: boolean | null;
+  practice_mode?: 'retake' | 'wrong_from_history' | 'wrong_global' | null;
+  source_history_id?: string | null;
   details_json: {
     questions?: Question[];
     details?: ExamResultDetail[];

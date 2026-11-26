@@ -44,6 +44,9 @@ export interface HistoryItem {
   exam_id?: string | null;
   score: number;
   total_marks: number;
+  rank?: number | null;
+  time_taken?: number | null;
+  is_timeout?: boolean | null;
   correct_count?: number | null;
   wrong_count?: number | null;
   skipped_count?: number | null;
