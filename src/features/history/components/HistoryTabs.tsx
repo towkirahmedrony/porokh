@@ -1,10 +1,12 @@
 import React, { memo } from 'react';
 import { TabType } from '../types/history';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
+import { formatCount } from '@/shared/lib/attemptFormat';
 
 interface Props {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  counts?: { mistakes?: number; bookmarks?: number };
 }
 
 const TABS: { id: TabType; labelKey: 'history.tabsHistory' | 'history.tabsMistakes' | 'history.tabsBookmarks' }[] = [
@@ -14,11 +16,11 @@ const TABS: { id: TabType; labelKey: 'history.tabsHistory' | 'history.tabsMistak
 ];
 
 /**
- * Compact segmented control. It replaces the old heavy tab bar (three tall
- * blocks with animated icons) so the tabs read as one control on the page.
+ * Compact segmented control. The Mistakes and Bookmarks tabs carry their count
+ * in the label, so the student can see the pool size without opening the tab.
  */
-export const HistoryTabs: React.FC<Props> = memo(({ activeTab, setActiveTab }) => {
-  const { t } = useLanguage();
+export const HistoryTabs: React.FC<Props> = memo(({ activeTab, setActiveTab, counts }) => {
+  const { language, t } = useLanguage();
 
   return (
     <div
@@ -28,6 +30,8 @@ export const HistoryTabs: React.FC<Props> = memo(({ activeTab, setActiveTab }) =
     >
       {TABS.map((tab) => {
         const isActive = activeTab === tab.id;
+        const count =
+          tab.id === 'mistakes' ? counts?.mistakes : tab.id === 'bookmarks' ? counts?.bookmarks : undefined;
 
         return (
           <button
@@ -36,13 +40,20 @@ export const HistoryTabs: React.FC<Props> = memo(({ activeTab, setActiveTab }) =
             role="tab"
             aria-selected={isActive}
             onClick={() => setActiveTab(tab.id)}
-            className={`min-h-[44px] rounded-lg px-2 text-[13px] font-semibold leading-5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+            className={`flex min-h-[44px] min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 text-[13px] font-semibold leading-5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
               isActive
                 ? 'bg-surface-elevated text-text-primary shadow-sm'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            {t(tab.labelKey)}
+            <span className="min-w-0 truncate">{t(tab.labelKey)}</span>
+            {typeof count === 'number' && count > 0 ? (
+              <span
+                className="shrink-0 text-[11px] tabular-nums text-text-secondary"
+              >
+                {formatCount(count, language)}
+              </span>
+            ) : null}
           </button>
         );
       })}

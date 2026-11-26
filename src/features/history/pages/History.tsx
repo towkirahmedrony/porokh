@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Search, X, ArrowDownUp } from 'lucide-react';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { TabType, HistoryItem } from '../types/history';
 import { useHistory } from '../hooks/useHistory';
+import { useExplorerCount } from '../hooks/useExplorer';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { formatCount } from '@/shared/lib/attemptFormat';
 
@@ -11,9 +13,7 @@ import { HistoryTabs } from '../components/HistoryTabs';
 import { HistoryCard } from '../components/HistoryCard';
 import { HistorySkeleton } from '../components/HistorySkeleton';
 import { HistorySortSheet } from '../components/HistorySortSheet';
-import { MistakeCard } from '../components/MistakeCard';
-import { BookmarkCard } from '../components/BookmarkCard';
-import { DeleteModal } from '../components/DeleteModal';
+import { ExplorerTab } from '../components/ExplorerTab';
 import { EmptyState } from '../components/EmptyState';
 import { PullToRefresh } from '@/features/groups/components/PullToRefresh';
 import { resolveTabViewState } from '../utils/historyViewState';
@@ -23,15 +23,6 @@ import {
   type HistorySortOrder,
 } from '../utils/historyCard';
 import type { AppMessageKey } from '@/shared/i18n/messages';
-
-// Types
-type DeleteTargetType = Extract<TabType, 'mistakes' | 'bookmarks'>;
-
-interface DeleteModalState {
-  isOpen: boolean;
-  id: string | null;
-  type: DeleteTargetType | null;
-}
 
 const PAGE_SIZE = 20;
 const SCROLL_RESTORE_KEY = 'porokh.history.restore';
@@ -78,8 +69,14 @@ const readRestoreSnapshot = (): RestoreSnapshot | null => {
 const scrollContainer = (): HTMLElement | null =>
   document.querySelector<HTMLElement>('main');
 
+/**
+ * History owns the three tabs. Attempts keep their own list; Mistakes and
+ * Bookmarks are rendered by ExplorerTab, which fetches ids first and question
+ * bodies for the current page only.
+ */
 const History: React.FC = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { language, t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('history');
 
@@ -93,30 +90,15 @@ const History: React.FC = () => {
   );
   const didMountRef = useRef(false);
 
-  // Modal State
-  const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
-    isOpen: false,
-    id: null,
-    type: null,
-  });
+  const { isLoading, isError, refetch, historyData } = useHistory();
 
-  const {
-    isLoading,
-    isError,
-    refetch,
-    historyData,
-    mistakeData,
-    bookmarkData,
-    deleteMistake,
-    deleteBookmark,
-  } = useHistory(activeTab);
+  const mistakeCount = useExplorerCount('mistakes', Boolean(user));
+  const bookmarkCount = useExplorerCount('bookmarks', Boolean(user));
 
   const textFontClass = language === 'bn' ? 'font-bengali' : 'font-sans';
 
   // Returning from a result restores the exact offset and page size the list
   // had when the card was tapped, instead of starting at the top.
-  // The main scroll container resets to the top on every route change, so the
-  // restore runs one frame after the list has painted.
   useEffect(() => {
     if (!restoreSnapshot) return;
 
@@ -178,29 +160,6 @@ const History: React.FC = () => {
     return () => observer.disconnect();
   }, [activeTab, hasMore, filteredHistory.length, visibleCount]);
 
-  // Memoized handlers for the delete modal.
-  const handleOpenDeleteModal = useCallback((id: string, type: DeleteTargetType) => {
-    setDeleteModal({ isOpen: true, id, type });
-  }, []);
-
-  const handleCloseModal = useCallback(() => {
-    setDeleteModal({ isOpen: false, id: null, type: null });
-  }, []);
-
-  const handleDeleteMistake = useCallback(
-    (id: string) => {
-      handleOpenDeleteModal(id, 'mistakes');
-    },
-    [handleOpenDeleteModal]
-  );
-
-  const handleDeleteBookmark = useCallback(
-    (id: string) => {
-      handleOpenDeleteModal(id, 'bookmarks');
-    },
-    [handleOpenDeleteModal]
-  );
-
   const handleSearchChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(event.target.value);
@@ -232,34 +191,26 @@ const History: React.FC = () => {
     }
   }, [visibleCount]);
 
-  const confirmDelete = useCallback(async () => {
-    const { id, type } = deleteModal;
-    if (!id || !type) return;
+  // Pull-to-refresh reloads the visible tab. Invalidate marks the explorer
+  // queries stale, and the mounted tab refetches them immediately.
+  const handleRefresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['history-explorer'] });
+    return refetch();
+  }, [queryClient, refetch]);
 
-    const success =
-      type === 'mistakes' ? await deleteMistake(id) : await deleteBookmark(id);
-
-    if (success) {
-      handleCloseModal();
-    } else {
-      console.error(`Failed to delete ${type} with id ${id}`);
-    }
-  }, [deleteModal, deleteMistake, deleteBookmark, handleCloseModal]);
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    const main = scrollContainer();
+    if (main) main.scrollTop = 0;
+  }, []);
 
   if (!user) return null;
 
-  const activeTabItemCount =
-    activeTab === 'history'
-      ? historyData.length
-      : activeTab === 'mistakes'
-        ? mistakeData.length
-        : bookmarkData.length;
-
   // A failed request must never render a "no mistakes yet" empty state.
   const tabViewState = resolveTabViewState({
-    isLoading,
-    isError,
-    itemCount: activeTabItemCount,
+    isLoading: activeTab === 'history' ? isLoading : false,
+    isError: activeTab === 'history' ? isError : false,
+    itemCount: historyData.length,
   });
 
   const header = (
@@ -267,7 +218,11 @@ const History: React.FC = () => {
       <h1 className="text-xl font-bold leading-7 text-text-primary">
         {t('history.title')}
       </h1>
-      <HistoryTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+      <HistoryTabs
+        activeTab={activeTab}
+        setActiveTab={handleTabChange}
+        counts={{ mistakes: mistakeCount, bookmarks: bookmarkCount }}
+      />
     </div>
   );
 
@@ -415,26 +370,10 @@ const History: React.FC = () => {
         return renderHistoryList();
 
       case 'mistakes':
-        return mistakeData.length > 0 ? (
-          <div className="space-y-3">
-            {mistakeData.map((item) => (
-              <MistakeCard key={item.id} item={item} onDelete={handleDeleteMistake} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState type="mistakes" />
-        );
+        return <ExplorerTab source="mistakes" />;
 
       case 'bookmarks':
-        return bookmarkData.length > 0 ? (
-          <div className="space-y-3">
-            {bookmarkData.map((item) => (
-              <BookmarkCard key={item.id} item={item} onDelete={handleDeleteBookmark} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState type="bookmarks" />
-        );
+        return <ExplorerTab source="bookmarks" />;
 
       default:
         return null;
@@ -442,7 +381,7 @@ const History: React.FC = () => {
   };
 
   return (
-    <PullToRefresh onRefresh={() => refetch()}>
+    <PullToRefresh onRefresh={handleRefresh}>
       <div className={`mx-auto flex w-full max-w-md flex-col gap-5 pb-4 ${textFontClass}`}>
         {header}
 
@@ -462,12 +401,6 @@ const History: React.FC = () => {
         value={sortOrder}
         onClose={() => setSortOpen(false)}
         onChange={setSortOrder}
-      />
-
-      <DeleteModal
-        isOpen={deleteModal.isOpen}
-        onClose={handleCloseModal}
-        onConfirm={confirmDelete}
       />
     </PullToRefresh>
   );
