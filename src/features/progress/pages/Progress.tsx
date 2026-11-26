@@ -1,68 +1,80 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useProgressData } from '../hooks/useProgressData';
 
-import { ProgressHeader } from '../components/ProgressHeader';
-import { MetricsGrid } from '../components/MetricsGrid';
-import { ChartsSection } from '../components/ChartsSection';
-import { AnalysisSection } from '../components/AnalysisSection';
-import { SubjectReportSection } from '../components/SubjectReportSection';
-import { ActivityHeatmap } from '../components/ActivityHeatmap';
+import { ProgressIdentity } from '../components/ProgressIdentity';
+import { AccuracyHero } from '../components/AccuracyHero';
+import { ActivityCalendar } from '../components/ActivityCalendar';
+import { PerformanceTrend } from '../components/PerformanceTrend';
+import { SkillBars } from '../components/SkillBars';
+import { WeakTopics } from '../components/WeakTopics';
+import { MentorNote } from '../components/MentorNote';
+import { SubjectReport } from '../components/SubjectReport';
 import { MistakePracticeSection } from '@/features/practice/components/MistakePracticeSection';
 
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
+import { Skeleton } from '@/shared/components/ui/Skeleton';
+import { PullToRefresh } from '@/features/groups/components/PullToRefresh';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 
-const ProgressSkeleton: React.FC<{ label: string }> = ({ label }) => {
-  return (
-    <div
-      role="status"
-      aria-label={label}
-      className="min-h-screen px-4 pt-4 pb-20 flex flex-col gap-4 bg-app text-text-primary"
-    >
-      <div className="rounded-2xl p-4 flex items-center gap-4 shadow-sm animate-pulse bg-card-bg border border-card-border">
-        <div className="w-16 h-16 rounded-full shrink-0 bg-secondary" />
-        <div className="flex-col space-y-2 flex-1">
-          <div className="h-5 w-40 rounded-md bg-secondary" />
-          <div className="h-6 w-28 rounded-full bg-secondary" />
-        </div>
-      </div>
+const ProgressSkeleton: React.FC<{ label: string }> = ({ label }) => (
+  <div
+    role="status"
+    aria-label={label}
+    className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col gap-5 pb-4"
+  >
+    <Skeleton className="h-6 w-28" />
 
-      {[1, 2, 3, 4].map((item) => (
-        <div
-          key={item}
-          className="rounded-2xl p-5 flex items-center justify-between shadow-sm animate-pulse bg-card-bg border border-card-border"
-        >
-          <div className="flex-col space-y-3 flex-1">
-            <div className="h-4 w-20 rounded-md bg-secondary" />
-            <div className="h-6 w-24 rounded-md bg-secondary" />
-            <div className="h-3 w-32 rounded-md mt-1 bg-surface-elevated" />
-          </div>
-          <div className="w-12 h-12 rounded-xl shrink-0 bg-secondary" />
-        </div>
-      ))}
-
-      <div className="h-[300px] w-full rounded-2xl shadow-sm animate-pulse mt-2 flex items-center justify-center bg-card-bg border border-card-border">
-        <div className="w-[90%] h-[90%] rounded-xl bg-surface-elevated" />
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-11 w-11 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-36" />
+        <Skeleton className="h-3 w-24" />
       </div>
     </div>
-  );
-};
+
+    <div className="rounded-[20px] bg-card-bg p-4">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-[84px] w-[84px] rounded-full" />
+        <div className="grid flex-1 grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="space-y-1.5">
+              <Skeleton className="h-3 w-14" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <Skeleton className="mt-4 h-1.5 w-full rounded-full" />
+    </div>
+
+    <div className="rounded-[20px] bg-card-bg p-4">
+      <Skeleton className="h-4 w-24" />
+      <div className="mt-4 grid grid-cols-7 gap-y-1">
+        {Array.from({ length: 35 }, (_, index) => (
+          <div key={index} className="flex h-11 items-center justify-center">
+            <Skeleton className="h-9 w-9 rounded-[10px]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const Progress: React.FC = () => {
   const { data, isPending, isError, refetch } = useProgressData();
   const { language, t } = useLanguage();
 
-  const textFontClass =
-    language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans';
+  const textFontClass = language === 'bn' ? 'font-bengali' : 'font-sans';
 
   if (isPending && !data) {
     return <ProgressSkeleton label={t('progress.loadingLabel')} />;
   }
 
-  if (isError && !data) {
+  if ((isError && !data) || !data) {
     return (
       <div
-        className={`min-h-screen flex flex-col items-center justify-center gap-4 p-4 bg-app text-text-primary ${textFontClass}`}
+        className={`flex min-h-[60vh] flex-col items-center justify-center gap-4 ${textFontClass}`}
       >
         <EmptyState
           title={t('progress.errorTitle')}
@@ -71,7 +83,7 @@ const Progress: React.FC = () => {
         <button
           type="button"
           onClick={() => refetch()}
-          className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-app"
+          className="min-h-[44px] rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           {t('progress.retry')}
         </button>
@@ -79,38 +91,52 @@ const Progress: React.FC = () => {
     );
   }
 
-  if (!data) {
-    return (
-      <div
-        className={`min-h-screen flex items-center justify-center p-4 bg-app text-text-primary ${textFontClass}`}
-      >
-        <EmptyState
-          title={t('progress.emptyTitle')}
-          message={t('progress.emptyMessage')}
-        />
-      </div>
-    );
-  }
+  const isNewUser =
+    data.summary.exams_taken === 0 && data.summary.practice_sessions === 0;
 
   return (
-    <div
-      className={`min-h-screen pb-24 flex flex-col gap-6 animate-in fade-in duration-500 px-4 pt-4 bg-app text-text-primary ${textFontClass}`}
-    >
-      <ProgressHeader user={data.user} />
-      <MetricsGrid metrics={data.metrics} />
-      <MistakePracticeSection />
-      <ActivityHeatmap data={data.activityHeatmap} />
-      <ChartsSection
-        performanceChart={data.performanceChart}
-        skillMapping={data.skillMapping}
-      />
-      <AnalysisSection
-        weaknesses={data.weaknesses}
-        focusTopic={data.focusTopic}
-        aiAnalysis={data.aiAnalysis} // 🔥 AI Data Passed Here
-      />
-      <SubjectReportSection subjectReport={data.subjectReport} />
-    </div>
+    <PullToRefresh onRefresh={() => refetch()}>
+      <div className={`mx-auto flex w-full max-w-md flex-col gap-5 pb-4 ${textFontClass}`}>
+        <h1 className="text-xl font-bold leading-7 text-text-primary">
+          {t('progress.title')}
+        </h1>
+
+        <ProgressIdentity user={data.user} />
+
+        <AccuracyHero
+          summary={data.summary}
+          level={data.level}
+          totalXp={data.user.total_xp}
+        />
+
+        {isNewUser ? (
+          <section className="rounded-[20px] bg-card-bg p-5">
+            <h2 className="text-[15px] font-bold leading-6 text-text-primary">
+              {t('progress.zeroTitle')}
+            </h2>
+            <p className="mt-1 text-[13px] leading-6 text-text-secondary">
+              {t('progress.zeroBody')}
+            </p>
+            <Link
+              to="/exams/model"
+              className="mt-4 flex min-h-[44px] items-center justify-center rounded-xl bg-primary px-4 text-[13px] font-bold text-primary-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              {t('progress.zeroCta')}
+            </Link>
+          </section>
+        ) : (
+          <>
+            <ActivityCalendar days={data.activity.days} />
+            <PerformanceTrend points={data.performance} />
+            <SkillBars subjects={data.subjects} />
+            <WeakTopics topics={data.weaknesses} />
+            <MentorNote mentor={data.mentor} topics={data.weaknesses} />
+            <MistakePracticeSection availableCount={data.mistakes.available} />
+            <SubjectReport subjects={data.subjects} />
+          </>
+        )}
+      </div>
+    </PullToRefresh>
   );
 };
 

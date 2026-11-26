@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { AlertCircle, Target } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import { AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import ConfirmModal from '@/shared/components/feedback/ConfirmModal';
@@ -22,7 +22,18 @@ interface ReducedConfirm {
   requested: number;
 }
 
-export const MistakePracticeSection: React.FC = () => {
+interface MistakePracticeSectionProps {
+  /**
+   * Number of mistake questions the dashboard already counted. Passing it in
+   * keeps the page to a single read; the start call re-checks the pool server
+   * side and answers with `confirm_reduced` when it shrank.
+   */
+  availableCount: number;
+}
+
+export const MistakePracticeSection: React.FC<MistakePracticeSectionProps> = ({
+  availableCount,
+}) => {
   const navigate = useNavigate();
   const { language, t } = useLanguage();
 
@@ -30,14 +41,7 @@ export const MistakePracticeSection: React.FC = () => {
   const [customValue, setCustomValue] = useState('');
   const [reducedConfirm, setReducedConfirm] = useState<ReducedConfirm | null>(null);
 
-  const poolQuery = useQuery({
-    queryKey: ['practice', 'mistakePool'],
-    queryFn: practiceService.getMistakePool,
-    staleTime: 60_000,
-    retry: 1,
-  });
-
-  const available = poolQuery.data?.available_count ?? 0;
+  const available = Math.max(0, Math.trunc(availableCount));
 
   const requestedCount = useMemo(() => {
     if (selection === 'custom') return parsePracticeCount(customValue);
@@ -84,70 +88,44 @@ export const MistakePracticeSection: React.FC = () => {
     startMutation.mutate({ count: requestedCount, confirmReduced: false });
   };
 
-  const isLoading = poolQuery.isPending;
-  const isError = poolQuery.isError;
   const isBusy = startMutation.isPending;
   const tooMany = requestedCount !== null && requestedCount > available && available > 0;
 
   return (
-    <section className="rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-badge-bg text-badge-text">
-          <Target className="h-5 w-5" aria-hidden="true" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-text-primary">
-            {t('practice.poolTitle')}
+    <section className="rounded-[20px] bg-card-bg p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-bold leading-6 text-text-primary">
+            {t('progress.mistakesTitle')}
           </h2>
-          <p className="mt-1 text-sm text-text-secondary">
-            {t('practice.poolSubtitle')}
+          <p className="mt-0.5 text-[11px] leading-4 text-text-secondary">
+            {t('progress.mistakesSubtitle')}
           </p>
         </div>
+        {available > 0 ? (
+          <span className="shrink-0 rounded-md bg-badge-bg px-2 py-1 text-[11px] font-bold leading-4 text-badge-text">
+            {t('progress.mistakesAvailable', {
+              count: localizeDigits(available, language),
+            })}
+          </span>
+        ) : null}
       </div>
 
-      {isLoading ? (
-        <div className="mt-4 space-y-3" role="status" aria-label={t('practice.loadingPool')}>
-          <div className="h-4 w-40 animate-pulse rounded bg-surface-elevated" />
-          <div className="h-10 w-full animate-pulse rounded-xl bg-surface-elevated" />
-          <div className="h-11 w-full animate-pulse rounded-xl bg-surface-elevated" />
-        </div>
-      ) : isError ? (
-        <div className="mt-4 rounded-xl border border-border-color bg-surface p-4">
-          <p className="text-sm text-text-secondary">{t('practice.loadFailed')}</p>
-          <button
-            type="button"
-            onClick={() => poolQuery.refetch()}
-            className="mt-3 rounded-lg border border-border-color bg-card-bg px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-surface-elevated"
-          >
-            {t('practice.retry')}
-          </button>
-        </div>
-      ) : available === 0 ? (
-        <div className="mt-4 rounded-xl border border-border-color bg-surface p-4">
-          <h3 className="text-sm font-bold text-text-primary">
+      {available === 0 ? (
+        <div className="mt-3 rounded-xl bg-secondary px-3 py-4">
+          <p className="text-[13px] font-semibold text-text-primary">
             {t('practice.poolEmptyTitle')}
-          </h3>
-          <p className="mt-1 text-sm text-text-secondary">
+          </p>
+          <p className="mt-1 text-[12px] leading-5 text-text-secondary">
             {t('practice.poolEmptyMessage')}
           </p>
         </div>
       ) : (
         <>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-text-primary">
-              {t('practice.availableCount', {
-                count: localizeDigits(available, language),
-              })}
-            </p>
-            <p className="text-xs text-text-secondary">
-              {t('practice.poolRule')}
-            </p>
-          </div>
-
           <div
             role="group"
             aria-label={t('practice.countLabel')}
-            className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5"
+            className="mt-3 grid grid-cols-5 gap-1.5"
           >
             {PRACTICE_COUNT_PRESETS.map((preset) => {
               const isActive = selection === preset;
@@ -158,10 +136,10 @@ export const MistakePracticeSection: React.FC = () => {
                   type="button"
                   onClick={() => setSelection(preset)}
                   aria-pressed={isActive}
-                  className={`rounded-xl border px-2 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                  className={`h-11 rounded-xl text-[12px] font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                     isActive
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border-color bg-surface text-text-primary hover:bg-surface-elevated'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-text-primary'
                   }`}
                 >
                   {localizeDigits(preset, language)}
@@ -173,21 +151,21 @@ export const MistakePracticeSection: React.FC = () => {
               type="button"
               onClick={() => setSelection('custom')}
               aria-pressed={selection === 'custom'}
-              className={`rounded-xl border px-2 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+              className={`h-11 rounded-xl text-[12px] font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                 selection === 'custom'
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border-color bg-surface text-text-primary hover:bg-surface-elevated'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-text-primary'
               }`}
             >
               {t('practice.custom')}
             </button>
           </div>
 
-          {selection === 'custom' && (
-            <div className="mt-3">
+          {selection === 'custom' ? (
+            <div className="mt-2.5">
               <label
                 htmlFor="practice-custom-count"
-                className="mb-1.5 block text-xs font-semibold text-text-secondary"
+                className="mb-1 block text-[11px] font-semibold text-text-secondary"
               >
                 {t('practice.customLabel')}
               </label>
@@ -204,32 +182,32 @@ export const MistakePracticeSection: React.FC = () => {
                 placeholder={t('practice.customPlaceholder', {
                   max: localizeDigits(MAX_PRACTICE_QUESTIONS, language),
                 })}
-                className="w-full rounded-xl border border-border-color bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="h-11 w-full rounded-xl bg-secondary px-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               />
-              {requestedCount === null && customValue.length > 0 && (
-                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-accent">
-                  <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+              {requestedCount === null && customValue.length > 0 ? (
+                <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-text-secondary">
+                  <AlertCircle className="h-3.5 w-3.5 text-danger" aria-hidden="true" />
                   {t('practice.invalidCount')}
                 </p>
-              )}
+              ) : null}
             </div>
-          )}
+          ) : null}
 
-          {tooMany && (
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-text-secondary">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
+          {tooMany ? (
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] leading-4 text-text-secondary">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 text-danger" aria-hidden="true" />
               {t('practice.requestedTooMany', {
                 requested: localizeDigits(requestedCount ?? 0, language),
                 available: localizeDigits(available, language),
               })}
             </p>
-          )}
+          ) : null}
 
           <button
             type="button"
             onClick={handleStart}
             disabled={isBusy || requestedCount === null}
-            className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-[13px] font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {isBusy ? t('practice.starting') : t('practice.start')}
           </button>
