@@ -23,8 +23,6 @@ const ProgressSkeleton: React.FC<{ label: string }> = ({ label }) => (
     aria-label={label}
     className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col gap-5 pb-4"
   >
-    <Skeleton className="h-6 w-28" />
-
     <div className="flex items-center gap-3">
       <Skeleton className="h-11 w-11 rounded-full" />
       <div className="flex-1 space-y-2">
@@ -97,9 +95,8 @@ const Progress: React.FC = () => {
   return (
     <PullToRefresh onRefresh={() => refetch()}>
       <div className={`mx-auto flex w-full max-w-md flex-col gap-5 pb-4 ${textFontClass}`}>
-        <h1 className="text-xl font-bold leading-7 text-text-primary">
-          {t('progress.title')}
-        </h1>
+        {/* The bottom bar names the tab; the heading stays for screen readers. */}
+        <h1 className="sr-only">{t('progress.title')}</h1>
 
         <ProgressIdentity user={data.user} />
 

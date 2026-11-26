@@ -2,7 +2,6 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from '
 
 import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { formatCount } from '@/shared/lib/attemptFormat';
 import type {
   ExplorerFilters,
   ExplorerItem,
@@ -17,11 +16,12 @@ import {
 } from '../hooks/useExplorer';
 import { ExplorerCard } from './ExplorerCard';
 import { ExplorerToolbar } from './ExplorerToolbar';
-import { ExplorerFilterSheet, countActiveFilters } from './ExplorerFilterSheet';
+import { ExplorerFilterPanel, countActiveFilters } from './ExplorerFilterPanel';
 import { ExplorerPracticeSheet } from './ExplorerPracticeSheet';
 import { DismissedSheet } from './DismissedSheet';
 import { NoteSheet } from './NoteSheet';
 import { EmptyState } from './EmptyState';
+import { FloatingAnswerButton } from '@/shared/components/filters/FloatingAnswerButton';
 
 interface Props {
   source: ExplorerSource;
@@ -69,9 +69,8 @@ export const ExplorerTab: React.FC<Props> = memo(({ source }) => {
   const [filters, setFilters] = useState<ExplorerFilters>({});
   const [sort, setSort] = useState<ExplorerSort>('recent');
   const [revealAll, setRevealAll] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [dismissedOpen, setDismissedOpen] = useState(false);
   const [noteTarget, setNoteTarget] = useState<ExplorerItem | null>(null);
@@ -87,7 +86,9 @@ export const ExplorerTab: React.FC<Props> = memo(({ source }) => {
   const { facets } = useExplorerFacets(source, true);
   const actions = useExplorerActions(source);
 
-  const filterCount = countActiveFilters(effectiveFilters);
+  // Search now lives inside the panel, so it belongs in the badge count too.
+  const filterCount =
+    countActiveFilters(effectiveFilters) + (debouncedQuery ? 1 : 0);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -110,41 +111,41 @@ export const ExplorerTab: React.FC<Props> = memo(({ source }) => {
     return () => observer.disconnect();
   }, [list.hasMore, list.isFetchingNextPage, list.loadMore, list.items.length]);
 
-  const handleRemoveChip = useCallback((key: keyof ExplorerFilters) => {
+  const scrollFiltersToTop = useCallback(() => {
     scrollListToTop();
-    setFilters((current) => {
-      const next = { ...current };
-      delete next[key];
-      if (key === 'subject') {
-        delete next.chapter;
-        delete next.topic;
-      }
-      if (key === 'chapter') delete next.topic;
-      return next;
-    });
   }, []);
 
-  const handleApplyFilters = useCallback(
-    (next: ExplorerFilters, nextSort: ExplorerSort) => {
-      // The sheet owns the facet filters; the toolbar owns the search box. A
-      // reset inside the sheet clears both so the count it showed is exact.
-      const { q, ...facetFilters } = next;
-      setFilters(facetFilters);
-      setSort(nextSort);
-      scrollListToTop();
-      if (!q) {
-        setSearchQuery('');
-        setSearchOpen(false);
-      }
+  const handleFiltersChange = useCallback(
+    (next: ExplorerFilters) => {
+      setFilters(next);
+      scrollFiltersToTop();
     },
-    []
+    [scrollFiltersToTop]
+  );
+
+  const handleRemoveChip = useCallback(
+    (key: keyof ExplorerFilters) => {
+      scrollFiltersToTop();
+      setFilters((current) => {
+        const next = { ...current };
+        delete next[key];
+        if (key === 'subject') {
+          delete next.chapter;
+          delete next.topic;
+        }
+        if (key === 'chapter') delete next.topic;
+        return next;
+      });
+    },
+    [scrollFiltersToTop]
   );
 
   const handleResetAll = useCallback(() => {
     setFilters({});
     setSort('recent');
-    scrollListToTop();
-  }, []);
+    setSearchQuery('');
+    scrollFiltersToTop();
+  }, [scrollFiltersToTop]);
 
   const activeChips = useMemo(() => {
     const chips: { key: keyof ExplorerFilters; label: string }[] = [];
@@ -251,10 +252,7 @@ export const ExplorerTab: React.FC<Props> = memo(({ source }) => {
           </p>
           <button
             type="button"
-            onClick={() => {
-              handleResetAll();
-              setSearchQuery('');
-            }}
+            onClick={handleResetAll}
             className="min-h-[44px] rounded-xl bg-primary px-6 text-[13px] font-bold text-primary-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {t('history.explorerResetFilters')}
@@ -265,12 +263,6 @@ export const ExplorerTab: React.FC<Props> = memo(({ source }) => {
 
     return (
       <div className="space-y-3">
-        <p className="px-1 text-[11px] leading-5 text-text-secondary" aria-live="polite">
-          {t('history.explorerListCount', {
-            count: formatCount(list.total, language),
-          })}
-        </p>
-
         {list.items.map((item, index) => (
           <ExplorerCard
             key={item.id}
@@ -298,42 +290,49 @@ export const ExplorerTab: React.FC<Props> = memo(({ source }) => {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pb-16">
       <ExplorerToolbar
-        searchOpen={searchOpen}
-        searchQuery={searchQuery}
-        onOpenSearch={() => setSearchOpen(true)}
-        onCloseSearch={() => {
-          setSearchOpen(false);
-          setSearchQuery('');
-        }}
-        onSearchChange={setSearchQuery}
-        revealAll={revealAll}
-        onToggleReveal={() => setRevealAll((value) => !value)}
+        count={list.total}
+        showCount={!list.isLoading && !list.isError}
         filterCount={filterCount}
-        onOpenFilters={() => setFilterSheetOpen(true)}
-        onOpenPractice={() => setPracticeOpen(true)}
-        activeChips={activeChips}
-        onRemoveChip={handleRemoveChip}
+        isOpen={filterPanelOpen}
+        onToggleFilters={() => setFilterPanelOpen((value) => !value)}
       />
+
+      {filterPanelOpen ? (
+        <ExplorerFilterPanel
+          source={source}
+          facets={facets}
+          filters={filters}
+          sort={sort}
+          searchValue={searchQuery}
+          activeChips={activeChips}
+          onSearchChange={setSearchQuery}
+          onChange={handleFiltersChange}
+          onSortChange={(nextSort) => {
+            setSort(nextSort);
+            scrollFiltersToTop();
+          }}
+          onRemoveChip={handleRemoveChip}
+          onReset={handleResetAll}
+          onOpenDismissed={() => {
+            setFilterPanelOpen(false);
+            setDismissedOpen(true);
+          }}
+          onOpenPractice={() => setPracticeOpen(true)}
+        />
+      ) : null}
 
       <div className="animate-in fade-in duration-200 motion-reduce:animate-none">
         {renderBody()}
       </div>
 
-      <ExplorerFilterSheet
-        open={filterSheetOpen}
-        source={source}
-        facets={facets}
-        filters={effectiveFilters}
-        sort={sort}
-        onClose={() => setFilterSheetOpen(false)}
-        onApply={handleApplyFilters}
-        onOpenDismissed={() => {
-          setFilterSheetOpen(false);
-          setDismissedOpen(true);
-        }}
-      />
+      {!list.isLoading && !list.isError && list.items.length > 0 ? (
+        <FloatingAnswerButton
+          revealed={revealAll}
+          onToggle={() => setRevealAll((value) => !value)}
+        />
+      ) : null}
 
       <ExplorerPracticeSheet
         open={practiceOpen}

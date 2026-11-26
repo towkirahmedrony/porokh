@@ -123,7 +123,6 @@ const UserProfile: React.FC = () => {
     user?.username ? `@${user.username}` : null,
     academicLabel || null,
   ].filter(Boolean).join(' · ');
-  const streak = user?.current_streak ?? 0;
   const examUsage = examFeature?.unlimited ? '∞' : examFeature ? `${localizeDigits(examFeature.used, language)} / ${localizeDigits(examFeature.limit, language)}` : '—';
   const expiry = access?.premium_expires_at ? new Date(access.premium_expires_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
   const isDark = resolvedTheme === 'dark';
@@ -137,19 +136,29 @@ const UserProfile: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 pb-28 font-['Noto_Sans_Bengali']">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold leading-[1.45] text-text-primary">{copy.profile}</h1>
-        <button type="button" onClick={() => navigate('/settings')} className="rounded-full p-2 text-text-secondary transition-colors hover:bg-surface-elevated" aria-label={t('settings.title')}><Settings size={21} /></button>
-      </header>
+    <div className="mx-auto max-w-2xl pb-28 font-['Noto_Sans_Bengali']">
+      {/* The bottom bar names the tab; the heading stays for screen readers. */}
+      <h1 className="sr-only">{copy.profile}</h1>
 
+      <div className="space-y-5">
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
-        <button type="button" onClick={() => navigate('/edit-profile')} className="flex w-full items-center gap-4 text-left">
-          <span className="grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-3xl font-semibold text-white shadow-sm">
-            {avatarUrl ? <img src={avatarUrl} alt={t('profile.avatarAlt')} className="h-full w-full object-cover" /> : initials}
-          </span>
-          <span className="min-w-0 flex-1"><strong className="block truncate text-xl font-semibold leading-[1.45] text-text-primary">{name}</strong><span className="block truncate text-sm leading-[1.55] text-text-secondary">{subtitle || t('profile.fieldUsername')}</span><span className="mt-2 flex flex-wrap gap-2"><span className="rounded-full bg-badge-bg px-3 py-1 text-xs font-semibold text-badge-text">{localizeDigits(user.total_xp ?? 0, language)} XP</span><span className="rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning">{localizeDigits(streak, language)} {language === 'bn' ? 'দিন স্ট্রিক' : 'day streak'}</span></span></span>
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => navigate('/settings')}
+            className="absolute right-0 top-0 z-10 flex h-12 w-12 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            aria-label={t('settings.title')}
+          >
+            <Settings size={21} aria-hidden="true" />
+          </button>
+
+          <button type="button" onClick={() => navigate('/edit-profile')} className="flex w-full items-center gap-4 pr-14 text-left">
+            <span className="grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-3xl font-semibold text-white shadow-sm">
+              {avatarUrl ? <img src={avatarUrl} alt={t('profile.avatarAlt')} className="h-full w-full object-cover" /> : initials}
+            </span>
+            <span className="min-w-0 flex-1"><strong className="block truncate text-xl font-semibold leading-[1.45] text-text-primary">{name}</strong><span className="block truncate text-sm leading-[1.55] text-text-secondary">{subtitle || t('profile.fieldUsername')}</span></span>
+          </button>
+        </div>
       </section>
 
       {completion < 100 && <button type="button" onClick={() => navigate('/edit-profile')} className="w-full rounded-xl border border-card-border bg-card-bg p-4 text-left transition-colors hover:bg-surface-elevated"><div className="mb-2 flex items-center justify-between gap-3"><span className="text-sm font-semibold text-text-primary">{language === 'bn' ? `প্রোফাইল ${localizeDigits(completion, language)}% সম্পূর্ণ` : `Profile ${completion}% complete`}</span><span className="text-sm font-semibold text-primary">{copy.complete}</span></div><div className="h-2 overflow-hidden rounded-full bg-surface"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completion}%` }} /></div></button>}
@@ -162,6 +171,7 @@ const UserProfile: React.FC = () => {
 
       <button type="button" onClick={() => setLogoutOpen(true)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-danger/40 px-4 py-3 font-semibold text-danger transition-colors hover:bg-danger/10"><LogOut size={18} />{copy.logout}</button>
       <p className="text-center text-xs text-text-secondary">{copy.version} 1.0.5</p>
+      </div>
       <GoalPickerSheet open={goalOpen} onClose={() => setGoalOpen(false)} />
       <ConfirmModal isOpen={logoutOpen} title={t('settings.logoutConfirmTitle')} message={t('settings.logoutConfirmBody')} onCancel={() => setLogoutOpen(false)} onConfirm={async () => { await signOut?.(); setLogoutOpen(false); }} confirmText={t('profile.logout')} cancelText={t('common.cancel')} />
     </div>

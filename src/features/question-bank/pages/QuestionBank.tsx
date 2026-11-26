@@ -4,7 +4,6 @@ import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
 import {
   BookOpen,
-  BookOpenCheck,
   ChevronLeft,
   Filter,
   RefreshCw,
@@ -16,6 +15,7 @@ import { Loader } from '@/shared/components/feedback/Loader';
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import QuestionCard from '../components/QuestionCard';
 import { QuestionFilter } from '../components/QuestionFilter';
+import { FloatingAnswerButton } from '@/shared/components/filters/FloatingAnswerButton';
 import { useQuestionBank } from '../hooks/useQuestionBank';
 import { describeQuestionBankError } from '../services/questionBankErrors';
 import { localizedText } from '../services/questionBankMapper';
@@ -229,7 +229,7 @@ export default function QuestionBank() {
     <div
       ref={pageRef}
       className={`min-h-full bg-app px-4 pt-4 text-text-primary sm:px-6 lg:px-8 ${
-        isSubjectSelectionMode ? 'pb-4' : 'pb-16 md:pb-4'
+        isSubjectSelectionMode ? 'pb-4' : 'pb-24 md:pb-20'
       }`}
     >
       <div className="mx-auto max-w-7xl">
@@ -469,25 +469,10 @@ export default function QuestionBank() {
       </div>
 
       {!isSubjectSelectionMode && questions.length > 0 && (
-        <button
-          type="button"
-          className={`fixed bottom-24 right-4 z-40 inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 text-xs font-bold shadow-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-95 motion-reduce:transition-none md:bottom-6 md:right-6 ${
-            answersRevealed
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-emerald-600/25 hover:bg-emerald-700'
-              : 'border-card-border bg-card-bg text-text-primary hover:bg-surface'
-          }`}
-          aria-pressed={answersRevealed}
-          onClick={toggleAnswersRevealed}
-        >
-          {answersRevealed ? (
-            <BookOpenCheck className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <BookOpen className="h-4 w-4" aria-hidden="true" />
-          )}
-          {answersRevealed
-            ? t('questionBank.readingModeActive')
-            : t('questionBank.readingMode')}
-        </button>
+        <FloatingAnswerButton
+          revealed={answersRevealed}
+          onToggle={toggleAnswersRevealed}
+        />
       )}
     </div>
   );

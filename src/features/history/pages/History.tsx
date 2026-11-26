@@ -214,10 +214,9 @@ const History: React.FC = () => {
   });
 
   const header = (
-    <div className="space-y-3">
-      <h1 className="text-xl font-bold leading-7 text-text-primary">
-        {t('history.title')}
-      </h1>
+    <div>
+      {/* The bottom bar names the tab; the heading stays for screen readers. */}
+      <h1 className="sr-only">{t('history.title')}</h1>
       <HistoryTabs
         activeTab={activeTab}
         setActiveTab={handleTabChange}
