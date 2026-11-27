@@ -71,6 +71,14 @@ export interface QuestionBankQuestion {
   totalAttempts: number;
   correctAttempts: number;
   createdAt: string | null;
+  /** Every level this question is visible at. Two means a deliberate dual placement. */
+  levels: QuestionBankLevel[];
+  /** The tags the server used to derive `levels`. */
+  tracks: string[];
+  /** The reference the current filter is about, when the server could resolve one. */
+  examYear: string | null;
+  institutionShortName: string | null;
+  admissionUnitCode: string | null;
 }
 
 export interface QuestionBankSubject {
@@ -121,6 +129,12 @@ export interface QuestionBankFiltersData {
   admissions: QuestionBankInstitution[];
 }
 
+/** HSC revision or admission preparation. Which one a student may pick is not their choice. */
+export type QuestionBankLevel = 'hsc' | 'admission';
+
+/** The three goal-specific admission tracks. The generic `admission` tag is not one. */
+export type QuestionBankTrack = 'varsity' | 'medical' | 'engineering';
+
 export interface QuestionBankFilterState {
   search: string;
   subjectId: string;
@@ -133,7 +147,39 @@ export interface QuestionBankFilterState {
   mistakesOnly: boolean;
   premiumOnly: boolean;
   sortBy: 'newest' | 'oldest' | 'most_attempted' | 'least_attempted';
+  /** The tab the student is on. The server still decides what they may see. */
+  level: QuestionBankLevel;
+  /** Goal track for the admission tab. Empty means every admission track. */
+  track: QuestionBankTrack | '';
+  /** "সব ভর্তি প্রশ্ন": widens the goal, never the level. */
+  allTracks: boolean;
+  /** University id for the admission filters. */
+  universityId: string;
+  /** Admission unit id. */
+  admissionUnitId: string;
 }
+
+/** One option of one filter, as counted by get_question_bank_facets. */
+export interface QuestionBankFacetOption {
+  id: string;
+  parentId: string | null;
+  labelBn: string | null;
+  labelEn: string | null;
+  count: number;
+}
+
+export type QuestionBankFacetName =
+  | 'subject'
+  | 'chapter'
+  | 'topic'
+  | 'institution'
+  | 'admission_unit'
+  | 'exam_year';
+
+export type QuestionBankFacets = Record<
+  QuestionBankFacetName,
+  QuestionBankFacetOption[]
+>;
 
 export interface QuestionBankStats {
   total: number;
@@ -181,6 +227,12 @@ export interface QuestionBankRpcRow {
   subjects: unknown;
   chapters: unknown;
   topics: unknown;
+  /** v3 only. Absent on the v2 fallback path. */
+  levels?: unknown;
+  tracks?: unknown;
+  exam_year?: unknown;
+  institution?: unknown;
+  admission_unit?: unknown;
 }
 
 /**
@@ -214,6 +266,11 @@ export const DEFAULT_QUESTION_BANK_FILTERS: QuestionBankFilterState = {
   mistakesOnly: false,
   premiumOnly: false,
   sortBy: 'newest',
+  level: 'hsc',
+  track: '',
+  allTracks: false,
+  universityId: '',
+  admissionUnitId: '',
 };
 
 export function isQuestionBody(value: unknown): value is QuestionBody {
