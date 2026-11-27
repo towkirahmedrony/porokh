@@ -282,11 +282,17 @@ export function useQuestionBank() {
   );
 
   const resetFilters = useCallback(() => {
+    // Resetting from a list view stays on the list. Dropping `view=list` would
+    // send the student back to the subject picker, which is not what the reset
+    // button in the filter sheet promises.
     navigate(
-      { pathname: location.pathname, search: '' },
+      {
+        pathname: location.pathname,
+        search: filters.listView ? '?view=list' : '',
+      },
       { replace: true, state: location.state }
     );
-  }, [location.pathname, location.state, navigate]);
+  }, [filters.listView, location.pathname, location.state, navigate]);
 
   /**
    * Opening a subject is a navigation, not a filter tweak: it must create a

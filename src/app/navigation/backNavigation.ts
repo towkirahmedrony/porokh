@@ -87,6 +87,10 @@ const DEEP_LINK_FALLBACKS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/admission\/.*$/, '/admission'],
   [/^\/admission$/, '/dashboard/home'],
 
+  // Question bank drill-down: every screen below the list returns to the hub,
+  // which is where the student chose their way in.
+  [/^\/question-bank\/(?:list|colleges|universities|university\/[^/]+)$/, '/question-bank'],
+
   // Checkout -> plans.
   [/^\/premium\/checkout\/[^/]+$/, '/premium'],
 

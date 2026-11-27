@@ -51,7 +51,7 @@ export function hasQuestionBankView(filters: QuestionBankFilterState): boolean {
 export function isQuestionBankListRequest(
   filters: QuestionBankFilterState
 ): boolean {
-  return filters.level === 'admission' || hasQuestionBankView(filters);
+  return filters.level === 'admission' || filters.listView || hasQuestionBankView(filters);
 }
 
 /**
@@ -114,6 +114,8 @@ export function filtersFromSearchParams(
     allTracks: isFlagOn(params, 'allTracks'),
     universityId: readParam(params, 'university'),
     admissionUnitId: readParam(params, 'unit'),
+    institutionId: readParam(params, 'institutionId'),
+    listView: params.get('view') === 'list',
   };
 }
 
@@ -135,6 +137,8 @@ export function buildQuestionBankSearchParams(
 
   setValue('university', filters.universityId);
   setValue('unit', filters.admissionUnitId);
+  setValue('institutionId', filters.institutionId);
+  if (filters.listView) params.set('view', 'list');
   if (filters.level !== DEFAULT_QUESTION_BANK_FILTERS.level) {
     params.set('level', filters.level);
   }
@@ -205,6 +209,7 @@ export function applyQuestionBankFilterChange<K extends keyof QuestionBankFilter
       topicId: '',
       universityId: '',
       admissionUnitId: '',
+      institutionId: '',
       year: '',
       track: '',
       allTracks: false,

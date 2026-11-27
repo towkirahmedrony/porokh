@@ -51,6 +51,15 @@ const ChangePassword = lazy(() => import('@/features/auth/pages/ChangePassword')
 const Arena = lazy(() => import('@/features/exam/pages/Arena'));
 const Analysis = lazy(() => import('@/features/exam/pages/Analysis'));
 const QuestionBank = lazy(() => import('@/features/question-bank/pages/QuestionBank'));
+const QuestionBankHub = lazy(
+  () => import('@/features/question-bank/pages/QuestionBankHub')
+);
+const QuestionBankInstitutions = lazy(
+  () => import('@/features/question-bank/pages/QuestionBankInstitutions')
+);
+const QuestionBankUniversity = lazy(
+  () => import('@/features/question-bank/pages/QuestionBankUniversity')
+);
 
 // Admission (lazy loaded)
 const AdmissionLandingPage = lazy(() =>
@@ -238,6 +247,49 @@ const LegacyQuestionBankRedirect = () => {
       replace
     />
   );
+};
+
+/**
+ * `/question-bank` is the hub. A URL that carries any of the list's filter keys
+ * is an old deep link (a shared subject, a notification, a bookmark), so it is
+ * sent to the list with its query untouched instead of being read as a hub tab.
+ */
+const QUESTION_BANK_LIST_KEYS = [
+  'q',
+  'subject',
+  'chapter',
+  'topic',
+  'source',
+  'institution',
+  'institutionId',
+  'year',
+  'university',
+  'unit',
+  'level',
+  'track',
+  'allTracks',
+  'bookmarked',
+  'mistakes',
+  'premium',
+  'sort',
+  'view',
+] as const;
+
+const QuestionBankEntry = () => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const isListUrl = QUESTION_BANK_LIST_KEYS.some((key) => params.has(key));
+
+  if (isListUrl) {
+    return (
+      <Navigate
+        to={{ pathname: '/question-bank/list', search: location.search }}
+        replace
+      />
+    );
+  }
+
+  return <QuestionBankHub />;
 };
 
 const AppRoutes: React.FC = () => {
@@ -641,7 +693,20 @@ const AppRoutes: React.FC = () => {
           {/* Academic & Materials */}
           <Route path="/suggestion" element={<Placeholder title={t('placeholder.suggestion')} />} />
           <Route path="/bank" element={<LegacyQuestionBankRedirect />} />
-          <Route path="/question-bank" element={<QuestionBank />} />
+          <Route path="/question-bank" element={<QuestionBankEntry />} />
+          <Route path="/question-bank/list" element={<QuestionBank />} />
+          <Route
+            path="/question-bank/colleges"
+            element={<QuestionBankInstitutions kind="colleges" />}
+          />
+          <Route
+            path="/question-bank/universities"
+            element={<QuestionBankInstitutions kind="universities" />}
+          />
+          <Route
+            path="/question-bank/university/:institutionId"
+            element={<QuestionBankUniversity />}
+          />
           <Route path="/materials" element={<Placeholder title={t('placeholder.materials')} />} />
 
           {/* Support & Moderation */}

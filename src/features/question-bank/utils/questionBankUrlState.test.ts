@@ -103,6 +103,8 @@ test('every supported filter round-trips through the URL', () => {
     allTracks: true,
     universityId: 'university-1',
     admissionUnitId: 'unit-2',
+    institutionId: 'institution-4',
+    listView: true,
   };
 
   const restored = filtersFromSearchParams(
@@ -110,6 +112,22 @@ test('every supported filter round-trips through the URL', () => {
   );
 
   assert.deepEqual(restored, source);
+});
+
+test('a hub preset carries the board or college id, not the university key', () => {
+  const filters = filtersFromSearchParams(parse('?level=hsc&institutionId=board-9'));
+
+  assert.equal(filters.institutionId, 'board-9');
+  assert.equal(filters.universityId, '');
+  assert.equal(buildQuestionBankSearchParams(filters).get('institutionId'), 'board-9');
+});
+
+test('a list view with nothing scoped asks for the list, not the subject picker', () => {
+  const search = filtersFromSearchParams(parse('?level=hsc&view=list'));
+
+  assert.equal(search.listView, true);
+  assert.equal(hasQuestionBankView(search), false);
+  assert.equal(isQuestionBankListRequest(search), true);
 });
 
 test('default values are omitted so subject links stay short', () => {

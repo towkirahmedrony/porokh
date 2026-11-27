@@ -49,7 +49,9 @@ export const buildQuestionBankV3Args = (
   p_bookmarked_only: filters.bookmarkedOnly,
   p_mistakes_only: filters.mistakesOnly,
   p_premium_only: filters.premiumOnly,
-  p_institution_id: orNull(filters.universityId),
+  // One institution parameter for both halves of the bank: a university from
+  // the admission drill-down, or a board/college preset from the HSC hub.
+  p_institution_id: orNull(filters.universityId) ?? orNull(filters.institutionId),
   p_admission_unit_id: orNull(filters.admissionUnitId),
   p_year: orNull(filters.year),
   p_limit: limit,

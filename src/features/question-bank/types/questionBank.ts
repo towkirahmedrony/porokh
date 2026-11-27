@@ -157,6 +157,16 @@ export interface QuestionBankFilterState {
   universityId: string;
   /** Admission unit id. */
   admissionUnitId: string;
+  /**
+   * Board or college id for an HSC preset. Universities keep `universityId`,
+   * which the filter sheet reads, so the two never fight over one selection.
+   */
+  institutionId: string;
+  /**
+   * The URL asked for the list while nothing scopes it, which is how the hub's
+   * search reaches the list instead of the subject picker.
+   */
+  listView: boolean;
 }
 
 /** One option of one filter, as counted by get_question_bank_facets. */
@@ -271,6 +281,8 @@ export const DEFAULT_QUESTION_BANK_FILTERS: QuestionBankFilterState = {
   allTracks: false,
   universityId: '',
   admissionUnitId: '',
+  institutionId: '',
+  listView: false,
 };
 
 export function isQuestionBody(value: unknown): value is QuestionBody {
