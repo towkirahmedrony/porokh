@@ -27,6 +27,7 @@ import {
   buildQuestionBankSearchParams,
   filtersFromSearchParams,
   hasQuestionBankView,
+  isQuestionBankListRequest,
 } from '../utils/questionBankUrlState';
 import {
   questionBankSessionKey,
@@ -111,7 +112,12 @@ export function useQuestionBank() {
     );
 
   // An unknown subject in a copied URL must not trigger a doomed request.
-  const shouldFetchQuestions = hasView && !isInvalidSubject;
+  //
+  // The gate is the list view, not a scoping filter: the admission screen owns
+  // the base route and sends no subject, so gating it on `hasView` disabled the
+  // query for every admission-prep student and left the list permanently empty.
+  const shouldFetchQuestions =
+    isQuestionBankListRequest(filters) && !isInvalidSubject;
 
   const questionsQuery = useInfiniteQuery({
     queryKey: ['question-bank', 'questions', effectiveFilters],
@@ -249,12 +255,8 @@ export function useQuestionBank() {
     [answersQuery.data]
   );
 
-  const updateFilter = useCallback(
-    <K extends keyof QuestionBankFilterState>(
-      key: K,
-      value: QuestionBankFilterState[K]
-    ) => {
-      const next = applyQuestionBankFilterChange(filters, key, value);
+  const writeFilters = useCallback(
+    (next: QuestionBankFilterState) => {
       navigate(
         {
           pathname: location.pathname,
@@ -266,7 +268,17 @@ export function useQuestionBank() {
         { replace: true, state: location.state }
       );
     },
-    [filters, location.pathname, location.state, navigate]
+    [location.pathname, location.state, navigate]
+  );
+
+  const updateFilter = useCallback(
+    <K extends keyof QuestionBankFilterState>(
+      key: K,
+      value: QuestionBankFilterState[K]
+    ) => {
+      writeFilters(applyQuestionBankFilterChange(filters, key, value));
+    },
+    [filters, writeFilters]
   );
 
   const resetFilters = useCallback(() => {
@@ -302,6 +314,8 @@ export function useQuestionBank() {
   return {
     filters,
     updateFilter,
+    /** Writes a whole filter state in one navigation; no-op when unchanged. */
+    replaceFilters: writeFilters,
     resetFilters,
     openSubject,
     hasView,
@@ -324,6 +338,8 @@ export function useQuestionBank() {
     mode: derived.mode,
     capped: derived.capped,
     isLoading: filtersQuery.isLoading || (shouldFetchQuestions && questionsQuery.isLoading),
+    /** True only after a response arrived. An error or a disabled query is false. */
+    isQuestionsLoaded: questionsQuery.isSuccess,
     isFetching: questionsQuery.isFetching,
     isFetchingNextPage: questionsQuery.isFetchingNextPage,
     hasMore: Boolean(questionsQuery.hasNextPage),

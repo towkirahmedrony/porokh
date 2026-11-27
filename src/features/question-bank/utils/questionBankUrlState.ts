@@ -1,6 +1,7 @@
 import {
   DEFAULT_QUESTION_BANK_FILTERS,
   type QuestionBankFilterState,
+  type QuestionBankTrack,
 } from '../types/questionBank';
 
 const INSTITUTION_TYPES = ['board', 'college', 'admission'] as const;
@@ -32,6 +33,50 @@ export function hasQuestionBankView(filters: QuestionBankFilterState): boolean {
       filters.mistakesOnly ||
       filters.premiumOnly
   );
+}
+
+/**
+ * Whether the route should request the question list at all.
+ *
+ * HSC browsing opens on the subject picker, so the list exists only once
+ * something scopes it. Admission browsing opens on the list itself: the goal,
+ * the university and the track are the way in, and no subject is ever chosen,
+ * so `hasQuestionBankView` must not gate it. Without this distinction the base
+ * admission screen requested nothing and rendered the goal empty state from a
+ * query that never ran.
+ *
+ * The level in the URL decides, not the stage: the page rewrites a stale level
+ * from the server's stage before the list renders.
+ */
+export function isQuestionBankListRequest(
+  filters: QuestionBankFilterState
+): boolean {
+  return filters.level === 'admission' || hasQuestionBankView(filters);
+}
+
+/**
+ * The admission tab's defaults, applied in one step.
+ *
+ * The level and the goal track are tab state, not filters. Writing them
+ * separately costs two navigations and two requests, and the first one renders
+ * every admission track before the goal one arrives. Returns the same object
+ * when nothing changes, so the caller can skip the write entirely.
+ */
+export function withAdmissionDefaults(
+  filters: QuestionBankFilterState,
+  defaultTrack: QuestionBankTrack | null
+): QuestionBankFilterState {
+  let next = filters;
+
+  if (next.level !== 'admission') {
+    next = applyQuestionBankFilterChange(next, 'level', 'admission');
+  }
+
+  if (next.track === '' && defaultTrack) {
+    next = applyQuestionBankFilterChange(next, 'track', defaultTrack);
+  }
+
+  return next;
 }
 
 export function filtersFromSearchParams(

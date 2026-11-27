@@ -19,6 +19,7 @@ import { BankFilterSheet } from '../components/BankFilterSheet';
 import { BankGoalEmptyState } from '../components/BankGoalEmptyState';
 import { useStage } from '@/features/stage/hooks/useStage';
 import { needsGoalEmptyState, resolveBankMode } from '../utils/bankMode';
+import { withAdmissionDefaults } from '../utils/questionBankUrlState';
 import { FloatingAnswerButton } from '@/shared/components/filters/FloatingAnswerButton';
 import { useQuestionBank } from '../hooks/useQuestionBank';
 import { describeQuestionBankError } from '../services/questionBankErrors';
@@ -53,6 +54,23 @@ function InfoBadge(props: { children: React.ReactNode }) {
   );
 }
 
+/** Shown while the server's stage has not decided the bank yet. */
+function BankSkeleton() {
+  return (
+    <div className="min-h-full bg-app px-4 pt-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-3">
+        <div className="h-11 animate-pulse rounded-2xl bg-surface" />
+        {[0, 1, 2].map((index) => (
+          <div
+            key={index}
+            className="h-28 animate-pulse rounded-[20px] border border-card-border bg-card-bg"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function QuestionBank() {
   const { t, language } = useLanguage();
   const location = useLocation();
@@ -66,6 +84,7 @@ export default function QuestionBank() {
   const {
     filters,
     updateFilter,
+    replaceFilters,
     resetFilters,
     openSubject,
     hasView,
@@ -81,6 +100,7 @@ export default function QuestionBank() {
     capped,
     facets,
     isLoading,
+    isQuestionsLoaded,
     isFetching,
     isFetchingNextPage,
     hasMore,
@@ -120,14 +140,26 @@ export default function QuestionBank() {
     ].filter(Boolean).length;
   }, [filters]);
 
-  // Only an HSC student browses by subject first. Admission browsing opens on
-  // the list itself: the university and the goal are the way in, not a subject.
+  // Only the HSC tab browses by subject first. Admission browsing opens on the
+  // list itself: the university and the goal are the way in, not a subject, and
+  // a studying student's Admission tab must not fall back to the HSC picker.
   const isSubjectSelectionMode =
-    bankMode.mode === 'hsc' && (!hasView || isInvalidSubject);
+    bankMode.mode === 'hsc' &&
+    filters.level === 'hsc' &&
+    (!hasView || isInvalidSubject);
 
   const isGoalEmpty =
     activeFilterCount === 0 &&
-    needsGoalEmptyState(bankMode, filters.level, total, filters.allTracks);
+    // Only a successful response may claim the track has no questions; a
+    // pending or failed request must never borrow this state.
+    isQuestionsLoaded &&
+    needsGoalEmptyState(
+      bankMode,
+      filters.level,
+      total,
+      filters.allTracks,
+      isQuestionsLoaded
+    );
 
   const institutionName = useMemo(() => {
     if (!filters.institutionEiin) return '';
@@ -231,21 +263,33 @@ export default function QuestionBank() {
 
   // The URL is the single source of truth for the tab, so the stage rule is
   // written there once. An admission-prep student whose URL says hsc is moved
-  // to admission and their goal becomes the default track; a studying student
-  // is never moved, because for them the switch is theirs to use.
+  // to admission and their goal becomes the default track in a single write; a
+  // studying student is never moved off HSC, but their Admission tab still
+  // opens on their goal track.
   useEffect(() => {
-    if (bankMode.mode !== 'admission') return;
+    const tab = bankMode.mode === 'admission' ? 'admission' : filters.level;
+    if (tab !== 'admission') return;
 
-    if (filters.level !== 'admission') {
-      handleFilterChange('level', 'admission');
-      return;
-    }
+    const next = withAdmissionDefaults(filters, bankMode.defaultTrack);
+    if (next === filters) return;
 
-    if (filters.track === '' && bankMode.defaultTrack) {
-      handleFilterChange('track', bankMode.defaultTrack);
-    }
+    resetRevealState();
+    replaceFilters(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bankMode.mode, bankMode.defaultTrack, filters.level, filters.track]);
+  }, [bankMode.mode, bankMode.defaultTrack, filters, replaceFilters]);
+
+  // A failed list request used to render as an empty list. It now renders as an
+  // error, and this is the log that makes the failure visible in a device
+  // console instead of only as a zero count.
+  useEffect(() => {
+    if (!error) return;
+    console.error('[question-bank] list request failed', {
+      level: filters.level,
+      track: filters.track,
+      allTracks: filters.allTracks,
+      error,
+    });
+  }, [error, filters.level, filters.track, filters.allTracks]);
 
   const handleRefetch = () => {
     resetRevealState();
@@ -264,19 +308,14 @@ export default function QuestionBank() {
   // student may not be allowed to see, and a spinner that resolves to the wrong
   // tab is worse than a second of skeletons.
   if (bankMode.mode === 'neutral') {
-    return (
-      <div className="min-h-full bg-app px-4 pt-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl space-y-3">
-          <div className="h-11 animate-pulse rounded-2xl bg-surface" />
-          {[0, 1, 2].map((index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse rounded-[20px] border border-card-border bg-card-bg"
-            />
-          ))}
-        </div>
-      </div>
-    );
+    return <BankSkeleton />;
+  }
+
+  // A stale level in the URL is rewritten above, after paint. Rendering the
+  // list in the meantime would show an HSC screen to an admission student, so
+  // the skeleton holds until the URL agrees with the server's stage.
+  if (bankMode.mode === 'admission' && filters.level !== 'admission') {
+    return <BankSkeleton />;
   }
 
   return (
@@ -464,10 +503,22 @@ export default function QuestionBank() {
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <Search className="mb-3 h-10 w-10 text-text-secondary opacity-30" />
-                      <EmptyState title={t('questionBank.empty')} />
-                      <p className="mt-1 text-[11px] font-medium text-text-secondary">
-                        {t('questionBank.tryAgain')}
-                      </p>
+                      <EmptyState
+                        title={
+                          activeFilterCount > 0
+                            ? t('questionBank.noMatch')
+                            : t('questionBank.empty')
+                        }
+                      />
+                      {activeFilterCount > 0 && (
+                        <Button
+                          variant="ghost"
+                          className="mt-3 h-9 rounded-xl px-3 text-xs font-bold"
+                          onClick={handleResetFilters}
+                        >
+                          {t('questionBank.reset')}
+                        </Button>
+                      )}
                     </div>
                   )
                 ) : (

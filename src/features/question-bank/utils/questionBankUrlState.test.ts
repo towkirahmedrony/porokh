@@ -5,6 +5,8 @@ import {
   buildQuestionBankSearchParams,
   filtersFromSearchParams,
   hasQuestionBankView,
+  isQuestionBankListRequest,
+  withAdmissionDefaults,
 } from './questionBankUrlState';
 import {
   DEFAULT_QUESTION_BANK_FILTERS,
@@ -163,4 +165,46 @@ test('changing source clears the institution', () => {
 
   assert.equal(next.institutionType, 'college');
   assert.equal(next.institutionEiin, '');
+});
+
+test('the admission tab loads its list with no scoping filter, HSC does not', () => {
+  // The regression: the base admission screen sends no subject, no search and
+  // no quick filter, and the list query used to be disabled for that reason, so
+  // the bank rendered "0 / 0" and the goal empty state without ever calling the
+  // RPC.
+  const base = filtersFromSearchParams(parse(''));
+
+  assert.equal(isQuestionBankListRequest(base), false);
+
+  const admission = withAdmissionDefaults(base, 'varsity');
+
+  assert.equal(admission.level, 'admission');
+  assert.equal(admission.track, 'varsity');
+  assert.equal(isQuestionBankListRequest(admission), true);
+});
+
+test('the admission defaults are applied in one step and are idempotent', () => {
+  const base = filtersFromSearchParams(parse(''));
+  const once = withAdmissionDefaults(base, 'varsity');
+
+  // Same object back means the page has nothing to write to the URL, so the
+  // level and the track cost exactly one navigation and one request.
+  assert.equal(withAdmissionDefaults(once, 'varsity'), once);
+
+  // A copied HSC link is moved to admission and the HSC subject is dropped.
+  const stale = filtersFromSearchParams(parse('?level=hsc&subject=subject-1'));
+  const fixed = withAdmissionDefaults(stale, 'medical');
+
+  assert.equal(fixed.level, 'admission');
+  assert.equal(fixed.track, 'medical');
+  assert.equal(fixed.subjectId, '');
+});
+
+test('a goal-less admission student loads the list with every track', () => {
+  const base = filtersFromSearchParams(parse(''));
+  const admission = withAdmissionDefaults(base, null);
+
+  assert.equal(admission.level, 'admission');
+  assert.equal(admission.track, '');
+  assert.equal(isQuestionBankListRequest(admission), true);
 });
