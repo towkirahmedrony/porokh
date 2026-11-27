@@ -114,6 +114,7 @@ export default function QuestionBank() {
   } = useQuestionBank();
 
   const pageRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const restoredScrollKeyRef = useRef('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showInvalidSubjectNotice, setShowInvalidSubjectNotice] = useState(false);
@@ -133,6 +134,7 @@ export default function QuestionBank() {
       filters.topicId,
       filters.universityId,
       filters.admissionUnitId,
+      filters.institutionId,
       filters.year,
       filters.bookmarkedOnly ? 'bookmarked' : '',
       filters.mistakesOnly ? 'mistakes' : '',
@@ -143,9 +145,12 @@ export default function QuestionBank() {
   // Only the HSC tab browses by subject first. Admission browsing opens on the
   // list itself: the university and the goal are the way in, not a subject, and
   // a studying student's Admission tab must not fall back to the HSC picker.
+  // The hub's search reaches the list with nothing scoped, which is a list view
+  // (`view=list`) and not the subject picker. The picker still owns a bare URL.
   const isSubjectSelectionMode =
     bankMode.mode === 'hsc' &&
     filters.level === 'hsc' &&
+    !filters.listView &&
     (!hasView || isInvalidSubject);
 
   const isGoalEmpty =
@@ -169,6 +174,18 @@ export default function QuestionBank() {
     if (!match) return t('questionBank.unknownValue');
     return localizedText(match.name_bn, match.name_en, language);
   }, [admissions, boards, colleges, filters.institutionEiin, language, t]);
+
+  // The hub presets a board or a college by id, so the header names the
+  // institution the list is actually filtered by.
+  const presetInstitutionName = useMemo(() => {
+    if (!filters.institutionId) return '';
+    const match = [...boards, ...colleges, ...admissions].find(
+      (inst) => inst.id === filters.institutionId
+    );
+    return match
+      ? localizedText(match.name_bn, match.name_en, language)
+      : t('questionBank.unknownValue');
+  }, [admissions, boards, colleges, filters.institutionId, language, t]);
 
   const errorKey = error ? describeQuestionBankError(error) : null;
 
@@ -206,6 +223,19 @@ export default function QuestionBank() {
     return () => window.cancelAnimationFrame(frame);
   }, [isSubjectSelectionMode, isPaginationRestored, isLoading, sessionKey]);
 
+  // Arriving from the hub's search field should put the cursor in the list's
+  // search box, not leave the student to find it.
+  useEffect(() => {
+    if (isSubjectSelectionMode) return;
+    const wantsFocus = Boolean(
+      (location.state as { focusSearch?: boolean } | null)?.focusSearch
+    );
+    if (!wantsFocus) return;
+
+    const frame = window.requestAnimationFrame(() => searchRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [isSubjectSelectionMode, location.state]);
+
   // Scroll position is tiny and URL-keyed; answers/explanations stay in memory
   // only, so a refresh always reveals a clean list.
   useEffect(() => {
@@ -237,11 +267,10 @@ export default function QuestionBank() {
 
   const handleBack = () => {
     resetRevealState();
-    const fromSubjects = Boolean(
-      (location.state as { fromQuestionBankSubjects?: boolean } | null)
-        ?.fromQuestionBankSubjects
-    );
-    if (fromSubjects) {
+    // The list is a drill-down now: Back returns to the hub through history so
+    // the hub restores its own scroll position and tab, and a cold deep link
+    // with no history lands on the hub itself instead of leaving the app.
+    if (window.history.state?.idx > 0) {
       navigate(-1);
       return;
     }
@@ -401,6 +430,24 @@ export default function QuestionBank() {
               </Button>
             </div>
 
+            {/* The hub's search field lands here with the field focused, so the
+                student types into the list they just opened. */}
+            <label className="flex h-10 items-center gap-2 rounded-2xl border border-border-color bg-surface px-3 focus-within:ring-2 focus-within:ring-focus-ring">
+              <Search
+                className="h-4 w-4 shrink-0 text-text-secondary"
+                aria-hidden="true"
+              />
+              <span className="sr-only">{t('questionBank.searchLabel')}</span>
+              <input
+                ref={searchRef}
+                type="search"
+                value={filters.search}
+                onChange={(event) => handleFilterChange('search', event.target.value)}
+                placeholder={t('questionBank.search')}
+                className="h-full w-full bg-transparent text-[13px] font-medium text-text-primary placeholder:text-text-secondary focus:outline-none"
+              />
+            </label>
+
             <BankLevelBar
               level={filters.level}
               canSwitchLevel={bankMode.canSwitchLevel}
@@ -450,6 +497,12 @@ export default function QuestionBank() {
                   {filters.institutionEiin && (
                     <InfoBadge>
                       {t('questionBank.name')} {institutionName}
+                    </InfoBadge>
+                  )}
+
+                  {filters.institutionId && (
+                    <InfoBadge>
+                      {t('questionBank.name')} {presetInstitutionName}
                     </InfoBadge>
                   )}
 

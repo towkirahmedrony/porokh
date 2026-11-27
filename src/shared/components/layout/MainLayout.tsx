@@ -43,7 +43,9 @@ const updateSeoMeta = (
 
   const title = pathname.startsWith('/admission')
     ? t('meta.route.admission')
-    : routeTitleMap[pathname] ?? t('meta.dashboardTitle');
+    : pathname.startsWith('/question-bank')
+      ? t('meta.route.questionBank')
+      : routeTitleMap[pathname] ?? t('meta.dashboardTitle');
 
   document.title = title;
 
