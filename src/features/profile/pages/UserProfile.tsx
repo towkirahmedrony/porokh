@@ -26,9 +26,10 @@ import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
 import {
   formatBatchLabel,
-  formatStudentAcademicLabel,
+  formatHeaderStatus,
   goalLabel,
 } from '@/shared/lib/academic';
+import { AcademicStatusChips } from '@/shared/components/ui/AcademicStatusChips';
 import { useStage } from '@/features/stage/hooks/useStage';
 import { GoalPickerSheet } from '@/features/stage/components/GoalPickerSheet';
 import { useTheme } from '@/shared/hooks/useTheme';
@@ -115,14 +116,12 @@ const UserProfile: React.FC = () => {
   const name = user?.full_name || user?.user_metadata?.full_name || t('profile.anonymousUser');
   const avatarUrl = user?.avatar_url || user?.user_metadata?.avatar_url;
   const initials = name.trim().charAt(0).toUpperCase() || 'P';
-  const academicLabel = formatStudentAcademicLabel(
-    { hsc_batch: user?.hsc_batch, study_goal: user?.study_goal },
+  const statusChips = formatHeaderStatus(
+    { hsc_batch: stage.batchYear, study_goal: stage.goal },
+    stage.stage,
     language
   );
-  const subtitle = [
-    user?.username ? `@${user.username}` : null,
-    academicLabel || null,
-  ].filter(Boolean).join(' · ');
+  const streak = user?.current_streak ?? 0;
   const examUsage = examFeature?.unlimited ? '∞' : examFeature ? `${localizeDigits(examFeature.used, language)} / ${localizeDigits(examFeature.limit, language)}` : '—';
   const expiry = access?.premium_expires_at ? new Date(access.premium_expires_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
   const isDark = resolvedTheme === 'dark';
@@ -152,11 +151,23 @@ const UserProfile: React.FC = () => {
             <Settings size={21} aria-hidden="true" />
           </button>
 
-          <button type="button" onClick={() => navigate('/edit-profile')} className="flex w-full items-center gap-4 pr-14 text-left">
+          <button type="button" onClick={() => navigate('/edit-profile')} className="flex w-full items-start gap-4 pr-14 text-left">
             <span className="grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-3xl font-semibold text-white shadow-sm">
               {avatarUrl ? <img src={avatarUrl} alt={t('profile.avatarAlt')} className="h-full w-full object-cover" /> : initials}
             </span>
-            <span className="min-w-0 flex-1"><strong className="block truncate text-xl font-semibold leading-[1.45] text-text-primary">{name}</strong><span className="block truncate text-sm leading-[1.55] text-text-secondary">{subtitle || t('profile.fieldUsername')}</span></span>
+            <span className="min-w-0 flex-1">
+              <strong className="block break-words text-xl font-semibold leading-[1.45] text-text-primary">{name}</strong>
+              <span className="mt-2 block">
+                <AcademicStatusChips
+                  chips={stage.status === 'error' ? [] : statusChips}
+                  loading={stage.status === 'loading' && !stage.stage}
+                />
+              </span>
+              <span className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-badge-bg px-3 py-1 text-xs font-semibold text-badge-text">{t('profile.xpChip', { count: localizeDigits(user.total_xp ?? 0, language) })}</span>
+                <span className="rounded-full bg-warning-tint px-3 py-1 text-xs font-semibold text-warning-ink">{t('profile.streakChip', { count: localizeDigits(streak, language) })}</span>
+              </span>
+            </span>
           </button>
         </div>
       </section>

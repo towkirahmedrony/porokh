@@ -4,14 +4,16 @@ import assert from 'node:assert/strict';
 import {
   formatAcademicLabel,
   formatBatchLabel,
+  formatHeaderStatus,
   formatStudentAcademicLabel,
   goalLabel,
   isAdmissionGoal,
   isStudyGoal,
+  type StudyStage,
 } from './academic';
 
 test('goal labels are the four the product defines', () => {
-  assert.equal(goalLabel('hsc'), 'এইচএসসি');
+  assert.equal(goalLabel('hsc'), 'HSC');
   assert.equal(goalLabel('medical'), 'মেডিকেল');
   assert.equal(goalLabel('engineering'), 'ইঞ্জিনিয়ারিং');
   assert.equal(goalLabel('varsity'), 'ভার্সিটি');
@@ -86,6 +88,116 @@ test('no label ever prints the word শ্রেণি or a raw goal value', () 
     assert.ok(!label.includes('শ্রেণি'), `unexpected class word in "${label}"`);
     assert.ok(!/\bvarsity\b/.test(label), `unexpected raw goal in "${label}"`);
   }
+});
+
+test('an admission header is one goal chip and never the batch', () => {
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2026', study_goal: 'varsity' }, 'admission_prep'),
+    [{ text: 'ভার্সিটি ভর্তি প্রস্তুতি', kind: 'goal' }]
+  );
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2026', study_goal: 'medical' }, 'admission_prep'),
+    [{ text: 'মেডিকেল ভর্তি প্রস্তুতি', kind: 'goal' }]
+  );
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2026', study_goal: 'engineering' }, 'admission_prep'),
+    [{ text: 'ইঞ্জিনিয়ারিং ভর্তি প্রস্তুতি', kind: 'goal' }]
+  );
+});
+
+test('a studying header leads with the batch and only adds a real goal', () => {
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2027', study_goal: null }, 'studying'),
+    [{ text: 'HSC ২০২৭ · পরীক্ষার্থী', kind: 'status' }]
+  );
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2027', study_goal: 'medical' }, 'studying'),
+    [
+      { text: 'HSC ২০২৭ · পরীক্ষার্থী', kind: 'status' },
+      { text: 'মেডিকেল প্রস্তুতি', kind: 'goal' },
+    ]
+  );
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2027', study_goal: 'hsc' }, 'studying'),
+    [{ text: 'HSC ২০২৭ · পরীক্ষার্থী', kind: 'status' }]
+  );
+});
+
+test('a post-exam header waits for the gate instead of guessing', () => {
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2026', study_goal: 'varsity' }, 'post_hsc'),
+    []
+  );
+  assert.deepEqual(formatHeaderStatus({ hsc_batch: '2026' }, 'post_hsc'), []);
+});
+
+test('a missing or unknown stage renders nothing, not a stale line', () => {
+  assert.deepEqual(formatHeaderStatus({ hsc_batch: '2027' }, null), []);
+  assert.deepEqual(formatHeaderStatus({ hsc_batch: '2027' }, undefined), []);
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2027' }, 'graduate' as StudyStage),
+    []
+  );
+});
+
+test('an unknown goal never reaches the screen as a raw value', () => {
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2027', study_goal: 'doctor' }, 'studying'),
+    [{ text: 'HSC ২০২৭ · পরীক্ষার্থী', kind: 'status' }]
+  );
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2026', study_goal: 'doctor' }, 'admission_prep'),
+    [{ text: 'ভর্তি প্রস্তুতি', kind: 'goal' }]
+  );
+
+  for (const stage of ['studying', 'admission_prep'] as const) {
+    for (const goal of ['doctor', 'varsity', 'MBBS', '']) {
+      const texts = formatHeaderStatus({ hsc_batch: '2026', study_goal: goal }, stage).map(
+        (chip) => chip.text
+      );
+      assert.ok(!texts.some((text) => /varsity|doctor|MBBS/i.test(text)), texts.join(' | '));
+    }
+  }
+});
+
+test('a missing or malformed batch produces no broken chip', () => {
+  assert.deepEqual(formatHeaderStatus({ hsc_batch: null }, 'studying'), []);
+  assert.deepEqual(formatHeaderStatus({ hsc_batch: '26' }, 'studying'), []);
+  assert.deepEqual(formatHeaderStatus({}, 'studying'), []);
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2027', study_goal: 'varsity' }, 'studying'),
+    [
+      { text: 'HSC ২০২৭ · পরীক্ষার্থী', kind: 'status' },
+      { text: 'ভার্সিটি ভর্তি প্রস্তুতি', kind: 'goal' },
+    ]
+  );
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: null, study_goal: 'medical' }, 'studying'),
+    [{ text: 'মেডিকেল প্রস্তুতি', kind: 'goal' }]
+  );
+});
+
+test('the header follows the app language without changing identity', () => {
+  assert.deepEqual(formatHeaderStatus({ hsc_batch: '2027' }, 'studying', 'en'), [
+    { text: 'HSC 2027 · Student', kind: 'status' },
+  ]);
+  assert.deepEqual(
+    formatHeaderStatus({ hsc_batch: '2026', study_goal: 'varsity' }, 'admission_prep', 'en'),
+    [{ text: 'University admission prep', kind: 'goal' }]
+  );
+});
+
+test('a long name in the profile cannot leak into or lengthen a chip', () => {
+  const longName = 'Towkir Ahmed '.repeat(12).trim();
+  const chips = formatHeaderStatus(
+    { hsc_batch: '2026', study_goal: 'varsity', full_name: longName } as {
+      hsc_batch: string;
+      study_goal: string;
+    },
+    'admission_prep'
+  );
+
+  assert.deepEqual(chips, [{ text: 'ভার্সিটি ভর্তি প্রস্তুতি', kind: 'goal' }]);
 });
 
 test('another student is described by batch and goal, without a guessed stage', () => {

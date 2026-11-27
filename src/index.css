@@ -21,6 +21,8 @@
     --accent: #4F46E5;
     --success: #10B981;
     --warning: #F59E0B;
+    --warning-tint: #FEF3C7;
+    --warning-ink: #92400E;
     --danger: #EF4444;
     --info: #0EA5E9;
     --nav-bg: #FFFFFF;
@@ -58,6 +60,8 @@
     --accent: #6366F1;
     --success: #10B981;
     --warning: #F59E0B;
+    --warning-tint: #3A2E14;
+    --warning-ink: #FCD34D;
     --danger: #EF4444;
     --info: #0EA5E9;
     --nav-bg: #1E293B;

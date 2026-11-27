@@ -20,16 +20,22 @@ export type AdmissionGoal = (typeof ADMISSION_GOALS)[number];
 export type StudyStage = 'studying' | 'post_hsc' | 'admission_prep';
 
 const GOAL_LABELS: Record<StudyGoal, { bn: string; en: string }> = {
-  hsc: { bn: 'এইচএসসি', en: 'HSC' },
+  hsc: { bn: 'HSC', en: 'HSC' },
   medical: { bn: 'মেডিকেল', en: 'Medical' },
   engineering: { bn: 'ইঞ্জিনিয়ারিং', en: 'Engineering' },
   varsity: { bn: 'ভার্সিটি', en: 'University' },
 };
 
 const GOAL_PREP_LABELS: Record<StudyGoal, { bn: string; en: string }> = {
-  hsc: { bn: 'এইচএসসি প্রস্তুতি', en: 'HSC prep' },
+  hsc: { bn: 'HSC প্রস্তুতি', en: 'HSC prep' },
   medical: { bn: 'মেডিকেল প্রস্তুতি', en: 'Medical prep' },
   engineering: { bn: 'ইঞ্জিনিয়ারিং প্রস্তুতি', en: 'Engineering prep' },
+  varsity: { bn: 'ভার্সিটি ভর্তি প্রস্তুতি', en: 'University admission prep' },
+};
+
+const GOAL_ADMISSION_LABELS: Record<AdmissionGoal, { bn: string; en: string }> = {
+  medical: { bn: 'মেডিকেল ভর্তি প্রস্তুতি', en: 'Medical admission prep' },
+  engineering: { bn: 'ইঞ্জিনিয়ারিং ভর্তি প্রস্তুতি', en: 'Engineering admission prep' },
   varsity: { bn: 'ভার্সিটি ভর্তি প্রস্তুতি', en: 'University admission prep' },
 };
 
@@ -52,6 +58,12 @@ export const goalPrepLabel = (
   goal: StudyGoal | string | null | undefined,
   language: AppLanguage = 'bn'
 ): string => (isStudyGoal(goal) ? GOAL_PREP_LABELS[goal][language] : '');
+
+/** The admission wording, which names the exam the student is preparing for. */
+export const admissionGoalLabel = (
+  goal: AdmissionGoal | string | null | undefined,
+  language: AppLanguage = 'bn'
+): string => (isAdmissionGoal(goal) ? GOAL_ADMISSION_LABELS[goal][language] : '');
 
 /** A batch label always carries the permanent identity, never the class. */
 export const formatBatchLabel = (
@@ -124,6 +136,60 @@ export const formatAcademicLabel = (
   return liveGoal && isAdmissionGoal(liveGoal)
     ? `${base} · ${goalPrepLabel(liveGoal, language)}`
     : base;
+};
+
+export type HeaderStatusKind = 'status' | 'goal';
+
+export interface HeaderStatusChip {
+  text: string;
+  kind: HeaderStatusKind;
+}
+
+/**
+ * The chips under a student's name on their own Profile and Progress screens.
+ *
+ * Unlike `formatAcademicLabel`, a missing stage is not filled in with the
+ * pre-exam line: a header that guesses is worse than a header with no chip.
+ * `post_hsc` also returns nothing, because the goal gate owns that moment and
+ * the two screens are never reached before a goal is chosen.
+ */
+export const formatHeaderStatus = (
+  profile: AcademicLabelProfile | null | undefined,
+  stage: StudyStage | null | undefined,
+  language: AppLanguage = 'bn'
+): HeaderStatusChip[] => {
+  if (!isStudyStage(stage)) return [];
+
+  const batchYear =
+    typeof profile?.hsc_batch === 'string' && /^20[0-9]{2}$/.test(profile.hsc_batch)
+      ? profile.hsc_batch
+      : null;
+  const liveGoal = isStudyGoal(profile?.study_goal) ? profile.study_goal : null;
+
+  if (stage === 'admission_prep') {
+    const prep = isAdmissionGoal(liveGoal)
+      ? admissionGoalLabel(liveGoal, language)
+      : admissionPrepWord(language);
+
+    return [{ text: prep, kind: 'goal' }];
+  }
+
+  if (stage === 'post_hsc') return [];
+
+  const chips: HeaderStatusChip[] = [];
+
+  if (batchYear) {
+    chips.push({
+      text: `HSC ${localizeDigits(batchYear, language)} · ${studentWord(language)}`,
+      kind: 'status',
+    });
+  }
+
+  if (liveGoal && isAdmissionGoal(liveGoal)) {
+    chips.push({ text: goalPrepLabel(liveGoal, language), kind: 'goal' });
+  }
+
+  return chips;
 };
 
 /** Batch only, for screens that show another student and cannot know their stage. */

@@ -22,6 +22,8 @@ export default {
         'accent': 'var(--accent)',
         'success': 'var(--success)',
         'warning': 'var(--warning)',
+        'warning-tint': 'var(--warning-tint)',
+        'warning-ink': 'var(--warning-ink)',
         'danger': 'var(--danger)',
         'info': 'var(--info)',
         'nav-bg': 'var(--nav-bg)',
