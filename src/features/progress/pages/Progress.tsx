@@ -6,10 +6,8 @@ import { ProgressIdentity } from '../components/ProgressIdentity';
 import { AccuracyHero } from '../components/AccuracyHero';
 import { ActivityCalendar } from '../components/ActivityCalendar';
 import { PerformanceTrend } from '../components/PerformanceTrend';
-import { SkillBars } from '../components/SkillBars';
+import { SubjectAnalysis } from '../components/SubjectAnalysis';
 import { WeakTopics } from '../components/WeakTopics';
-import { MentorNote } from '../components/MentorNote';
-import { SubjectReport } from '../components/SubjectReport';
 import { MistakePracticeSection } from '@/features/practice/components/MistakePracticeSection';
 
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
@@ -128,11 +126,9 @@ const Progress: React.FC = () => {
           <>
             <ActivityCalendar days={data.activity.days} />
             <PerformanceTrend points={data.performance} />
-            <SkillBars subjects={data.subjects} />
+            <SubjectAnalysis subjects={data.subjects} />
             <WeakTopics topics={data.weaknesses} />
-            <MentorNote mentor={data.mentor} topics={data.weaknesses} />
             <MistakePracticeSection availableCount={data.mistakes.available} />
-            <SubjectReport subjects={data.subjects} />
           </>
         )}
       </div>

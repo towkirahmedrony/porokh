@@ -9,7 +9,6 @@ import {
   YAxis,
 } from 'recharts';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { localizeDigits } from '@/shared/i18n/messages';
 import type { AppMessageKey } from '@/shared/i18n/messages';
 import { SectionCard, SectionHeading } from './Section';
 import {
@@ -110,7 +109,10 @@ export const PerformanceTrend: React.FC<PerformanceTrendProps> = ({ points }) =>
             aria-label={t('progress.trendTitle')}
           >
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-              <AreaChart data={visible} margin={{ top: 8, right: 4, left: -32, bottom: 0 }}>
+              {/* The tick labels are drawn outside the axis line, so the plot keeps
+                  a positive left margin and the axis reserves its own width;
+                  a negative margin clips "০" against the card edge. */}
+              <AreaChart data={visible} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
                 <CartesianGrid
                   strokeDasharray="2 4"
                   vertical={false}
@@ -120,8 +122,7 @@ export const PerformanceTrend: React.FC<PerformanceTrendProps> = ({ points }) =>
                 <XAxis
                   dataKey="date"
                   tickFormatter={(value: string) => formatShortDayLabel(value, language)}
-                  stroke="currentColor"
-                  strokeOpacity={0.4}
+                  stroke="var(--text-secondary)"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
@@ -131,13 +132,13 @@ export const PerformanceTrend: React.FC<PerformanceTrendProps> = ({ points }) =>
                 <YAxis
                   domain={[minScore, 100]}
                   ticks={[0, 50, 100].filter((tick) => tick >= minScore)}
-                  stroke="currentColor"
-                  strokeOpacity={0.4}
+                  stroke="var(--text-secondary)"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
-                  width={44}
-                  tickFormatter={(value: number) => localizeDigits(value, language)}
+                  width={46}
+                  tickMargin={4}
+                  tickFormatter={(value: number) => formatPercent(value, language)}
                 />
                 <Tooltip
                   content={<TrendTooltip />}

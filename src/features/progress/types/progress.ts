@@ -80,21 +80,6 @@ export interface ProgressWeakTopic {
   error_rate_pct: number;
 }
 
-export type ProgressMentorKind = 'weakest_topic' | 'weakest_subject' | 'no_attempts';
-
-export interface ProgressMentor {
-  kind: ProgressMentorKind;
-  topic_id: string | null;
-  topic_name_bn: string | null;
-  chapter_name_bn: string | null;
-  subject_id: string | null;
-  subject_name_bn: string | null;
-  accuracy_pct: number | null;
-  error_rate_pct: number | null;
-  skipped_heavy: boolean;
-  href: string;
-}
-
 export interface ProgressDashboardResponse {
   user: ProgressUser;
   level: ProgressLevel | null;
@@ -106,7 +91,6 @@ export interface ProgressDashboardResponse {
   performance: ProgressTrendPoint[];
   subjects: ProgressSubjectStat[];
   weaknesses: ProgressWeakTopic[];
-  mentor: ProgressMentor;
   mistakes: {
     available: number;
   };
