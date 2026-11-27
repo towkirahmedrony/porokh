@@ -84,13 +84,19 @@ export const resolveInitialLevel = (
  * A goal with no questions yet still needs a screen. The caller renders the
  * "questions coming soon" state instead of an empty list, and this is the flag
  * that says so.
+ *
+ * `hasLoaded` is required on purpose. A pending or failed request also reports
+ * zero rows, and claiming "this track has no questions" from that is how a
+ * broken query used to look like a content decision.
  */
 export const needsGoalEmptyState = (
   result: BankModeResult,
   level: 'hsc' | 'admission' | null,
   totalForTrack: number,
-  includesAllTracks: boolean
+  includesAllTracks: boolean,
+  hasLoaded: boolean
 ): boolean =>
+  hasLoaded &&
   result.mode === 'admission' &&
   level === 'admission' &&
   !includesAllTracks &&

@@ -73,14 +73,23 @@ test('a stored tab is only honoured while the student may switch level', () => {
 test('the goal empty state appears only for a goal track with no questions', () => {
   const engineering = resolveBankMode({ ...ready, stage: 'admission_prep', goal: 'engineering' });
 
-  assert.equal(needsGoalEmptyState(engineering, 'admission', 0, false), true);
+  assert.equal(needsGoalEmptyState(engineering, 'admission', 0, false, true), true);
   // Questions exist, so the normal list renders.
-  assert.equal(needsGoalEmptyState(engineering, 'admission', 10, false), false);
+  assert.equal(needsGoalEmptyState(engineering, 'admission', 10, false, true), false);
   // The "all admission" chip is on, so an empty goal is not the reason.
-  assert.equal(needsGoalEmptyState(engineering, 'admission', 0, true), false);
+  assert.equal(needsGoalEmptyState(engineering, 'admission', 0, true, true), false);
   // HSC browsing is never a goal empty state.
-  assert.equal(needsGoalEmptyState(engineering, 'hsc', 0, false), false);
+  assert.equal(needsGoalEmptyState(engineering, 'hsc', 0, false, true), false);
 
   const noGoal = resolveBankMode({ ...ready, stage: 'admission_prep', goal: null });
-  assert.equal(needsGoalEmptyState(noGoal, 'admission', 0, false), false);
+  assert.equal(needsGoalEmptyState(noGoal, 'admission', 0, false, true), false);
+});
+
+test('a goal empty state waits for a successful response', () => {
+  const engineering = resolveBankMode({ ...ready, stage: 'admission_prep', goal: 'engineering' });
+
+  // Loading, an error and a disabled query all look like "0 rows". None of
+  // them may claim the track has no questions.
+  assert.equal(needsGoalEmptyState(engineering, 'admission', 0, false, false), false);
+  assert.equal(needsGoalEmptyState(engineering, 'admission', 0, false, true), true);
 });
