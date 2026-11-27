@@ -332,6 +332,15 @@ export function mapQuestion(
     totalAttempts: asNumberOr(row.total_attempts, 0),
     correctAttempts: asNumberOr(row.correct_attempts, 0),
     createdAt: row.created_at,
+    // Empty on the v2 fallback, which predates levels. The card renders no chip
+    // rather than inventing one.
+    levels: asArray(row.levels).filter(
+      (level): level is 'hsc' | 'admission' => level === 'hsc' || level === 'admission'
+    ),
+    tracks: asArray(row.tracks).filter((track): track is string => typeof track === 'string'),
+    examYear: asStringOrNull(row.exam_year),
+    institutionShortName: asStringOrNull(asRecord(row.institution)?.short_name),
+    admissionUnitCode: asStringOrNull(asRecord(row.admission_unit)?.code),
   };
 }
 

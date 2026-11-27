@@ -20,6 +20,55 @@ test('the base route means the subject list view', () => {
   assert.equal(hasQuestionBankView(filters), false);
 });
 
+test('the level and the goal track survive a refresh', () => {
+  const filters = filtersFromSearchParams(parse('?level=admission&track=engineering'));
+
+  assert.equal(filters.level, 'admission');
+  assert.equal(filters.track, 'engineering');
+});
+
+test('an unknown level or track falls back to HSC with no track', () => {
+  const filters = filtersFromSearchParams(parse('?level=graduate&track=doctorate'));
+
+  assert.equal(filters.level, 'hsc');
+  assert.equal(filters.track, '');
+});
+
+test('switching level clears the filters the other level cannot honour', () => {
+  const switched = applyQuestionBankFilterChange(
+    {
+      ...DEFAULT_QUESTION_BANK_FILTERS,
+      subjectId: 'subject-1',
+      chapterId: 'chapter-2',
+      universityId: 'university-1',
+      admissionUnitId: 'unit-2',
+      year: '2024',
+      allTracks: true,
+    },
+    'level',
+    'admission'
+  );
+
+  assert.equal(switched.level, 'admission');
+  assert.equal(switched.subjectId, '');
+  assert.equal(switched.chapterId, '');
+  assert.equal(switched.universityId, '');
+  assert.equal(switched.admissionUnitId, '');
+  assert.equal(switched.year, '');
+  assert.equal(switched.allTracks, false);
+});
+
+test('changing the university drops the unit chosen from the old one', () => {
+  const changed = applyQuestionBankFilterChange(
+    { ...DEFAULT_QUESTION_BANK_FILTERS, universityId: 'university-1', admissionUnitId: 'unit-2' },
+    'universityId',
+    'university-9'
+  );
+
+  assert.equal(changed.universityId, 'university-9');
+  assert.equal(changed.admissionUnitId, '');
+});
+
 test('a subject in the URL opens the question list', () => {
   const filters = filtersFromSearchParams(parse('?subject=subject-1'));
 
@@ -47,6 +96,11 @@ test('every supported filter round-trips through the URL', () => {
     mistakesOnly: true,
     premiumOnly: true,
     sortBy: 'most_attempted',
+    level: 'admission',
+    track: 'medical',
+    allTracks: true,
+    universityId: 'university-1',
+    admissionUnitId: 'unit-2',
   };
 
   const restored = filtersFromSearchParams(

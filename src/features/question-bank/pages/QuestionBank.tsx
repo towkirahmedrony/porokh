@@ -14,7 +14,11 @@ import { Button } from '@/shared/components/ui/Button';
 import { Loader } from '@/shared/components/feedback/Loader';
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import QuestionCard from '../components/QuestionCard';
-import { QuestionFilter } from '../components/QuestionFilter';
+import { BankLevelBar } from '../components/BankLevelBar';
+import { BankFilterSheet } from '../components/BankFilterSheet';
+import { BankGoalEmptyState } from '../components/BankGoalEmptyState';
+import { useStage } from '@/features/stage/hooks/useStage';
+import { needsGoalEmptyState, resolveBankMode } from '../utils/bankMode';
 import { FloatingAnswerButton } from '@/shared/components/filters/FloatingAnswerButton';
 import { useQuestionBank } from '../hooks/useQuestionBank';
 import { describeQuestionBankError } from '../services/questionBankErrors';
@@ -53,6 +57,12 @@ export default function QuestionBank() {
   const { t, language } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // The server's stage decides which bank this student gets. The page never
+  // guesses it and never derives it from a date.
+  const { stage, goal, status: stageStatus } = useStage();
+  const bankMode = resolveBankMode({ stage, goal, status: stageStatus });
+
   const {
     filters,
     updateFilter,
@@ -63,14 +73,13 @@ export default function QuestionBank() {
     sessionKey,
     isPaginationRestored,
     subjects,
-    chapters,
-    topics,
     boards,
     colleges,
     admissions,
     questions,
     total,
     capped,
+    facets,
     isLoading,
     isFetching,
     isFetchingNextPage,
@@ -94,14 +103,16 @@ export default function QuestionBank() {
   );
   const answersRevealed = revealState.answersRevealed;
 
+  // The level and the track are the tab, not filters: they are why the badge
+  // counts zero on a fresh admission screen.
   const activeFilterCount = useMemo(() => {
     return [
       filters.search,
       filters.subjectId,
       filters.chapterId,
       filters.topicId,
-      filters.institutionType,
-      filters.institutionEiin,
+      filters.universityId,
+      filters.admissionUnitId,
       filters.year,
       filters.bookmarkedOnly ? 'bookmarked' : '',
       filters.mistakesOnly ? 'mistakes' : '',
@@ -109,8 +120,14 @@ export default function QuestionBank() {
     ].filter(Boolean).length;
   }, [filters]);
 
-  // The URL decides the view; an unknown subject degrades to the subject list.
-  const isSubjectSelectionMode = !hasView || isInvalidSubject;
+  // Only an HSC student browses by subject first. Admission browsing opens on
+  // the list itself: the university and the goal are the way in, not a subject.
+  const isSubjectSelectionMode =
+    bankMode.mode === 'hsc' && (!hasView || isInvalidSubject);
+
+  const isGoalEmpty =
+    activeFilterCount === 0 &&
+    needsGoalEmptyState(bankMode, filters.level, total, filters.allTracks);
 
   const institutionName = useMemo(() => {
     if (!filters.institutionEiin) return '';
@@ -212,6 +229,24 @@ export default function QuestionBank() {
     resetFilters();
   };
 
+  // The URL is the single source of truth for the tab, so the stage rule is
+  // written there once. An admission-prep student whose URL says hsc is moved
+  // to admission and their goal becomes the default track; a studying student
+  // is never moved, because for them the switch is theirs to use.
+  useEffect(() => {
+    if (bankMode.mode !== 'admission') return;
+
+    if (filters.level !== 'admission') {
+      handleFilterChange('level', 'admission');
+      return;
+    }
+
+    if (filters.track === '' && bankMode.defaultTrack) {
+      handleFilterChange('track', bankMode.defaultTrack);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bankMode.mode, bankMode.defaultTrack, filters.level, filters.track]);
+
   const handleRefetch = () => {
     resetRevealState();
     void refetch();
@@ -224,6 +259,25 @@ export default function QuestionBank() {
   const toggleQuestionExplanation = (questionId: string) => {
     dispatchReveal({ type: 'toggle-explanation', questionId });
   };
+
+  // A half-known stage shows neither bank. Guessing would paint content the
+  // student may not be allowed to see, and a spinner that resolves to the wrong
+  // tab is worse than a second of skeletons.
+  if (bankMode.mode === 'neutral') {
+    return (
+      <div className="min-h-full bg-app px-4 pt-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-3">
+          <div className="h-11 animate-pulse rounded-2xl bg-surface" />
+          {[0, 1, 2].map((index) => (
+            <div
+              key={index}
+              className="h-28 animate-pulse rounded-[20px] border border-card-border bg-card-bg"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -292,7 +346,7 @@ export default function QuestionBank() {
               <Button
                 variant="outline"
                 onClick={() => setIsFilterOpen((current) => !current)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold xl:hidden"
+                className="inline-flex h-9 min-w-9 items-center gap-1.5 rounded-full px-3 text-xs font-bold"
                 aria-expanded={isFilterOpen}
                 aria-controls="question-bank-filters"
               >
@@ -308,25 +362,18 @@ export default function QuestionBank() {
               </Button>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
-              <aside className="space-y-3">
-                <div
-                  id="question-bank-filters"
-                  className={`${isFilterOpen ? 'block' : 'hidden'} xl:block`}
-                >
-                  <QuestionFilter
-                    filters={filters}
-                    chapters={chapters}
-                    topics={topics}
-                    boards={boards}
-                    colleges={colleges}
-                    admissions={admissions}
-                    onFilterChange={handleFilterChange}
-                    onReset={handleResetFilters}
-                  />
-                </div>
-              </aside>
+            <BankLevelBar
+              level={filters.level}
+              canSwitchLevel={bankMode.canSwitchLevel}
+              allTracks={filters.allTracks}
+              admissionTotal={null}
+              onChangeLevel={(next) => handleFilterChange('level', next)}
+              onToggleAllTracks={() =>
+                handleFilterChange('allTracks', !filters.allTracks)
+              }
+            />
 
+            <div className="grid gap-4">
               <main className="min-w-0 space-y-3">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] font-medium leading-snug text-text-secondary">
                   <span className="font-bold text-text-primary">
@@ -408,13 +455,21 @@ export default function QuestionBank() {
                     </div>
                   </div>
                 ) : questions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Search className="mb-3 h-10 w-10 text-text-secondary opacity-30" />
-                    <EmptyState title={t('questionBank.empty')} />
-                    <p className="mt-1 text-[11px] font-medium text-text-secondary">
-                      {t('questionBank.tryAgain')}
-                    </p>
-                  </div>
+                  isGoalEmpty ? (
+                    <BankGoalEmptyState
+                      onShowAllAdmission={() =>
+                        handleFilterChange('allTracks', true)
+                      }
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Search className="mb-3 h-10 w-10 text-text-secondary opacity-30" />
+                      <EmptyState title={t('questionBank.empty')} />
+                      <p className="mt-1 text-[11px] font-medium text-text-secondary">
+                        {t('questionBank.tryAgain')}
+                      </p>
+                    </div>
+                  )
                 ) : (
                   <div className="space-y-2.5">
                     {questions.map((question) => (
@@ -467,6 +522,16 @@ export default function QuestionBank() {
           </section>
         )}
       </div>
+
+      <BankFilterSheet
+        open={isFilterOpen}
+        facets={facets}
+        filters={filters}
+        activeCount={activeFilterCount}
+        onClose={() => setIsFilterOpen(false)}
+        onFilterChange={handleFilterChange}
+        onReset={handleResetFilters}
+      />
 
       {!isSubjectSelectionMode && questions.length > 0 && (
         <FloatingAnswerButton

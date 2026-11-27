@@ -4,6 +4,8 @@ import {
 } from '../types/questionBank';
 
 const INSTITUTION_TYPES = ['board', 'college', 'admission'] as const;
+const LEVELS = ['hsc', 'admission'] as const;
+const TRACKS = ['varsity', 'medical', 'engineering'] as const;
 const SORT_VALUES: QuestionBankFilterState['sortBy'][] = [
   'newest',
   'oldest',
@@ -58,6 +60,15 @@ export function filtersFromSearchParams(
     sortBy: SORT_VALUES.includes(sortBy as QuestionBankFilterState['sortBy'])
       ? (sortBy as QuestionBankFilterState['sortBy'])
       : DEFAULT_QUESTION_BANK_FILTERS.sortBy,
+    level: (LEVELS as readonly string[]).includes(readParam(params, 'level'))
+      ? (readParam(params, 'level') as QuestionBankFilterState['level'])
+      : DEFAULT_QUESTION_BANK_FILTERS.level,
+    track: (TRACKS as readonly string[]).includes(readParam(params, 'track'))
+      ? (readParam(params, 'track') as QuestionBankFilterState['track'])
+      : '',
+    allTracks: isFlagOn(params, 'allTracks'),
+    universityId: readParam(params, 'university'),
+    admissionUnitId: readParam(params, 'unit'),
   };
 }
 
@@ -77,9 +88,17 @@ export function buildQuestionBankSearchParams(
   setValue('institution', filters.institutionEiin);
   setValue('year', filters.year);
 
+  setValue('university', filters.universityId);
+  setValue('unit', filters.admissionUnitId);
+  if (filters.level !== DEFAULT_QUESTION_BANK_FILTERS.level) {
+    params.set('level', filters.level);
+  }
+  setValue('track', filters.track);
+
   if (filters.bookmarkedOnly) params.set('bookmarked', '1');
   if (filters.mistakesOnly) params.set('mistakes', '1');
   if (filters.premiumOnly) params.set('premium', '1');
+  if (filters.allTracks) params.set('allTracks', '1');
   if (filters.sortBy !== DEFAULT_QUESTION_BANK_FILTERS.sortBy) {
     params.set('sort', filters.sortBy);
   }
@@ -118,6 +137,32 @@ export function applyQuestionBankFilterChange<K extends keyof QuestionBankFilter
       ...filters,
       institutionType: String(value),
       institutionEiin: '',
+    };
+  }
+
+  if (key === 'universityId') {
+    // A unit belongs to one university, so changing the university drops it.
+    return {
+      ...filters,
+      universityId: String(value),
+      admissionUnitId: '',
+    };
+  }
+
+  if (key === 'level') {
+    // The two tabs have different filters; carrying them across would show a
+    // count the other tab cannot honour.
+    return {
+      ...filters,
+      level: value as QuestionBankFilterState['level'],
+      subjectId: '',
+      chapterId: '',
+      topicId: '',
+      universityId: '',
+      admissionUnitId: '',
+      year: '',
+      track: '',
+      allTracks: false,
     };
   }
 

@@ -14,6 +14,10 @@ import {
   toggleBookmark,
 } from '../services/questionBankService';
 import {
+  emptyQuestionBankFacets,
+  fetchQuestionBankFacets,
+} from '../services/questionBankLevelService';
+import {
   dedupeQuestions,
   buildStats,
 } from '../services/questionBankMapper';
@@ -205,6 +209,19 @@ export function useQuestionBank() {
     };
   }, [filters, filtersQuery.data, questionsQuery.data]);
 
+  /**
+   * Facet counts belong to the current filter set, including the level. They are
+   * fetched with the same effective filters as the list so a chip and the list
+   * below it can never describe two different sets.
+   */
+  const facetsQuery = useQuery({
+    queryKey: ['question-bank', 'facets', effectiveFilters],
+    queryFn: () => fetchQuestionBankFacets(effectiveFilters),
+    enabled: shouldFetchQuestions,
+    staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
+  });
+
   const answerQuestionIds = useMemo(
     () =>
       derived.questions
@@ -318,6 +335,8 @@ export function useQuestionBank() {
       ? toggleBookmarkMutation.variables?.questionId ?? null
       : null,
     isBookmarkUpdating: toggleBookmarkMutation.isPending,
+    facets: facetsQuery.data ?? emptyQuestionBankFacets(),
+    isFacetsFetching: facetsQuery.isFetching,
     answerKeys,
     isAnswersLoading: answersQuery.isLoading,
     isAnswersFetching: answersQuery.isFetching,

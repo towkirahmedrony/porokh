@@ -48,6 +48,25 @@ export const QUESTION_BANK_PAGE_SIZE = 20;
 /** Hard cap of the v1 RPC (`limit 100` inside the function). */
 export const LEGACY_ROW_CAP = 100;
 
+type V3Args = {
+  p_level: string;
+  p_track: string | null;
+  p_include_other_admission_tracks: boolean;
+  p_subject_id: string | null;
+  p_chapter_id: string | null;
+  p_topic_id: string | null;
+  p_sort: string;
+  p_search: string | null;
+  p_bookmarked_only: boolean;
+  p_mistakes_only: boolean;
+  p_premium_only: boolean;
+  p_institution_id: string | null;
+  p_admission_unit_id: string | null;
+  p_year: string | null;
+  p_limit: number;
+  p_offset: number;
+};
+
 type V2Args = {
   p_subject_id: string | null;
   p_chapter_id: string | null;
@@ -81,6 +100,7 @@ type AnswerKeyArgs = {
  * response is described here and validated before use instead of cast to `any`.
  */
 type QuestionBankRpcClient = {
+  rpc(fn: 'get_student_question_bank_v3', args: V3Args): Promise<RpcResult>;
   rpc(fn: 'get_student_question_bank_v2', args: V2Args): Promise<RpcResult>;
   rpc(fn: 'get_student_question_bank', args: V1Args): Promise<RpcResult>;
   rpc(
@@ -138,6 +158,34 @@ async function getUserMeta(questionIds: string[]) {
   };
 }
 
+/**
+ * Level is always sent, even though the server ignores it for a student in
+ * admission prep: the client states what it wants and the server decides what
+ * it may have.
+ */
+const toV3Args = (
+  filters: QuestionBankFilterState,
+  offset: number,
+  limit: number
+): V3Args => ({
+  p_level: filters.level,
+  p_track: filters.track || null,
+  p_include_other_admission_tracks: filters.allTracks,
+  p_subject_id: orNull(filters.subjectId),
+  p_chapter_id: orNull(filters.chapterId),
+  p_topic_id: orNull(filters.topicId),
+  p_sort: filters.sortBy,
+  p_search: orNull(filters.search),
+  p_bookmarked_only: filters.bookmarkedOnly,
+  p_mistakes_only: filters.mistakesOnly,
+  p_premium_only: filters.premiumOnly,
+  p_institution_id: orNull(filters.universityId),
+  p_admission_unit_id: orNull(filters.admissionUnitId),
+  p_year: orNull(filters.year),
+  p_limit: limit,
+  p_offset: offset,
+});
+
 const toV2Args = (
   filters: QuestionBankFilterState,
   offset: number,
@@ -179,10 +227,8 @@ export async function fetchQuestionPage(
 ): Promise<QuestionBankPage> {
   const limit = QUESTION_BANK_PAGE_SIZE;
 
-  const v2 = await questionBankRpc.rpc('get_student_question_bank_v2', toV2Args(filters, offset, limit));
-
-  if (!v2.error) {
-    const rows = asArray(v2.data).filter(isRpcRow);
+  const buildPage = async (data: unknown): Promise<QuestionBankPage> => {
+    const rows = asArray(data).filter(isRpcRow);
     const meta = await getUserMeta(rows.map((row) => row.id));
     const questions = rows.map((row) => mapQuestion(row, meta));
     const { total, nextOffset } = resolvePagination({
@@ -200,7 +246,22 @@ export async function fetchQuestionPage(
       capped: false,
       stats: buildStats(questions),
     };
-  }
+  };
+
+  // v3 is level-aware and owns the stage rule. v2 and v1 are kept only so a
+  // frontend deployed ahead of the migration still works.
+  const v3 = await questionBankRpc.rpc(
+    'get_student_question_bank_v3',
+    toV3Args(filters, offset, limit)
+  );
+
+  if (!v3.error) return buildPage(v3.data);
+
+  if (!isMissingRpcError(v3.error)) throw v3.error;
+
+  const v2 = await questionBankRpc.rpc('get_student_question_bank_v2', toV2Args(filters, offset, limit));
+
+  if (!v2.error) return buildPage(v2.data);
 
   if (!isMissingRpcError(v2.error)) throw v2.error;
 
@@ -257,6 +318,7 @@ export async function fetchQuestionAnswers(
     new Set(questionIds.map((id) => id.trim()).filter(Boolean))
   );
   if (ids.length === 0) return [];
+
 
   const { data, error } = await questionBankRpc.rpc(
     'get_student_question_bank_answers',
