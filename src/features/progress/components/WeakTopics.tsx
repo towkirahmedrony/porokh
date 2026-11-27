@@ -13,6 +13,11 @@ interface WeakTopicsProps {
 /**
  * Ranked by share of questions wrong or left unanswered, with the volume of
  * answers used to break ties so a single skipped question cannot sit on top.
+ *
+ * A topic with nothing wrong and everything skipped also scores 100% on that
+ * rate, which reads as "100% weak" even though nothing was answered wrongly.
+ * Those rows show how many questions were left instead of the percentage, so a
+ * skipped topic and a wrong-answer topic are not told the same thing.
  */
 export const WeakTopics: React.FC<WeakTopicsProps> = ({ topics }) => {
   const { language, t } = useLanguage();
@@ -53,18 +58,32 @@ export const WeakTopics: React.FC<WeakTopicsProps> = ({ topics }) => {
                 <p className="mt-0.5 truncate text-[11px] leading-4 text-text-secondary">
                   {chapterName ? `${subjectName} · ${chapterName}` : subjectName}
                 </p>
-                <p className="mt-0.5 text-[10px] leading-4 text-text-secondary">
-                  {t('progress.weakMeta', {
-                    wrong: formatCount(topic.wrong, language),
-                    skipped: formatCount(topic.skipped, language),
-                  })}
-                </p>
+                {topic.wrong > 0 ? (
+                  <p className="mt-0.5 text-[10px] leading-4 text-text-secondary">
+                    {t('progress.weakMeta', {
+                      wrong: formatCount(topic.wrong, language),
+                      skipped: formatCount(topic.skipped, language),
+                    })}
+                  </p>
+                ) : null}
               </div>
 
               <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="text-[13px] font-bold leading-5 text-text-primary">
-                  {formatPercent(topic.error_rate_pct, language)}
-                </span>
+                {topic.wrong > 0 ? (
+                  <span className="text-[13px] font-bold leading-5 text-text-primary">
+                    {formatPercent(topic.error_rate_pct, language)}
+                  </span>
+                ) : (
+                  <span className="inline-flex max-w-[104px] items-center gap-1.5 rounded-md bg-secondary px-2 py-0.5 text-right text-[11px] font-semibold leading-4 text-text-primary">
+                    <span
+                      aria-hidden="true"
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning"
+                    />
+                    {t('progress.weakSkippedOnly', {
+                      count: formatCount(topic.skipped, language),
+                    })}
+                  </span>
+                )}
                 <Link
                   to={buildTopicPracticeHref(topic.subject_id, topic.topic_id)}
                   aria-label={t('progress.weakPracticeAria', { topic: topicName })}
