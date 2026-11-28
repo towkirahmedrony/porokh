@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, ChevronLeft, ChevronRight, FileText, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
 import UniversityLogo from '@/features/admission/components/UniversityLogo';
@@ -12,8 +12,8 @@ import { useUniversityLogoMap } from '../hooks/useUniversityLogoMap';
 import { fetchQuestionBankFacets } from '../services/questionBankLevelService';
 import {
   hubAllUniversitiesHref,
-  hubUniversityHref,
-  hubUniversityYearHref,
+  hubUnitQuestionsHref,
+  hubUniversityUnitHref,
 } from '../utils/questionBankHub';
 import {
   DEFAULT_QUESTION_BANK_FILTERS,
@@ -21,24 +21,24 @@ import {
 } from '../types/questionBank';
 
 /**
- * One university's admission bank: its units, then its exam years, then the
- * question list preset to the three.
+ * One university's admission bank, first step: its units.
  *
- * The units are tiles rather than rows because they are the first choice on
- * this screen and a phone fits all of them above the fold; the years below stay
- * rows, since each one is a paper with a single number beside it.
+ * The screen holds one decision on purpose. A student picks an institution on
+ * the hub, picks a unit here, then picks a paper on the unit's page, and only
+ * then sees questions — the same four-step path the reference layout follows.
+ * The year list that used to share this page now lives one level deeper, so
+ * nothing on this screen competes with the units.
  *
- * The unit and year counts are the same facet RPC the filter sheet already
- * reads, called with the university fixed. Reusing it is why the numbers on this
- * page and the numbers in the sheet cannot drift apart.
+ * The unit counts are the same facet RPC the filter sheet already reads, called
+ * with the university fixed, which is why the number on a tile and the list
+ * behind it cannot drift apart. When a university has no unit rows at all, the
+ * page still offers its questions as one row instead of showing an empty grid.
  */
 export default function QuestionBankUniversity() {
   const { institutionId = '' } = useParams<{ institutionId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
 
-  const unitId = searchParams.get('unit') ?? '';
   const hub = useQuestionBankHub('admission');
   const logoById = useUniversityLogoMap(true);
 
@@ -56,9 +56,8 @@ export default function QuestionBankUniversity() {
       level: 'admission',
       allTracks: true,
       universityId: institutionId,
-      admissionUnitId: unitId,
     }),
-    [institutionId, unitId]
+    [institutionId]
   );
 
   const facetsQuery = useQuery({
@@ -68,22 +67,13 @@ export default function QuestionBankUniversity() {
     staleTime: 1000 * 60 * 2,
   });
 
-  const facets = facetsQuery.data;
-  const units = facets?.admission_unit ?? [];
-  const years = facets?.exam_year ?? [];
-  const selectedUnit = units.find((unit) => unit.id === unitId) ?? null;
+  const units = facetsQuery.data?.admission_unit ?? [];
+  const logoUrl = logoById[institutionId] ?? null;
 
   const questionMeta = (count: number) =>
     t('questionBank.hub.questionMeta', {
       count: localizeDigits(count, language),
     });
-
-  const selectUnit = (nextUnitId: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (nextUnitId) next.set('unit', nextUnitId);
-    else next.delete('unit');
-    setSearchParams(next, { replace: true });
-  };
 
   return (
     <div className="min-h-full bg-app pb-24">
@@ -99,7 +89,7 @@ export default function QuestionBankUniversity() {
           </button>
           {university && (
             <UniversityLogo
-              logoUrl={logoById[institutionId] ?? null}
+              logoUrl={logoUrl}
               name={university.labelBn}
               shortName={university.shortName}
               className="h-9 w-9 rounded-xl"
@@ -130,33 +120,13 @@ export default function QuestionBankUniversity() {
           </div>
         ) : (
           <div className="mt-3 space-y-6">
-            {university && (
-              <Link
-                to={hubUniversityHref(institutionId)}
-                className="!no-underline [text-decoration-line:none!important] flex items-center gap-3 rounded-[22px] border border-primary/20 bg-primary/[0.08] px-3.5 py-3.5 transition-colors active:bg-primary/[0.12] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
-                  <FileText className="h-[18px] w-[18px]" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-extrabold text-text-primary">
-                    {t('questionBank.hub.allQuestions')}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] font-semibold text-text-secondary">
-                    {questionMeta(university.count)}
-                  </span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
-              </Link>
-            )}
-
             {(facetsQuery.isPending || units.length > 0) && (
               <HubSection
                 title={t('questionBank.hub.units')}
                 meta={
-                  selectedUnit
-                    ? selectedUnit.labelBn ?? undefined
-                    : t('questionBank.allUnits')
+                  facetsQuery.isPending
+                    ? undefined
+                    : localizeDigits(units.length, language)
                 }
               >
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -168,78 +138,39 @@ export default function QuestionBankUniversity() {
                       />
                     ))
                   ) : (
-                    <>
-                      {selectedUnit && (
-                        <HubLogoTile
-                          label={t('questionBank.allUnits')}
-                          meta={questionMeta(university?.count ?? 0)}
-                          logoUrl={logoById[institutionId] ?? null}
-                          tone="primary"
-                          onClick={() => selectUnit('')}
-                        />
-                      )}
-                      {units.map((unit) => (
-                        <HubLogoTile
-                          key={unit.id}
-                          label={unit.labelBn ?? unit.id}
-                          meta={questionMeta(unit.count)}
-                          logoUrl={logoById[institutionId] ?? null}
-                          tone="info"
-                          selected={unit.id === unitId}
-                          onClick={() => selectUnit(unit.id)}
-                        />
-                      ))}
-                    </>
+                    units.map((unit) => (
+                      <HubLogoTile
+                        key={unit.id}
+                        href={hubUniversityUnitHref(institutionId, unit.id)}
+                        label={unit.labelBn ?? unit.id}
+                        meta={questionMeta(unit.count)}
+                        logoUrl={logoUrl}
+                        tone="info"
+                      />
+                    ))
                   )}
                 </div>
               </HubSection>
             )}
 
-            {(facetsQuery.isPending || years.length > 0) && (
-              <HubSection title={t('questionBank.hub.years')}>
-                <div className="space-y-2.5">
-                  {facetsQuery.isPending ? (
-                    [0, 1, 2].map((index) => (
-                      <div
-                        key={index}
-                        className="h-[74px] animate-pulse rounded-[22px] border border-card-border bg-card-bg"
-                      />
-                    ))
-                  ) : (
-                    years.map((year) => (
-                      <Link
-                        key={year.id}
-                        to={hubUniversityYearHref(institutionId, unitId, year.id)}
-                        className="!no-underline [text-decoration-line:none!important] flex items-center gap-3 rounded-[22px] border border-card-border bg-card-bg px-3.5 py-3 transition-colors active:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                      >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-info/20 bg-info/10 text-info">
-                          <CalendarDays className="h-[18px] w-[18px]" aria-hidden="true" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[14px] font-extrabold text-text-primary">
-                            {localizeDigits(year.labelBn ?? year.id, language)}
-                          </span>
-                          <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-text-secondary">
-                            <span className="inline-flex items-center gap-1 text-success">
-                              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                              {questionMeta(year.count)}
-                            </span>
-                            {selectedUnit && (
-                              <span className="inline-flex items-center gap-1">
-                                {selectedUnit.labelBn ?? selectedUnit.id}
-                              </span>
-                            )}
-                          </span>
-                        </span>
-                        <ChevronRight
-                          className="h-4 w-4 shrink-0 text-text-secondary"
-                          aria-hidden="true"
-                        />
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </HubSection>
+            {!facetsQuery.isPending && units.length === 0 && (
+              <Link
+                to={hubUnitQuestionsHref(institutionId, '')}
+                className="!no-underline [text-decoration-line:none!important] flex items-center gap-3 rounded-[22px] border border-primary/20 bg-primary/[0.08] px-3.5 py-3.5 transition-colors active:bg-primary/[0.12] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
+                  <FileText className="h-[18px] w-[18px]" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-extrabold text-text-primary">
+                    {t('questionBank.hub.allQuestions')}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-semibold text-text-secondary">
+                    {questionMeta(university?.count ?? 0)}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+              </Link>
             )}
 
             <button
