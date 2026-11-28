@@ -13,6 +13,7 @@ import { BankGoalEmptyState } from '../components/BankGoalEmptyState';
 import { useStage } from '@/features/stage/hooks/useStage';
 import { needsGoalEmptyState, resolveBankMode } from '../utils/bankMode';
 import { withAdmissionDefaults } from '../utils/questionBankUrlState';
+import { paperLabel, parsePaperKey } from '../utils/questionBankPaper';
 import { FloatingAnswerButton } from '@/shared/components/filters/FloatingAnswerButton';
 import { useQuestionBank } from '../hooks/useQuestionBank';
 import { describeQuestionBankError } from '../services/questionBankErrors';
@@ -477,7 +478,7 @@ export default function QuestionBank() {
                   {filters.year && (
                     <InfoBadge>
                       {t('questionBank.year')}:{' '}
-                      {localizeDigits(filters.year, language)}
+                      {paperLabel(parsePaperKey(filters.year), language)}
                     </InfoBadge>
                   )}
                   {filters.bookmarkedOnly && (
