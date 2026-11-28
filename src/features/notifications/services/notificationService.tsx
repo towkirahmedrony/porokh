@@ -159,8 +159,6 @@ export interface NotificationPreferences {
   /** Always true; in-app rows cannot be turned off. */
   in_app: boolean;
   push: boolean;
-  quiet_start: string;
-  quiet_end: string;
   timezone: string;
 }
 

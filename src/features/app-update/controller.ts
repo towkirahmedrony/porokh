@@ -21,7 +21,6 @@ import {
   OTA_RETRY_MAX_MS,
 } from './config';
 import { getExamActivities } from './examActivity';
-import { diagnosticErrorDetails, recordOtaDiagnostic } from './diagnostics';
 import {
   OTA_STORAGE_KEYS,
   clearBootNotice,
@@ -203,13 +202,6 @@ export const createOtaController = (
 
   const setPhase = (phase: OtaPhase): void => {
     if (snapshot.phase === phase) return;
-    recordOtaDiagnostic('info', 'phase_changed', {
-      from: snapshot.phase,
-      to: phase,
-      channel: snapshot.channel,
-      currentVersion: snapshot.currentVersion,
-      latestVersion: snapshot.latestVersion,
-    });
     if (!canTransitionOta(snapshot.phase, phase)) {
       console.warn(
         `[ota] invalid phase transition ${snapshot.phase} -> ${phase}`
@@ -254,9 +246,7 @@ export const createOtaController = (
   const safeCurrent = async (): Promise<ProviderCurrent | null> => {
     try {
       return await adapter.current();
-    } catch (error) {
-      recordOtaDiagnostic('warning', 'native_current_failed',
-        diagnosticErrorDetails(error));
+    } catch {
       return null;
     }
   };
@@ -426,11 +416,6 @@ export const createOtaController = (
   };
 
   const recordCheckFailure = (error: unknown): void => {
-    recordOtaDiagnostic('error', 'update_check_failed', {
-      channel: snapshot.channel,
-      currentVersion: snapshot.currentVersion,
-      ...diagnosticErrorDetails(error),
-    });
     const previous = readRetryState(kv, OTA_STORAGE_KEYS.checkRetry);
     const attempts = (previous?.attempts ?? 0) + 1;
     writeRetryState(kv, OTA_STORAGE_KEYS.checkRetry, {
@@ -442,12 +427,6 @@ export const createOtaController = (
   };
 
   const recordDownloadFailure = (version: string, error: unknown): void => {
-    recordOtaDiagnostic('error', 'download_failed', {
-      version,
-      channel: snapshot.channel,
-      nativeVersion: snapshot.nativeVersion,
-      ...diagnosticErrorDetails(error),
-    });
     const previous = readRetryState(kv, OTA_STORAGE_KEYS.downloadRetry);
     const attempts =
       (previous?.key === version ? previous.attempts : 0) + 1;
@@ -492,30 +471,13 @@ export const createOtaController = (
   const downloadCandidate = async (
     candidate: CandidateRelease
   ): Promise<void> => {
-    recordOtaDiagnostic('info', 'download_started', {
-      version: candidate.version,
-      channel: candidate.metadata.channel,
-      minNativeVersion: candidate.metadata.minNativeVersion,
-      requiredSchemaVersion: candidate.metadata.requiredSchemaVersion,
-      currentNativeVersion: snapshot.nativeVersion,
-      currentBundleVersion: snapshot.currentVersion,
-    });
     setPhase('downloading');
     patch({ progress: 0, error: null, latestVersion: candidate.version });
 
-    let lastLoggedProgress = 0;
     const unsubscribe = adapter.subscribeProgress(
       (progress: DownloadProgress) => {
         if (progress.version && progress.version !== candidate.version) return;
-        const percent = clampPercent(progress.percent);
-        patch({ progress: percent });
-        if (percent === 100 || percent >= lastLoggedProgress + 25) {
-          lastLoggedProgress = percent;
-          recordOtaDiagnostic('info', 'download_progress', {
-            version: candidate.version,
-            percent,
-          });
-        }
+        patch({ progress: clampPercent(progress.percent) });
       }
     );
 
@@ -526,11 +488,6 @@ export const createOtaController = (
         version: candidate.version,
         checksum: candidate.checksum,
         sessionKey: candidate.sessionKey,
-      });
-      recordOtaDiagnostic('info', 'download_result', {
-        version: bundle?.version ?? null,
-        status: bundle?.status ?? 'empty',
-        hasBundleChecksum: Boolean(bundle?.checksum),
       });
     } catch (error) {
       recordDownloadFailure(candidate.version, error);
@@ -571,10 +528,6 @@ export const createOtaController = (
     const localChecksum = (bundle.checksum ?? '').trim().toLowerCase();
 
     if (!isPlainChecksum(localChecksum)) {
-      recordOtaDiagnostic('error', 'download_rejected', {
-        version: candidate.version,
-        reason: 'local_checksum_invalid',
-      });
       try {
         await adapter.deleteBundle(bundle.id);
       } catch {
@@ -585,10 +538,6 @@ export const createOtaController = (
     }
 
     if (!requireSignature && !sameChecksum(localChecksum, candidate.checksum)) {
-      recordOtaDiagnostic('error', 'download_rejected', {
-        version: candidate.version,
-        reason: 'checksum_mismatch',
-      });
       try {
         await adapter.deleteBundle(bundle.id);
       } catch {
@@ -607,13 +556,6 @@ export const createOtaController = (
         listed.version !== candidate.version ||
         (listed.checksum && !sameChecksum(listed.checksum, localChecksum))
       ) {
-        recordOtaDiagnostic('error', 'download_rejected', {
-          version: candidate.version,
-          reason: 'installed_bundle_check_failed',
-          foundBundle: Boolean(listed),
-          listedStatus: listed?.status ?? 'missing',
-          listedVersion: listed?.version ?? null,
-        });
         await adapter.deleteBundle(bundle.id);
         recordDownloadFailure(
           candidate.version,
@@ -636,10 +578,6 @@ export const createOtaController = (
     };
 
     staged = nextStaged;
-    recordOtaDiagnostic('info', 'download_staged', {
-      version: nextStaged.version,
-      signed: nextStaged.signed ?? false,
-    });
     writeStagedUpdate(kv, nextStaged);
     clearRetryState(kv, OTA_STORAGE_KEYS.downloadRetry);
     patch({
@@ -669,11 +607,6 @@ export const createOtaController = (
   };
 
   const performCheck = async (manual = false): Promise<void> => {
-    recordOtaDiagnostic('info', 'update_check_started', {
-      channel,
-      currentVersion: snapshot.currentVersion,
-      nativeVersion: snapshot.nativeVersion,
-    });
     setPhase('checking');
     patch({ error: null });
 
@@ -706,18 +639,6 @@ export const createOtaController = (
       recordCheckFailure(error);
       return;
     }
-
-    recordOtaDiagnostic(
-      latest.kind === 'blocked' || latest.kind === 'failed' ? 'warning' : 'info',
-      'pointer_result',
-      {
-        channel,
-        kind: latest.kind ?? 'candidate',
-        version: latest.version ?? null,
-        reason: latest.reason ?? null,
-        error: latest.error ?? null,
-      }
-    );
 
     if (latest.kind === 'up_to_date' || latest.error === 'no_new_version_available') {
       clearRetryState(kv, OTA_STORAGE_KEYS.checkRetry);
@@ -768,14 +689,6 @@ export const createOtaController = (
     );
 
     if (!metadata || reasons.length > 0) {
-      recordOtaDiagnostic('warning', 'candidate_rejected', {
-        version: latest.version,
-        reasons: reasons.length > 0 ? reasons.join(',') : 'metadata_invalid',
-        currentNativeVersion: installedNative,
-        requiredNativeVersion: metadata?.minNativeVersion ?? null,
-        currentSchemaVersion: supportedSchemaVersion,
-        requiredSchemaVersion: metadata?.requiredSchemaVersion ?? null,
-      });
       await rejectCandidate(
         latest.version,
         reasons.length > 0 ? reasons : ['metadata_invalid']
@@ -792,14 +705,6 @@ export const createOtaController = (
       signatureRequired: requireSignature,
     };
 
-    recordOtaDiagnostic('info', 'candidate_accepted', {
-      version: candidate.version,
-      channel: candidate.metadata.channel,
-      revision: candidate.metadata.revision,
-      minNativeVersion: candidate.metadata.minNativeVersion,
-      requiredSchemaVersion: candidate.metadata.requiredSchemaVersion,
-    });
-
     if (isRejected(latest.version)) {
       patch({
         phase: 'rejected',
@@ -810,19 +715,9 @@ export const createOtaController = (
     }
 
     if (isDownloadBackedOff(latest.version)) {
-      const retry = readRetryState(kv, OTA_STORAGE_KEYS.downloadRetry);
       if (manual) {
         clearRetryState(kv, OTA_STORAGE_KEYS.downloadRetry);
-        recordOtaDiagnostic('info', 'manual_retry_cleared_backoff', {
-          version: latest.version,
-          previousAttempts: retry?.attempts ?? null,
-        });
       } else {
-        recordOtaDiagnostic('warning', 'download_retry_deferred', {
-          version: latest.version,
-          attempts: retry?.attempts ?? null,
-          retryInMs: Math.max(0, (retry?.nextAt ?? now()) - now()),
-        });
         patch({
           phase: 'download_failed',
           error: 'Waiting before retrying this download',

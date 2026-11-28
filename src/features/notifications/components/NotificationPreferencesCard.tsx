@@ -23,10 +23,11 @@ const LOCKED_TYPES = new Set(['security']);
 const Toggle: React.FC<{
   checked: boolean;
   disabled?: boolean;
+  busy?: boolean;
   label: string;
   hint?: string;
   onChange?: () => void;
-}> = ({ checked, disabled = false, label, hint, onChange }) => (
+}> = ({ checked, disabled = false, busy = false, label, hint, onChange }) => (
   <div
     className={`flex min-h-[56px] items-center justify-between gap-4 py-2 ${
       disabled ? 'opacity-70' : ''
@@ -36,7 +37,13 @@ const Toggle: React.FC<{
       <span className="block text-[15px] leading-6 font-medium text-text-primary break-words">{label}</span>
       {hint && <span className="mt-0.5 block text-[13px] leading-5 text-text-secondary break-words">{hint}</span>}
     </span>
-    <SettingsSwitch checked={checked} disabled={disabled} label={label} onChange={onChange} />
+    <SettingsSwitch
+      checked={checked}
+      disabled={disabled}
+      busy={busy}
+      label={label}
+      onChange={onChange}
+    />
   </div>
 );
 
@@ -45,7 +52,7 @@ const NotificationPreferencesCard: React.FC<{ userId: string }> = ({ userId }) =
   const queryClient = useQueryClient();
   const queryKey = ['notifications', 'preferences', userId];
 
-  const { data, isLoading } = useQuery<NotificationPreferences>({
+  const { data, isLoading, isError, refetch } = useQuery<NotificationPreferences>({
     queryKey,
     queryFn: fetchNotificationPreferences,
     enabled: Boolean(userId),
@@ -75,6 +82,23 @@ const NotificationPreferencesCard: React.FC<{ userId: string }> = ({ userId }) =
     },
   });
 
+  if (isError) {
+    return (
+      <div className="py-3">
+        <p className="text-[13px] leading-5 text-red-500" role="alert">
+          {t('notification.preferencesError')}
+        </p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-1 text-[13px] font-medium text-primary underline-offset-2 hover:underline"
+        >
+          {t('common.retry')}
+        </button>
+      </div>
+    );
+  }
+
   if (isLoading || !data) {
     return (
       <div className="space-y-2 py-2">
@@ -89,6 +113,7 @@ const NotificationPreferencesCard: React.FC<{ userId: string }> = ({ userId }) =
     <div className="divide-y divide-border-color/60">
       <Toggle
         checked={data.push}
+        busy={mutation.isPending}
         label={t('notification.push')}
         onChange={() => mutation.mutate({ push: !data.push })}
       />
@@ -97,38 +122,11 @@ const NotificationPreferencesCard: React.FC<{ userId: string }> = ({ userId }) =
         {t('notification.inAppAlways')}
       </p>
 
-      <div className="space-y-2 py-4">
-        <div>
-          <p className="text-[15px] font-medium text-text-primary">
-            {t('notification.quietHours')}
-          </p>
-          <p className="mt-0.5 text-[13px] leading-5 text-text-secondary">
-            {t('notification.quietHoursHint')}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="flex flex-1 items-center gap-2 text-[13px] text-text-secondary">
-            <span>{t('notification.quietStart')}</span>
-            <input
-              type="time"
-              value={data.quiet_start}
-              onChange={(event) =>
-                mutation.mutate({ quiet_start: event.target.value })
-              }
-              className="min-h-[40px] w-full rounded-lg border border-input-border bg-input-bg px-2 text-sm text-text-primary"
-            />
-          </label>
-          <label className="flex flex-1 items-center gap-2 text-[13px] text-text-secondary">
-            <span>{t('notification.quietEnd')}</span>
-            <input
-              type="time"
-              value={data.quiet_end}
-              onChange={(event) => mutation.mutate({ quiet_end: event.target.value })}
-              className="min-h-[40px] w-full rounded-lg border border-input-border bg-input-bg px-2 text-sm text-text-primary"
-            />
-          </label>
-        </div>
-      </div>
+      {mutation.isError ? (
+        <p className="py-3 text-[13px] leading-5 text-red-500" role="alert">
+          {t('notification.preferencesError')}
+        </p>
+      ) : null}
 
       <div className="pt-1">
         {TYPE_KEYS.map(([type, labelKey]) => {
@@ -138,6 +136,7 @@ const NotificationPreferencesCard: React.FC<{ userId: string }> = ({ userId }) =
               key={type}
               checked={locked ? true : data.types[type] !== false}
               disabled={locked}
+              busy={!locked && mutation.isPending}
               label={t(labelKey)}
               hint={locked ? t('notification.alwaysOn') : undefined}
               onChange={

@@ -19,7 +19,7 @@ import { useOta } from './UpdateProvider';
 import { REASON_MESSAGES, primaryReason } from './reasonMessages';
 import { decideUpdate, normalizeUpdatePolicy } from './versionPolicy';
 import { currentBuild } from './buildInfo';
-import { OtaDiagnosticsPanel } from './OtaDiagnosticsPanel';
+import { baseVersionOf } from './version';
 
 type ConfigRow = { key: string; value?: unknown };
 
@@ -86,7 +86,11 @@ export const ForcedUpdateCard: React.FC = () => {
       ? decision.apkUrl
       : policy.apk_download_url || null;
 
-  const latestOtaVersion = ota.latestVersion;
+  // The running version is what the user sees: the active OTA bundle's semver
+  // when one is running, otherwise the APK's own version. The full release id
+  // (`1.0.5-ota.production-android.r000214...`) is never shown.
+  const runningVersion =
+    (ota.currentVersion && baseVersionOf(ota.currentVersion)) || nativeVersion;
 
   const checking = ota.phase === 'checking';
   const downloading = ota.phase === 'available' || ota.phase === 'downloading';
@@ -185,15 +189,6 @@ export const ForcedUpdateCard: React.FC = () => {
     error: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300',
   } as const;
 
-  const versionRow = (label: string, value: string | null) => (
-    <div className="flex items-baseline justify-between gap-3 py-1">
-      <span className="text-[13px] leading-5 text-text-secondary break-words">{label}</span>
-      <span className="shrink-0 text-[13px] leading-5 font-medium tabular-nums text-text-primary">
-        {value || t('settings.unknownVersion')}
-      </span>
-    </div>
-  );
-
   return (
     <div className="p-4">
       <div className="flex items-center gap-3">
@@ -210,12 +205,13 @@ export const ForcedUpdateCard: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-3 rounded-xl bg-surface-elevated/50 px-3 py-1">
-        {versionRow(t('settings.apkVersionLabel'), nativeVersion)}
-        {versionRow(t('settings.otaInstalledLabel'), ota.currentVersion)}
-        {latestOtaVersion && latestOtaVersion !== ota.currentVersion
-          ? versionRow(t('settings.otaLatestLabel'), latestOtaVersion)
-          : null}
+      <div className="mt-3 flex items-baseline justify-between gap-3 rounded-xl bg-surface-elevated/50 px-3 py-2">
+        <span className="min-w-0 flex-1 text-[13px] leading-5 text-text-secondary break-words">
+          {t('settings.appVersionLabel')}
+        </span>
+        <span className="max-w-[55%] text-right text-[13px] leading-5 font-medium tabular-nums text-text-primary break-words">
+          {runningVersion || t('settings.unknownVersion')}
+        </span>
       </div>
 
       {decision.kind === 'mandatory_apk' ? (
@@ -319,8 +315,6 @@ export const ForcedUpdateCard: React.FC = () => {
           </button>
         </div>
       ) : null}
-
-      <OtaDiagnosticsPanel currentBuild={nativeVersion ? `APK ${nativeVersion}` : 'APK'} />
     </div>
   );
 };

@@ -1,13 +1,12 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell, ChevronRight, Globe, GraduationCap, HelpCircle, Info, LifeBuoy, Lock,
-  LogOut, Megaphone, Moon, MonitorSmartphone, Palette, Pencil, Puzzle, Shield,
-  Sun, User, Users,
+  Moon, MonitorSmartphone, Palette, Pencil, Puzzle, Shield,
+  Sun, Users,
 } from 'lucide-react';
 import { BackButton } from '@/shared/components/ui/BackButton';
-import ConfirmModal from '@/shared/components/feedback/ConfirmModal';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { useTheme } from '@/shared/hooks/useTheme';
 import type { Theme } from '@/app/providers/ThemeProvider';
@@ -22,7 +21,6 @@ import {
   SheetRadioRow,
 } from '@/features/profile/components/SettingsBottomSheet';
 import { ForcedUpdateCard } from '@/features/app-update/ForcedUpdateCard';
-import NotificationPreferencesCard from '@/features/notifications/components/NotificationPreferencesCard';
 import NativeNotificationSettingsCard from '@/features/notifications/components/NativeNotificationSettingsCard';
 import { Capacitor } from '@capacitor/core';
 
@@ -140,11 +138,9 @@ export const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
   const { theme, setTheme } = useTheme();
-  const { signOut, user } = useAuth();
+  const { user } = useAuth();
 
   const [sheet, setSheet] = useState<'language' | 'theme' | null>(null);
-  const [logoutConfirm, setLogoutConfirm] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
 
   const textFontClass =
     language === 'bn' ? "font-['Noto_Sans_Bengali']" : 'font-sans';
@@ -152,18 +148,6 @@ export const Settings: React.FC = () => {
   // The website always runs the deployed build, so update controls belong to
   // the Android app only.
   const native = Capacitor.isNativePlatform();
-
-  const handleLogout = useCallback(async () => {
-    setLoggingOut(true);
-    try {
-      if (signOut) await signOut();
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      setLoggingOut(false);
-      setLogoutConfirm(false);
-    }
-  }, [signOut]);
 
   const currentThemeLabel = (() => {
     const option = THEME_OPTIONS.find((item) => item.value === theme);
@@ -253,11 +237,6 @@ export const Settings: React.FC = () => {
         {/* C. Account, existing profile and auth routes only */}
         <SettingSection title={t('settings.sectionAccount')}>
           <SettingRow
-            icon={User}
-            title={t('settings.viewProfile')}
-            onClick={() => navigate('/profile')}
-          />
-          <SettingRow
             icon={Pencil}
             title={t('settings.editProfile')}
             onClick={() => navigate('/edit-profile')}
@@ -272,12 +251,6 @@ export const Settings: React.FC = () => {
             icon={Lock}
             title={t('settings.changePassword')}
             onClick={() => navigate('/change-password')}
-          />
-          <SettingRow
-            icon={LogOut}
-            title={t('settings.logout')}
-            onClick={() => setLogoutConfirm(true)}
-            danger
             isLast
           />
         </SettingSection>
@@ -285,29 +258,12 @@ export const Settings: React.FC = () => {
         {/* D. Preferences, supported notification settings only */}
         <SettingSection title={t('settings.sectionPreferences')}>
           <SettingRow
-            icon={Megaphone}
-            title={t('settings.notices')}
-            description={t('settings.noticesDescription')}
-            onClick={() => navigate('/notices')}
-          />
-          <SettingRow
             icon={Bell}
             title={t('settings.notifications')}
             description={t('settings.notificationsDescription')}
-            onClick={() => navigate('/notifications')}
+            onClick={() => navigate('/notification-settings')}
           />
           {user?.id && <NativeNotificationSettingsCard />}
-          {user?.id && (
-            <div className="px-4 pb-4 pt-4">
-              <p className="text-[15px] leading-6 font-medium text-text-primary">
-                {t('notification.preferencesTitle')}
-              </p>
-              <p className="mb-2 mt-0.5 text-[13px] leading-[1.5] text-text-secondary">
-                {t('notification.preferencesDescription')}
-              </p>
-              <NotificationPreferencesCard userId={user.id} />
-            </div>
-          )}
         </SettingSection>
 
         {/* E. App updates, the single OTA/APK surface for the Android app */}
@@ -399,18 +355,6 @@ export const Settings: React.FC = () => {
           })}
         </div>
       </SettingsBottomSheet>
-
-      <ConfirmModal
-        isOpen={logoutConfirm}
-        title={t('settings.logoutConfirmTitle')}
-        message={t('settings.logoutConfirmBody')}
-        confirmText={t('settings.logout')}
-        cancelText={t('common.cancel')}
-        loadingText={t('settings.logout')}
-        isLoading={loggingOut}
-        onConfirm={() => void handleLogout()}
-        onCancel={() => setLogoutConfirm(false)}
-      />
     </div>
   );
 };
