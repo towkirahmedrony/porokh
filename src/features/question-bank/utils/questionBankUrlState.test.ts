@@ -104,6 +104,7 @@ test('every supported filter round-trips through the URL', () => {
     universityId: 'university-1',
     admissionUnitId: 'unit-2',
     institutionId: 'institution-4',
+    examId: 'ru-a-2025-26-shift-1',
     listView: true,
   };
 

@@ -1,12 +1,20 @@
 import { supabase } from '@/shared/lib/supabase';
-import type { QuestionBankFilterState } from '../types/questionBank';
-import type { QuestionBankPaper } from '../utils/questionBankPaper';
 
 /**
- * One row per exam paper of a unit, not per year: a year sat in four shifts is
- * four papers, and each is the thing a student actually opens. Counts come from
- * the server so premium redaction and the live-paper rule stay server-side.
+ * The past papers of one admission unit, exactly as the admission screen knows
+ * them: the paper's own title, its printed duration and its negative marking,
+ * with how many questions an attempt could serve. The question bank lists the
+ * same rows so a student sees one paper, not one year it happens to belong to.
  */
+export interface QuestionBankUnitPaper {
+  id: string;
+  title: string;
+  /** Session label ("2025-26"); null when neither metadata nor title states one. */
+  year: string | null;
+  durationMin: number | null;
+  negativeMarks: number | null;
+  count: number;
+}
 
 type PaperRpcClient = {
   rpc(
@@ -23,47 +31,46 @@ type PaperRpcClient = {
 
 const paperRpc = supabase as unknown as PaperRpcClient;
 
-const orNull = (value: string): string | null => {
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
+const toNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(number) ? number : null;
 };
 
 export async function fetchUnitPapers(
-  filters: QuestionBankFilterState
-): Promise<QuestionBankPaper[]> {
+  unitId: string
+): Promise<QuestionBankUnitPaper[]> {
+  if (!unitId) return [];
+
   const { data, error } = await paperRpc.rpc('get_question_bank_papers', {
-    p_level: filters.level,
-    p_track: filters.track || null,
-    p_include_other_admission_tracks: filters.allTracks,
-    p_institution_id: orNull(filters.universityId),
-    p_admission_unit_id: orNull(filters.admissionUnitId),
+    p_level: 'admission',
+    p_track: null,
+    p_include_other_admission_tracks: true,
+    p_institution_id: null,
+    p_admission_unit_id: unitId,
   });
 
   if (error) throw error;
   if (!Array.isArray(data)) return [];
 
-  const papers: QuestionBankPaper[] = [];
+  const papers: QuestionBankUnitPaper[] = [];
 
   for (const raw of data) {
     if (!raw || typeof raw !== 'object') continue;
     const row = raw as Record<string, unknown>;
-    if (typeof row.paper_key !== 'string' || !row.paper_key) continue;
 
-    const count =
-      typeof row.question_count === 'number'
-        ? row.question_count
-        : Number(row.question_count);
-    if (!Number.isFinite(count) || count <= 0) continue;
+    const id = typeof row.paper_id === 'string' ? row.paper_id : '';
+    const title = typeof row.title === 'string' ? row.title : '';
+    const count = toNumber(row.question_count);
+
+    if (!id || !title || count === null || count <= 0) continue;
 
     papers.push({
-      key: row.paper_key,
-      year:
-        typeof row.exam_year === 'string' && row.exam_year
-          ? row.exam_year
-          : row.paper_key,
-      shift: typeof row.shift === 'string' && row.shift ? row.shift : null,
-      paperSet:
-        typeof row.paper_set === 'string' && row.paper_set ? row.paper_set : null,
+      id,
+      title,
+      year: typeof row.exam_year === 'string' && row.exam_year ? row.exam_year : null,
+      durationMin: toNumber(row.duration_min),
+      negativeMarks: toNumber(row.negative_marks),
       count,
     });
   }

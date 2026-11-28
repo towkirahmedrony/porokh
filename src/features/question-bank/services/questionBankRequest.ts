@@ -26,6 +26,8 @@ export type QuestionBankV3Args = {
   p_year: string | null;
   p_limit: number;
   p_offset: number;
+  /** One exam paper of the unit, when the list was opened from a paper card. */
+  p_exam_id: string | null;
 };
 
 const orNull = (value: string): string | null => {
@@ -56,4 +58,5 @@ export const buildQuestionBankV3Args = (
   p_year: orNull(filters.year),
   p_limit: limit,
   p_offset: offset,
+  p_exam_id: orNull(filters.examId),
 });
