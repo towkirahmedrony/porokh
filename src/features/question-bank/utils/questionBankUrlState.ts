@@ -14,6 +14,13 @@ const SORT_VALUES: QuestionBankFilterState['sortBy'][] = [
   'least_attempted',
 ];
 
+/**
+ * An exam year as the facets send it: a plain year ("2024") or the paper label
+ * the bank stores ("২০২২-২৩"). `\d` is ASCII only, so both scripts are named;
+ * any other value is dropped rather than filtering the list by junk.
+ */
+const YEAR_PATTERN = /^[\d\u09E6-\u09EF]{2,4}(?:[-\u2013][\d\u09E6-\u09EF]{2,4})?$/;
+
 const readParam = (params: URLSearchParams, key: string): string =>
   params.get(key)?.trim() ?? '';
 
@@ -98,7 +105,7 @@ export function filtersFromSearchParams(
       ? institutionType
       : '',
     institutionEiin: readParam(params, 'institution'),
-    year: /^\d{4}$/.test(year) ? year : '',
+    year: YEAR_PATTERN.test(year) ? year : '',
     bookmarkedOnly: isFlagOn(params, 'bookmarked'),
     mistakesOnly: isFlagOn(params, 'mistakes'),
     premiumOnly: isFlagOn(params, 'premium'),

@@ -52,6 +52,25 @@ export const hubUniversityHref = (universityId: string): string =>
 export const hubUniversityPageHref = (universityId: string): string =>
   `/question-bank/university/${encodeURIComponent(universityId)}`;
 
+/** The page behind one unit of a university: that unit's own exam papers. */
+export const hubUniversityUnitHref = (
+  universityId: string,
+  unitId: string
+): string =>
+  `${hubUniversityPageHref(universityId)}/unit/${encodeURIComponent(unitId)}`;
+
+/** The list behind one unit, or behind the whole university when unitId is empty. */
+export const hubUnitQuestionsHref = (
+  universityId: string,
+  unitId: string
+): string =>
+  listHref({
+    level: 'admission',
+    allTracks: '1',
+    university: universityId,
+    ...(unitId ? { unit: unitId } : {}),
+  });
+
 /** The list behind one exam year of one unit of one university. */
 export const hubUniversityYearHref = (
   universityId: string,
