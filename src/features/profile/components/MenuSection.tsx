@@ -83,8 +83,6 @@ const MenuSection: React.FC = memo(() => {
         <div className="transition-all duration-300 ease-in-out overflow-hidden" style={{ maxHeight: isLegalOpen ? '600px' : '0px', opacity: isLegalOpen ? 1 : 0 }}>
           <div className="py-2 ml-[3.25rem] border-l-2 mr-5 border-border-color">
             <SubMenuItem label={t('profile.helpSupport')} onClick={() => navigate('/contact')} />
-            <SubMenuItem label={t('profile.faq')} onClick={() => navigate('/faq')} />
-            <SubMenuItem label={t('profile.about')} onClick={() => navigate('/about')} />
             <SubMenuItem label={t('profile.privacy')} onClick={() => navigate('/privacy-policy')} />
             <SubMenuItem label={t('profile.terms')} onClick={() => navigate('/terms-conditions')} />
             <SubMenuItem label={t('profile.dataDeletion')} onClick={() => navigate('/data-deletion')} danger={true} />

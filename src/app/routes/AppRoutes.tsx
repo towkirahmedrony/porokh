@@ -7,7 +7,6 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router-dom';
-import { Capacitor } from '@capacitor/core';
 
 // Shared Components & Layouts
 import { MainLayout } from '@/shared/components/layout/MainLayout';
@@ -31,7 +30,6 @@ import {
   examListPath,
   isExamType,
 } from '@/features/exam/constants/examTypes';
-import { decideNativeStart } from './nativeStart';
 
 // ==========================================
 // ২. বাকি পেজগুলো (Lazy Loaded - মেমোরি বাঁচানোর জন্য)
@@ -114,16 +112,8 @@ const Referral = lazy(() => import('@/features/referral/pages/Referral'));
 const Leaderboard = lazy(() => import('@/features/leaderboard/pages/Leaderboard'));
 const PrivacyPolicy = lazy(() => import('@/features/legal/pages/PrivacyPolicy'));
 const TermsConditions = lazy(() => import('@/features/legal/pages/TermsConditions'));
-const AboutUs = lazy(() => import('@/features/legal/pages/AboutUs'));
 const CookiePolicy = lazy(() => import('@/features/legal/pages/CookiePolicy'));
-const FAQ = lazy(() => import('@/features/legal/pages/FAQ'));
 const DataDeletion = lazy(() => import('@/features/legal/pages/DataDeletion'));
-
-// Public marketing site (no session required)
-const PublicLayout = lazy(
-  () => import('@/features/marketing/components/PublicLayout')
-);
-const LandingPage = lazy(() => import('@/features/marketing/pages/LandingPage'));
 
 // Subscription Pages (Lazy Loaded)
 const Plans = lazy(() => import('@/features/subscription/pages/Plans'));
@@ -142,9 +132,10 @@ const FullPageLoader = () => (
 );
 
 /**
- * Startup screen of the Android app while the persisted session is restored.
+ * Startup screen while the persisted session is restored.
+ *
  * It reuses the splash branding so the hand-off from the native splash does not
- * jump through a marketing page or a login form.
+ * jump through a login form for a user whose session is simply not read yet.
  *
  * `pk-start` is the exact background of the in-app splash
  * (src/splash/appSplash.ts) and of the Android launch theme, so the splash can
@@ -161,34 +152,20 @@ const AppStartLoader = () => (
 );
 
 /**
- * Root entry of the Android app.
+ * Entry point of the student app, shared by the web build and the Android shell.
  *
- * The website keeps the public marketing homepage at "/". The Android app
- * starts on the app itself: the dashboard when the stored session was restored,
- * the login page when there is none, and a loader while the session is still
- * loading.
- *
- * This component is rendered by the native-only `"*"` route, never inside
- * <PublicLayout>, so no marketing markup can mount before the decision is made.
+ * Porokh is the exam app only: "/" is never a public page. A restored session
+ * lands on the dashboard, no session lands on the login screen, and a session
+ * that is still being restored keeps the splash instead of flashing either.
+ * The destination is `/dashboard`, whose own route sends the student to the
+ * dashboard home tab.
  */
-const NativeStartRoute = () => {
+const RootRoute = () => {
   const { loading, user } = useAuth();
 
-  const start = decideNativeStart({
-    native: Capacitor.isNativePlatform(),
-    authLoading: loading,
-    userId: user?.id ?? null,
-  });
+  if (loading) return <AppStartLoader />;
 
-  if (start === 'landing') return <LandingPage />;
-  if (start === 'loading') return <AppStartLoader />;
-
-  return (
-    <Navigate
-      to={start === 'dashboard' ? '/dashboard/home' : '/auth/login'}
-      replace
-    />
-  );
+  return <Navigate to={user ? '/dashboard' : '/auth/login'} replace />;
 };
 
 // Placeholder component
@@ -297,9 +274,6 @@ const AppRoutes: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const userId = user?.id;
-  // The Android shell is the app only; the public marketing site exists solely
-  // on the website. Read per render so it follows the bridge's actual platform.
-  const nativeShell = Capacitor.isNativePlatform();
 
   useEffect(() => {
     if (!userId) return;
@@ -346,37 +320,35 @@ const AppRoutes: React.FC = () => {
         <Route path="/change-password" element={<ChangePassword />} />
 
         {/*
-          --- Public information routes ---
-          These pages are reachable without a session: no guard, no app shell
-          and no authenticated request. Search crawlers and anonymous visitors
-          get the same markup; the app routes below stay behind PermissionGuard.
-
-          The homepage is website-only: inside the Android app "/" belongs to
-          the app itself, so it must not be declared here at all. The legal and
-          informational pages stay routable because the app links to them too.
+          --- Student app entry point ---
+          "/" belongs to the exam app itself: a restored session goes to the
+          dashboard, no session goes to the login screen. The decision waits for
+          the persisted session, so a signed-in student never sees the login
+          form flash before the dashboard.
         */}
-        <Route element={<PublicLayout />}>
-          {!nativeShell && <Route path="/" element={<LandingPage />} />}
-          <Route path="/about" element={<AboutUs />} />
-          <Route path="/faq" element={<FAQ />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms-conditions" element={<TermsConditions />} />
-          <Route path="/cookie-policy" element={<CookiePolicy />} />
-          <Route path="/data-deletion" element={<DataDeletion />} />
-
-          {/* Public 404: a lost visitor keeps the site navigation. */}
-          {!nativeShell && <Route path="*" element={<NotFound />} />}
-        </Route>
+        <Route path="/" element={<RootRoute />} />
 
         {/*
-          Android entry point. It is declared outside <PublicLayout>, so no
-          marketing header, footer or homepage can paint while the persisted
-          session is still being restored. In the app "/" and every path this
-          build does not serve resolve to the app's own first screen; the
-          website keeps the marketing homepage declared above.
+          Short aliases for the two entry screens. `/auth/login` and
+          `/auth/register` stay canonical (every internal link uses them), while
+          `/login` and `/register` links from docs, store listings and old
+          bookmarks resolve to the same pages instead of a 404.
         */}
-        {nativeShell && <Route path="*" element={<NativeStartRoute />} />}
+        <Route path="/login" element={<Navigate to="/auth/login" replace />} />
+        <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+
+        {/*
+          --- Public support and legal pages ---
+          Reachable without a session: no guard, no app shell and no
+          authenticated request. Profile, Settings and notification privacy link
+          to them, and the store listing needs the privacy policy public. Each
+          renders its own full-page layout, so no marketing chrome is involved.
+        */}
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-conditions" element={<TermsConditions />} />
+        <Route path="/cookie-policy" element={<CookiePolicy />} />
+        <Route path="/data-deletion" element={<DataDeletion />} />
 
         {/* --- Post-verification onboarding (outside the app shell) --- */}
         <Route
@@ -616,7 +588,7 @@ const AppRoutes: React.FC = () => {
           --- Authenticated application shell (With Sidebar & Header & BottomNav) ---
           The parent is pathless and guarded, so every child keeps its existing
           absolute URL (deep links, bookmarks and the Android WebView routes
-          stay valid) while "/" belongs to the public marketing site.
+          stay valid) while "/" is owned by `RootRoute` above.
         */}
         <Route
           element={
@@ -723,8 +695,10 @@ const AppRoutes: React.FC = () => {
           <Route path="/support/new" element={<NewSupportTicket />} />
           <Route path="/support/:ticketId" element={<SupportTicketDetail />} />
 
-          {/* 404 inside the app shell, so a signed-in user keeps the navigation */}
-          <Route path="/dashboard/*" element={<NotFound />} />
+          {/* 404 inside the app shell, so a signed-in user keeps the navigation.
+              The splat only matches URLs no other route claims, and because the
+              shell is guarded an anonymous visitor is sent to login instead. */}
+          <Route path="*" element={<NotFound />} />
         </Route>
 
       </Routes>

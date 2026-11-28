@@ -50,7 +50,7 @@ const updateSeoMeta = (
   document.title = title;
 
   // Every route inside the app shell is behind auth and holds personal data,
-  // so it must never be indexed. Public pages reset this in `usePageMeta`.
+  // so it must never be indexed.
   updateMetaTag('meta[name="robots"]', 'name', 'robots', 'noindex, nofollow');
 
   updateMetaTag(

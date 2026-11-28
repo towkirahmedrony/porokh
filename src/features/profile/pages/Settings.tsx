@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Bell, ChevronRight, Globe, GraduationCap, HelpCircle, Info, LifeBuoy, Lock,
-  Moon, MonitorSmartphone, Palette, Pencil, Puzzle, Shield,
+  Bell, ChevronRight, Globe, GraduationCap, Info, LifeBuoy, Lock,
+  Moon, MonitorSmartphone, Palette, Pencil, Puzzle,
   Sun, Users,
 } from 'lucide-react';
 import { BackButton } from '@/shared/components/ui/BackButton';
@@ -287,16 +287,6 @@ export const Settings: React.FC = () => {
         {/* G. About */}
         <SettingSection title={t('settings.sectionAbout')}>
           <SettingRow icon={Info} title={t('settings.appName')} />
-          <SettingRow
-            icon={Shield}
-            title={t('settings.aboutUs')}
-            onClick={() => navigate('/about')}
-          />
-          <SettingRow
-            icon={HelpCircle}
-            title={t('settings.faq')}
-            onClick={() => navigate('/faq')}
-          />
           <SettingRow
             icon={Users}
             title={t('settings.help')}

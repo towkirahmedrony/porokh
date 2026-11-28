@@ -43,8 +43,8 @@ export interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-// "/" is the public marketing homepage, which owns its own metadata through
-// `usePageMeta`. Only the signed-in home screens use the dictionary defaults.
+// The signed-in home screens are the only "homepage" this exam app has; "/"
+// redirects to the dashboard or the login screen.
 const HOMEPAGE_PATHS = new Set(['/dashboard', '/dashboard/home']);
 
 export const isHomepagePath = (pathname: string): boolean => {
