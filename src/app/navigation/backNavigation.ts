@@ -55,6 +55,10 @@ const DYNAMIC_PARENTS: ReadonlyArray<{
     pattern: /^\/admission\/university\/([^/]+)\/unit\/[^/]+$/,
     parent: (match) => `/admission/university/${match[1]}`,
   },
+  {
+    pattern: /^\/question-bank\/university\/([^/]+)\/unit\/[^/]+$/,
+    parent: (match) => `/question-bank/university/${match[1]}`,
+  },
 ];
 
 /** Where Back lands when the current route has no history entry of its own. */
