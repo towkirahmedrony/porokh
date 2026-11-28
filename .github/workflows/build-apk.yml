@@ -292,7 +292,10 @@ jobs:
       # leaves the previously published APK serving.
       - name: Publish APK to Supabase Storage
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          # SUPABASE_URL is the preferred name; the build already keeps the same
+          # project URL in VITE_SUPABASE_URL, so fall back to it rather than
+          # failing the release when only the build-time secret exists.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
