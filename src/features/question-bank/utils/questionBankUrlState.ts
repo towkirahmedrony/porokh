@@ -16,10 +16,17 @@ const SORT_VALUES: QuestionBankFilterState['sortBy'][] = [
 
 /**
  * An exam year as the facets send it: a plain year ("2024") or the paper label
- * the bank stores ("২০২২-২৩"). `\d` is ASCII only, so both scripts are named;
+ * the bank stores ("২০২২-২৩"). `\\d` is ASCII only, so both scripts are named;
  * any other value is dropped rather than filtering the list by junk.
  */
-const YEAR_PATTERN = /^[\d\u09E6-\u09EF]{2,4}(?:[-\u2013][\d\u09E6-\u09EF]{2,4})?$/;
+const YEAR_PART = '[\\d\\u09E6-\\u09EF]{2,4}(?:[-\\u2013][\\d\\u09E6-\\u09EF]{2,4})?';
+
+/**
+ * A year, or one paper of that year: the shift/set ride along after the year as
+ * "2025-26|shift-1|" (see utils/questionBankPaper). Both halves are bounded so
+ * a hand-written URL cannot smuggle a long string into the query.
+ */
+const YEAR_PATTERN = new RegExp(`^${YEAR_PART}(?:\\|[^|]{0,40}\\|[^|]{0,40})?$`);
 
 const readParam = (params: URLSearchParams, key: string): string =>
   params.get(key)?.trim() ?? '';
