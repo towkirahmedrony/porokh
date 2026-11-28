@@ -58,6 +58,9 @@ const QuestionBankInstitutions = lazy(
 const QuestionBankUniversity = lazy(
   () => import('@/features/question-bank/pages/QuestionBankUniversity')
 );
+const QuestionBankUnit = lazy(
+  () => import('@/features/question-bank/pages/QuestionBankUnit')
+);
 
 // Admission (lazy loaded)
 const AdmissionLandingPage = lazy(() =>
@@ -687,6 +690,10 @@ const AppRoutes: React.FC = () => {
           <Route
             path="/question-bank/university/:institutionId"
             element={<QuestionBankUniversity />}
+          />
+          <Route
+            path="/question-bank/university/:institutionId/unit/:unitId"
+            element={<QuestionBankUnit />}
           />
           <Route path="/materials" element={<Placeholder title={t('placeholder.materials')} />} />
 
