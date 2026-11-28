@@ -9,27 +9,27 @@ import { HubSection } from '../components/hub/HubSection';
 import { useQuestionBankHub } from '../hooks/useQuestionBankHub';
 import { useUniversityLogoMap } from '../hooks/useUniversityLogoMap';
 import { fetchQuestionBankFacets } from '../services/questionBankLevelService';
-import { fetchUnitPapers } from '../services/questionBankPaperService';
+import {
+  fetchUnitPapers,
+  type QuestionBankUnitPaper,
+} from '../services/questionBankPaperService';
 import {
   hubUniversityPageHref,
-  hubUniversityYearHref,
   hubUnitQuestionsHref,
 } from '../utils/questionBankHub';
-import { paperLabel } from '../utils/questionBankPaper';
 import {
   DEFAULT_QUESTION_BANK_FILTERS,
   type QuestionBankFilterState,
 } from '../types/questionBank';
 
 /**
- * One unit of one university, third step of the drill-down: its exam papers.
+ * One unit of one university, third step of the drill-down: its past papers.
  *
- * A year is not a paper. "2025-26" was sat in four shifts, and each shift (or
- * set) is the paper a student actually wants, so the list is one row per paper
- * with its own question count. Tapping a row opens exactly that paper's
- * questions, which is the last page of the path. The all-questions row at the
- * top is the same unit without a paper for a student who wants to revise
- * everything.
+ * The rows are the same papers the admission screen lists — the unit's own
+ * published historical papers — so the title, the printed duration and the
+ * negative marking match there. Tapping a paper opens exactly that paper's
+ * questions in the bank; the all-questions row at the top is the same unit
+ * without a paper for a student who wants to revise everything.
  *
  * The unit's own label comes from the facets response: the unit facet is
  * counted with its own filter dropped, so it still lists every unit of this
@@ -73,8 +73,8 @@ export default function QuestionBankUnit() {
   });
 
   const papersQuery = useQuery({
-    queryKey: ['question-bank', 'papers', filters],
-    queryFn: () => fetchUnitPapers(filters),
+    queryKey: ['question-bank', 'papers', unitId],
+    queryFn: () => fetchUnitPapers(unitId),
     enabled: Boolean(institutionId && unitId),
     staleTime: 1000 * 60 * 2,
   });
@@ -88,6 +88,34 @@ export default function QuestionBankUnit() {
     t('questionBank.hub.questionMeta', {
       count: localizeDigits(count, language),
     });
+
+  const paperMeta = (paper: QuestionBankUnitPaper) =>
+    [
+      questionMeta(paper.count),
+      paper.durationMin !== null
+        ? t('admission.duration', {
+            count: localizeDigits(paper.durationMin, language),
+          })
+        : null,
+      paper.negativeMarks !== null && paper.negativeMarks > 0
+        ? t('admission.hub.negative', {
+            value: localizeDigits(String(paper.negativeMarks), language),
+          })
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+  const paperHref = (paperId: string) => {
+    const params = new URLSearchParams({
+      level: 'admission',
+      allTracks: '1',
+      university: institutionId,
+      unit: unitId,
+      exam: paperId,
+    });
+    return `/question-bank/list?${params.toString()}`;
+  };
 
   const backHref = hubUniversityPageHref(institutionId);
 
@@ -167,33 +195,37 @@ export default function QuestionBankUnit() {
               <HubSection title={t('admission.examType.pastExams')}>
                 <div className="space-y-2.5">
                   {papersQuery.isPending ? (
-                    [0, 1, 2, 3].map((index) => (
+                    [0, 1, 2].map((index) => (
                       <div
                         key={index}
-                        className="h-[74px] animate-pulse rounded-[22px] border border-card-border bg-card-bg"
+                        className="h-[112px] animate-pulse rounded-2xl border border-card-border bg-card-bg"
                       />
                     ))
                   ) : (
                     papers.map((paper) => (
                       <Link
-                        key={paper.key}
-                        to={hubUniversityYearHref(institutionId, unitId, paper.key)}
-                        className="!no-underline [text-decoration-line:none!important] flex items-center gap-3 rounded-[22px] border border-card-border bg-card-bg px-3.5 py-3.5 transition-colors active:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                        key={paper.id}
+                        to={paperHref(paper.id)}
+                        className="!no-underline [text-decoration-line:none!important] flex items-start gap-2 rounded-2xl border border-card-border bg-card-bg p-3.5 shadow-sm transition-colors active:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                       >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-info/20 bg-info/10 text-info">
-                          <CalendarDays className="h-[18px] w-[18px]" aria-hidden="true" />
-                        </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[14px] font-extrabold text-text-primary">
-                            {paperLabel(paper, language)}
+                          {paper.year && (
+                            <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border-color bg-surface px-1.5 py-0.5 text-[10px] font-bold text-text-secondary">
+                              <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                              <span className="truncate">
+                                {localizeDigits(paper.year, language)}
+                              </span>
+                            </span>
+                          )}
+                          <span className="mt-1.5 block text-[14px] font-extrabold leading-snug text-text-primary">
+                            {paper.title}
                           </span>
-                          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-success">
-                            <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                            {questionMeta(paper.count)}
+                          <span className="mt-2 block text-[11px] font-medium text-text-secondary">
+                            {paperMeta(paper)}
                           </span>
                         </span>
                         <ChevronRight
-                          className="h-4 w-4 shrink-0 text-text-secondary"
+                          className="mt-1 h-4 w-4 shrink-0 text-text-secondary"
                           aria-hidden="true"
                         />
                       </Link>

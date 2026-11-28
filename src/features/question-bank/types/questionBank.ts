@@ -143,6 +143,12 @@ export interface QuestionBankFilterState {
   institutionType: string;
   institutionEiin: string; // Changed from institutionName to institutionEiin
   year: string;
+  /**
+   * One exam paper of the unit, when the list was opened from a paper card.
+   * It scopes the list to that paper's own question links, which a year label
+   * cannot do: one year was sat as several papers.
+   */
+  examId: string;
   bookmarkedOnly: boolean;
   mistakesOnly: boolean;
   premiumOnly: boolean;
@@ -282,6 +288,7 @@ export const DEFAULT_QUESTION_BANK_FILTERS: QuestionBankFilterState = {
   universityId: '',
   admissionUnitId: '',
   institutionId: '',
+  examId: '',
   listView: false,
 };
 
