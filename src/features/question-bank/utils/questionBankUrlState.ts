@@ -28,6 +28,12 @@ const YEAR_PART = '[\\d\\u09E6-\\u09EF]{2,4}(?:[-\\u2013][\\d\\u09E6-\\u09EF]{2,
  */
 const YEAR_PATTERN = new RegExp(`^${YEAR_PART}(?:\\|[^|]{0,40}\\|[^|]{0,40})?$`);
 
+/**
+ * An exam paper id (`ru-a-2025-26-shift-1`). Slug-shaped, so anything else is
+ * dropped instead of scoping the list to a paper that cannot exist.
+ */
+const PAPER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+
 const readParam = (params: URLSearchParams, key: string): string =>
   params.get(key)?.trim() ?? '';
 
@@ -98,6 +104,7 @@ export function filtersFromSearchParams(
 ): QuestionBankFilterState {
   const institutionType = readParam(params, 'source');
   const year = readParam(params, 'year');
+  const examId = readParam(params, 'exam');
   const sortBy = readParam(params, 'sort');
 
   return {
@@ -113,6 +120,7 @@ export function filtersFromSearchParams(
       : '',
     institutionEiin: readParam(params, 'institution'),
     year: YEAR_PATTERN.test(year) ? year : '',
+    examId: PAPER_ID_PATTERN.test(examId) ? examId : '',
     bookmarkedOnly: isFlagOn(params, 'bookmarked'),
     mistakesOnly: isFlagOn(params, 'mistakes'),
     premiumOnly: isFlagOn(params, 'premium'),
@@ -148,6 +156,7 @@ export function buildQuestionBankSearchParams(
   setValue('source', filters.institutionType);
   setValue('institution', filters.institutionEiin);
   setValue('year', filters.year);
+  setValue('exam', filters.examId);
 
   setValue('university', filters.universityId);
   setValue('unit', filters.admissionUnitId);
@@ -225,6 +234,7 @@ export function applyQuestionBankFilterChange<K extends keyof QuestionBankFilter
       admissionUnitId: '',
       institutionId: '',
       year: '',
+      examId: '',
       track: '',
       allTracks: false,
     };
