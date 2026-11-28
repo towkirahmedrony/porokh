@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
-import UniversityLogo from '@/features/admission/components/UniversityLogo';
 import { hubUniversityPageHref } from '../../utils/questionBankHub';
 import type { QuestionBankHubRow } from '../../types/questionBankHub';
+import { HubLogoTile } from './HubLogoTile';
+import { hubToneFromKey, type HubTone } from './hubTones';
 
 /**
  * One university on the question bank, drawn as a logo card.
@@ -17,9 +17,12 @@ import type { QuestionBankHubRow } from '../../types/questionBankHub';
 export function HubUniversityCard({
   row,
   logoUrl,
+  tone,
 }: {
   row: QuestionBankHubRow;
   logoUrl: string | null;
+  /** Defaults to the row's own id, so a university keeps one colour. */
+  tone?: HubTone;
 }) {
   const { t, language } = useLanguage();
   const name =
@@ -28,33 +31,15 @@ export function HubUniversityCard({
       : row.labelBn || row.labelEn || row.shortName || '';
 
   return (
-    <Link
-      to={hubUniversityPageHref(row.id)}
-      className="!no-underline [text-decoration-line:none!important] flex min-h-[152px] touch-manipulation select-none flex-col items-center justify-center rounded-[20px] border border-card-border bg-card-bg px-3 py-4 text-center transition-[transform,border-color] duration-150 hover:border-primary/40 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring motion-reduce:transition-none"
-    >
-      <UniversityLogo
-        logoUrl={logoUrl}
-        name={name}
-        shortName={row.shortName}
-        className="h-14 w-14"
-        imageClassName="h-9 w-9"
-      />
-
-      <h3 className="mt-2.5 line-clamp-2 font-['Noto_Sans_Bengali'] text-[12.5px] font-bold leading-snug text-text-primary">
-        {name}
-      </h3>
-
-      {row.shortName && (
-        <p className="mt-0.5 max-w-full truncate text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
-          {row.shortName}
-        </p>
-      )}
-
-      <p className="mt-1.5 max-w-full truncate text-[10px] font-medium text-text-secondary">
-        {t('questionBank.hub.questionMeta', {
-          count: localizeDigits(row.count, language),
-        })}
-      </p>
-    </Link>
+    <HubLogoTile
+      href={hubUniversityPageHref(row.id)}
+      label={name}
+      shortName={row.shortName}
+      logoUrl={logoUrl}
+      tone={tone ?? hubToneFromKey(row.id)}
+      meta={t('questionBank.hub.questionMeta', {
+        count: localizeDigits(row.count, language),
+      })}
+    />
   );
 }

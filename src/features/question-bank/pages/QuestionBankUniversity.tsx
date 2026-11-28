@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, RefreshCw } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, FileText, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
 import UniversityLogo from '@/features/admission/components/UniversityLogo';
-import { HubRow, HubRowList } from '../components/hub/HubRow';
+import { HubLogoTile } from '../components/hub/HubLogoTile';
 import { HubSection } from '../components/hub/HubSection';
 import { useQuestionBankHub } from '../hooks/useQuestionBankHub';
 import { useUniversityLogoMap } from '../hooks/useUniversityLogoMap';
@@ -23,6 +23,10 @@ import {
 /**
  * One university's admission bank: its units, then its exam years, then the
  * question list preset to the three.
+ *
+ * The units are tiles rather than rows because they are the first choice on
+ * this screen and a phone fits all of them above the fold; the years below stay
+ * rows, since each one is a paper with a single number beside it.
  *
  * The unit and year counts are the same facet RPC the filter sheet already
  * reads, called with the university fixed. Reusing it is why the numbers on this
@@ -68,6 +72,11 @@ export default function QuestionBankUniversity() {
   const units = facets?.admission_unit ?? [];
   const years = facets?.exam_year ?? [];
   const selectedUnit = units.find((unit) => unit.id === unitId) ?? null;
+
+  const questionMeta = (count: number) =>
+    t('questionBank.hub.questionMeta', {
+      count: localizeDigits(count, language),
+    });
 
   const selectUnit = (nextUnitId: string) => {
     const next = new URLSearchParams(searchParams);
@@ -120,15 +129,25 @@ export default function QuestionBankUniversity() {
             </button>
           </div>
         ) : (
-          <div className="mt-3 space-y-5">
+          <div className="mt-3 space-y-6">
             {university && (
-              <HubRowList className="border-primary/25 bg-primary/[0.04]">
-                <HubRow
-                  label={t('questionBank.hub.allQuestions')}
-                  count={university.count}
-                  href={hubUniversityHref(institutionId)}
-                />
-              </HubRowList>
+              <Link
+                to={hubUniversityHref(institutionId)}
+                className="!no-underline [text-decoration-line:none!important] flex items-center gap-3 rounded-[22px] border border-primary/20 bg-primary/[0.08] px-3.5 py-3.5 transition-colors active:bg-primary/[0.12] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
+                  <FileText className="h-[18px] w-[18px]" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-extrabold text-text-primary">
+                    {t('questionBank.hub.allQuestions')}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-semibold text-text-secondary">
+                    {questionMeta(university.count)}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+              </Link>
             )}
 
             {(facetsQuery.isPending || units.length > 0) && (
@@ -140,45 +159,86 @@ export default function QuestionBankUniversity() {
                     : t('questionBank.allUnits')
                 }
               >
-                <HubRowList>
-                  {selectedUnit && (
-                    <HubRow
-                      label={t('questionBank.allUnits')}
-                      onClick={() => selectUnit('')}
-                    />
-                  )}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {facetsQuery.isPending ? (
-                    <HubRow label={t('common.loading')} />
-                  ) : (
-                    units.map((unit) => (
-                      <HubRow
-                        key={unit.id}
-                        label={unit.labelBn ?? unit.id}
-                        count={unit.count}
-                        onClick={() => selectUnit(unit.id)}
+                    [0, 1, 2, 3].map((index) => (
+                      <div
+                        key={index}
+                        className="h-[164px] animate-pulse rounded-[26px] border border-card-border bg-card-bg"
                       />
                     ))
+                  ) : (
+                    <>
+                      {selectedUnit && (
+                        <HubLogoTile
+                          label={t('questionBank.allUnits')}
+                          meta={questionMeta(university?.count ?? 0)}
+                          logoUrl={logoById[institutionId] ?? null}
+                          tone="primary"
+                          onClick={() => selectUnit('')}
+                        />
+                      )}
+                      {units.map((unit) => (
+                        <HubLogoTile
+                          key={unit.id}
+                          label={unit.labelBn ?? unit.id}
+                          meta={questionMeta(unit.count)}
+                          logoUrl={logoById[institutionId] ?? null}
+                          tone="info"
+                          selected={unit.id === unitId}
+                          onClick={() => selectUnit(unit.id)}
+                        />
+                      ))}
+                    </>
                   )}
-                </HubRowList>
+                </div>
               </HubSection>
             )}
 
             {(facetsQuery.isPending || years.length > 0) && (
               <HubSection title={t('questionBank.hub.years')}>
-                <HubRowList>
+                <div className="space-y-2.5">
                   {facetsQuery.isPending ? (
-                    <HubRow label={t('common.loading')} />
-                  ) : (
-                    years.map((year) => (
-                      <HubRow
-                        key={year.id}
-                        label={localizeDigits(year.labelBn ?? year.id, language)}
-                        count={year.count}
-                        href={hubUniversityYearHref(institutionId, unitId, year.id)}
+                    [0, 1, 2].map((index) => (
+                      <div
+                        key={index}
+                        className="h-[74px] animate-pulse rounded-[22px] border border-card-border bg-card-bg"
                       />
                     ))
+                  ) : (
+                    years.map((year) => (
+                      <Link
+                        key={year.id}
+                        to={hubUniversityYearHref(institutionId, unitId, year.id)}
+                        className="!no-underline [text-decoration-line:none!important] flex items-center gap-3 rounded-[22px] border border-card-border bg-card-bg px-3.5 py-3 transition-colors active:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                      >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-info/20 bg-info/10 text-info">
+                          <CalendarDays className="h-[18px] w-[18px]" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[14px] font-extrabold text-text-primary">
+                            {localizeDigits(year.labelBn ?? year.id, language)}
+                          </span>
+                          <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-text-secondary">
+                            <span className="inline-flex items-center gap-1 text-success">
+                              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                              {questionMeta(year.count)}
+                            </span>
+                            {selectedUnit && (
+                              <span className="inline-flex items-center gap-1">
+                                {selectedUnit.labelBn ?? selectedUnit.id}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                        <ChevronRight
+                          className="h-4 w-4 shrink-0 text-text-secondary"
+                          aria-hidden="true"
+                        />
+                      </Link>
+                    ))
                   )}
-                </HubRowList>
+                </div>
               </HubSection>
             )}
 
