@@ -4,9 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
+import UniversityLogo from '@/features/admission/components/UniversityLogo';
 import { HubRow, HubRowList } from '../components/hub/HubRow';
 import { HubSection } from '../components/hub/HubSection';
 import { useQuestionBankHub } from '../hooks/useQuestionBankHub';
+import { useUniversityLogoMap } from '../hooks/useUniversityLogoMap';
 import { fetchQuestionBankFacets } from '../services/questionBankLevelService';
 import {
   hubAllUniversitiesHref,
@@ -34,6 +36,7 @@ export default function QuestionBankUniversity() {
 
   const unitId = searchParams.get('unit') ?? '';
   const hub = useQuestionBankHub('admission');
+  const logoById = useUniversityLogoMap(true);
 
   const university = useMemo(() => {
     const varsity = hub.payload.sections.find(
@@ -85,7 +88,16 @@ export default function QuestionBankUniversity() {
           >
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           </button>
-          <h1 className="min-w-0 truncate text-[17px] font-extrabold text-text-primary">
+          {university && (
+            <UniversityLogo
+              logoUrl={logoById[institutionId] ?? null}
+              name={university.labelBn}
+              shortName={university.shortName}
+              className="h-9 w-9 rounded-xl"
+              imageClassName="h-6 w-6"
+            />
+          )}
+          <h1 className="min-w-0 flex-1 truncate text-[17px] font-extrabold text-text-primary">
             {university?.labelBn ?? t('questionBank.university')}
           </h1>
         </div>

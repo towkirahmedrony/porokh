@@ -4,8 +4,10 @@ import { ChevronLeft, RefreshCw, Search } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
 import { HubRow, HubRowList } from '../components/hub/HubRow';
+import { HubUniversityCard } from '../components/hub/HubUniversityCard';
 import { useQuestionBankHub } from '../hooks/useQuestionBankHub';
-import { findSection, hubInstitutionHref, hubUniversityPageHref } from '../utils/questionBankHub';
+import { useUniversityLogoMap } from '../hooks/useUniversityLogoMap';
+import { findSection, hubInstitutionHref } from '../utils/questionBankHub';
 import type { QuestionBankHubRow } from '../types/questionBankHub';
 
 /**
@@ -28,6 +30,8 @@ export default function QuestionBankInstitutions({
   const { payload, isPending, isError, refetch } = useQuestionBankHub(
     kind === 'colleges' ? 'hsc' : 'admission'
   );
+  // Only the university grid draws logos; the college list keeps its rows.
+  const logoById = useUniversityLogoMap(kind === 'universities');
 
   const rows = useMemo(() => {
     if (kind === 'colleges') {
@@ -116,21 +120,27 @@ export default function QuestionBankInstitutions({
                   {t('questionBank.hub.noResults')}
                 </p>
               </div>
-            ) : (
+            ) : kind === 'colleges' ? (
               <HubRowList>
                 {visible.map((row) => (
                   <HubRow
                     key={row.id}
                     label={row.labelBn}
                     count={row.count}
-                    href={
-                      kind === 'colleges'
-                        ? hubInstitutionHref(row.id)
-                        : hubUniversityPageHref(row.id)
-                    }
+                    href={hubInstitutionHref(row.id)}
                   />
                 ))}
               </HubRowList>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                {visible.map((row) => (
+                  <HubUniversityCard
+                    key={row.id}
+                    row={row}
+                    logoUrl={logoById[row.id] ?? null}
+                  />
+                ))}
+              </div>
             )}
           </div>
         )}

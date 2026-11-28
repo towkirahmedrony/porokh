@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, RefreshCw, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
 import { PullToRefresh } from '@/features/groups/components/PullToRefresh';
 import { useStage } from '@/features/stage/hooks/useStage';
 import { resolveBankMode } from '../utils/bankMode';
 import { useQuestionBankHub } from '../hooks/useQuestionBankHub';
+import { useUniversityLogoMap } from '../hooks/useUniversityLogoMap';
 import {
   findSection,
   hasMoreColleges,
@@ -19,7 +20,6 @@ import {
   hubSearchHref,
   hubSubjectHref,
   hubTrackHref,
-  hubUniversityPageHref,
   hubUniversityRows,
   isThinTrack,
 } from '../utils/questionBankHub';
@@ -37,6 +37,7 @@ import type { QuestionBankTrack } from '../types/questionBank';
 import { HubRow, HubRowList } from '../components/hub/HubRow';
 import { HubSection } from '../components/hub/HubSection';
 import { HubSkeleton } from '../components/hub/HubSkeleton';
+import { HubUniversityCard } from '../components/hub/HubUniversityCard';
 import { HubSubjectSheet } from '../components/hub/HubSubjectSheet';
 
 /**
@@ -414,6 +415,7 @@ function AdmissionHub({
 }) {
   const { t, language } = useLanguage();
 
+  const logoById = useUniversityLogoMap(true);
   const allAdmission = findSection(payload, 'all_admission');
   const tracks = payload.sections.filter(
     (section): section is Extract<typeof section, { kind: 'track' }> =>
@@ -439,6 +441,7 @@ function AdmissionHub({
           <GoalTrackCard
             key={section.track}
             section={section}
+            logoById={logoById}
             onOpenSubjects={onOpenSubjects}
           />
         ) : section.track === 'varsity' ? (
@@ -449,24 +452,11 @@ function AdmissionHub({
               count: localizeDigits(section.count, language),
             })}
           >
-            <HubRowList>
-              {hubUniversityRows(section.universities).map((row) => (
-                <HubRow
-                  key={row.id}
-                  label={row.labelBn}
-                  count={row.count}
-                  href={hubUniversityPageHref(row.id)}
-                />
-              ))}
-              {section.universityTotal > hubUniversityRows(section.universities).length && (
-                <HubRow
-                  label={t('questionBank.hub.allUniversities', {
-                    count: localizeDigits(section.universityTotal, language),
-                  })}
-                  href={hubAllUniversitiesHref()}
-                />
-              )}
-            </HubRowList>
+            <UniversityGrid
+              rows={section.universities}
+              total={section.universityTotal}
+              logoById={logoById}
+            />
           </HubSection>
         ) : (
           <HubRowList key={section.track}>
@@ -482,11 +472,60 @@ function AdmissionHub({
   );
 }
 
+/**
+ * The university grid: two logo cards per row, the same shape the admission
+ * screen uses, so the student recognises a university by its crest before
+ * reading its name.
+ */
+function UniversityGrid({
+  rows,
+  total,
+  logoById,
+}: {
+  rows: QuestionBankHubRow[];
+  total?: number;
+  logoById: Record<string, string>;
+}) {
+  const { t, language } = useLanguage();
+  const shown = hubUniversityRows(rows);
+  const totalCount = total ?? rows.length;
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-2.5">
+        {shown.map((row) => (
+          <HubUniversityCard
+            key={row.id}
+            row={row}
+            logoUrl={logoById[row.id] ?? null}
+          />
+        ))}
+      </div>
+
+      {totalCount > shown.length && (
+        <Link
+          to={hubAllUniversitiesHref()}
+          className="mt-2 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-card-border bg-card-bg px-3.5 text-[12.5px] font-bold text-text-primary transition-colors active:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        >
+          <span>
+            {t('questionBank.hub.allUniversities', {
+              count: localizeDigits(totalCount, language),
+            })}
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
 function GoalTrackCard({
   section,
+  logoById,
   onOpenSubjects,
 }: {
   section: Extract<QuestionBankHubPayload['sections'][number], { kind: 'track' }>;
+  logoById: Record<string, string>;
   onOpenSubjects: () => void;
 }) {
   const { t, language } = useLanguage();
@@ -527,26 +566,11 @@ function GoalTrackCard({
       ) : (
         <div className="mt-3 space-y-2">
           {section.track === 'varsity' ? (
-            <>
-              <HubRowList>
-                {hubUniversityRows(section.universities).map((row) => (
-                  <HubRow
-                    key={row.id}
-                    label={row.labelBn}
-                    count={row.count}
-                    href={hubUniversityPageHref(row.id)}
-                  />
-                ))}
-                {section.universityTotal > hubUniversityRows(section.universities).length && (
-                  <HubRow
-                    label={t('questionBank.hub.allUniversities', {
-                      count: localizeDigits(section.universityTotal, language),
-                    })}
-                    href={hubAllUniversitiesHref()}
-                  />
-                )}
-              </HubRowList>
-            </>
+            <UniversityGrid
+              rows={section.universities}
+              total={section.universityTotal}
+              logoById={logoById}
+            />
           ) : (
             <HubRowList>
               <HubRow

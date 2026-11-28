@@ -8,12 +8,19 @@ import {
 } from '../services/admissionHubService';
 import type { AdmissionBankFilters } from '../types/admissionHub';
 
-/** Universities and their unit counts for the admission entry grid. */
-export const useAdmissionHubCatalog = () =>
+/**
+ * Universities and their unit counts for the admission entry grid.
+ *
+ * `enabled` lets a screen that only needs the catalog for its logos (the
+ * question bank hubs) skip the request until it is actually on an admission
+ * screen. The key is shared, so a later admission visit reuses the cache.
+ */
+export const useAdmissionHubCatalog = (enabled = true) =>
   useQuery({
     queryKey: ['admission-hub', 'catalog'],
     queryFn: fetchAdmissionHubCatalog,
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 
 /** One unit hub: papers, model tests and bank facets in a single request. */
