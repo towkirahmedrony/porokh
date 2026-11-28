@@ -6,8 +6,8 @@
  */
 export function HubSkeleton() {
   return (
-    <div className="min-h-full bg-app px-4 pb-24 pt-3" aria-busy="true">
-      <div className="mx-auto max-w-2xl space-y-4">
+    <div className="min-h-full bg-app pb-24 pt-1" aria-busy="true">
+      <div className="mx-auto w-full max-w-3xl space-y-4">
         <div className="h-9 w-40 animate-pulse rounded-xl bg-surface" />
         <div className="h-11 animate-pulse rounded-2xl bg-surface" />
         <div className="h-12 animate-pulse rounded-2xl bg-surface" />
