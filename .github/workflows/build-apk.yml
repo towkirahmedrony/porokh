@@ -285,6 +285,20 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # Publishes the same signed file the workflow just verified, and only
+      # after it is safely in the run's artifacts. The script validates the APK,
+      # replaces the canonical Storage object, downloads it again to compare
+      # SHA-256, and only then writes the release metadata, so a failed publish
+      # leaves the previously published APK serving.
+      - name: Publish APK to Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          apk=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          bash scripts/publish-apk.sh "$apk"
+
       - name: Summarise the build
         run: |
           set -euo pipefail
