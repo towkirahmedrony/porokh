@@ -17,7 +17,9 @@ import {
   hubUniversityHref,
   hubUniversityPageHref,
   hubUniversityRows,
+  hubUniversityUnitHref,
   hubUniversityYearHref,
+  hubUnitQuestionsHref,
   isThinTrack,
 } from './questionBankHub';
 import type { QuestionBankHubPayload, QuestionBankHubRow } from '../types/questionBankHub';
@@ -117,6 +119,14 @@ test('every href is a list deep link with the filter that produced the count', (
     '/question-bank/list?level=admission&allTracks=1&university=ru'
   );
   assert.equal(hubUniversityPageHref('ru'), '/question-bank/university/ru');
+  assert.equal(
+    hubUniversityUnitHref('ru', 'unit-a'),
+    '/question-bank/university/ru/unit/unit-a'
+  );
+  assert.equal(
+    hubUnitQuestionsHref('ru', 'unit-a'),
+    '/question-bank/list?level=admission&allTracks=1&university=ru&unit=unit-a'
+  );
   assert.equal(hubAllCollegesHref(), '/question-bank/colleges');
   assert.equal(hubSearchHref('hsc'), '/question-bank/list?level=hsc&view=list');
 });

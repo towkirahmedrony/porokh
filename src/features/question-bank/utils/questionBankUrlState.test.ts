@@ -151,6 +151,14 @@ test('invalid URL values fall back to defaults instead of breaking the view', ()
   assert.equal(filters.sortBy, 'newest');
 });
 
+test('a paper label survives the URL as the year filter', () => {
+  assert.equal(
+    filtersFromSearchParams(parse('?year=২০২২-২৩')).year,
+    '২০২২-২৩'
+  );
+  assert.equal(filtersFromSearchParams(parse('?year=2012-13')).year, '2012-13');
+});
+
 test('changing subject clears chapter and topic', () => {
   const next = applyQuestionBankFilterChange(
     { ...DEFAULT_QUESTION_BANK_FILTERS, subjectId: 'a', chapterId: 'c', topicId: 't' },
