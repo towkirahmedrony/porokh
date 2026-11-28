@@ -1,8 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
+import {
+  BookOpen,
+  Building2,
+  ChevronLeft,
+  FileCheck2,
+  GraduationCap,
+  RefreshCw,
+  Search,
+  Stethoscope,
+  Wrench,
+} from 'lucide-react';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
-import { localizeDigits } from '@/shared/i18n/messages';
+import { localizeDigits, type AppMessageKey } from '@/shared/i18n/messages';
 import { PullToRefresh } from '@/features/groups/components/PullToRefresh';
 import { useStage } from '@/features/stage/hooks/useStage';
 import { resolveBankMode } from '../utils/bankMode';
@@ -10,17 +20,13 @@ import { useQuestionBankHub } from '../hooks/useQuestionBankHub';
 import { useUniversityLogoMap } from '../hooks/useUniversityLogoMap';
 import {
   findSection,
-  hasMoreColleges,
   hubAdmissionSubjectHref,
   hubAllAdmissionHref,
   hubAllCollegesHref,
-  hubAllUniversitiesHref,
-  hubCollegeRows,
   hubInstitutionHref,
   hubSearchHref,
   hubSubjectHref,
   hubTrackHref,
-  hubUniversityRows,
   isThinTrack,
 } from '../utils/questionBankHub';
 import {
@@ -35,24 +41,41 @@ import type {
 } from '../types/questionBankHub';
 import type { QuestionBankTrack } from '../types/questionBank';
 import { HubRow, HubRowList } from '../components/hub/HubRow';
-import { HubSection } from '../components/hub/HubSection';
+import { HubGrid, HubGridTile } from '../components/hub/HubGridTile';
 import { HubSkeleton } from '../components/hub/HubSkeleton';
 import { HubUniversityCard } from '../components/hub/HubUniversityCard';
-import { HubSubjectSheet } from '../components/hub/HubSubjectSheet';
 
 /**
  * The entrance to the question bank.
  *
  * The list is unchanged and still lives at /question-bank/list; this screen is
  * what a student sees first, ordered by their own stage and goal. Every number
- * on it comes from the server's hub payload, and every row opens the list with
+ * on it comes from the server's hub payload, and every tile opens the list with
  * the filters that produced that number.
+ *
+ * The floating control at the top chooses how the same bank is grouped: by exam
+ * (a track or a board), by institution, or by subject. The choice lives in the
+ * URL so a tab survives a drill-down and the back button, and no grouping needs
+ * a second request — the hub payload already carries all three.
  *
  * Stage handling mirrors the list on purpose: a stage that has not arrived is a
  * skeleton, never a guess. The one difference is a failed stage refresh with a
  * previously cached answer: the last server answer is used rather than hiding
  * the bank behind a spinner forever.
  */
+
+type HubTab = 'model' | 'institution' | 'subject';
+
+const HUB_TABS: { id: HubTab; labelKey: AppMessageKey; Icon: typeof BookOpen }[] = [
+  { id: 'model', labelKey: 'exam.modelTest', Icon: FileCheck2 },
+  { id: 'institution', labelKey: 'profile.fieldInstitution', Icon: Building2 },
+  { id: 'subject', labelKey: 'admission.hub.filterSubject', Icon: BookOpen },
+];
+
+const readHubTab = (search: string): HubTab => {
+  const value = new URLSearchParams(search).get('by');
+  return value === 'model' || value === 'subject' ? value : 'institution';
+};
 
 const getScrollParent = (element: HTMLElement | null): HTMLElement | null => {
   let node = element?.parentElement ?? null;
@@ -70,6 +93,14 @@ const trackLabelKey = (track: QuestionBankTrack) =>
     : track === 'engineering'
       ? 'questionBank.hub.sectionEngineering'
       : 'questionBank.hub.sectionUniversities';
+
+const trackIcon = (track: QuestionBankTrack) => {
+  const Icon = track === 'medical' ? Stethoscope : track === 'engineering' ? Wrench : GraduationCap;
+  return <Icon className="h-5 w-5" aria-hidden="true" />;
+};
+
+const byCountThenName = (a: QuestionBankHubRow, b: QuestionBankHubRow): number =>
+  b.count - a.count || a.labelBn.localeCompare(b.labelBn, 'bn');
 
 export default function QuestionBankHub() {
   const { t } = useLanguage();
@@ -95,7 +126,7 @@ export default function QuestionBankHub() {
   const { payload, isPending, isError, error, refetch, isFetching } =
     useQuestionBankHub(requestedMode);
 
-  const [subjectsOpen, setSubjectsOpen] = useState(false);
+  const tab = readHubTab(location.search);
   const pageRef = useRef<HTMLDivElement>(null);
   const restoredKeyRef = useRef('');
 
@@ -104,7 +135,7 @@ export default function QuestionBankHub() {
 
   // The hub is a page students return to after every drill-down, so its scroll
   // position is restored the way the list restores its own. It waits for the
-  // payload: restoring before the rows exist would scroll a short page to the
+  // payload: restoring before the tiles exist would scroll a short page to the
   // top and lose the position anyway.
   useEffect(() => {
     if (isPending || isError) return;
@@ -155,6 +186,13 @@ export default function QuestionBankHub() {
     );
   };
 
+  const switchTab = (next: HubTab) => {
+    if (next === tab) return;
+    const params = new URLSearchParams(location.search);
+    params.set('by', next);
+    navigate({ pathname: '/question-bank', search: params.toString() }, { replace: true });
+  };
+
   const handleBack = () => {
     if (window.history.state?.idx > 0) {
       navigate(-1);
@@ -166,8 +204,8 @@ export default function QuestionBankHub() {
   if (bankMode.mode === 'neutral') {
     if (stageStatus === 'error' && stage === null) {
       return (
-        <div className="min-h-full bg-app px-4 pb-24 pt-3">
-          <div className="mx-auto max-w-2xl">
+        <div className="min-h-full bg-app pb-24 pt-3">
+          <div className="mx-auto w-full max-w-3xl">
             <HubError message={t('questionBank.hub.loadError')} onRetry={() => void refresh()} />
           </div>
         </div>
@@ -181,7 +219,7 @@ export default function QuestionBankHub() {
   return (
     <PullToRefresh onRefresh={() => refetch()}>
       <div ref={pageRef} className="min-h-full bg-app pb-24">
-        <div className="mx-auto max-w-2xl px-4 pt-2">
+        <div className="mx-auto w-full max-w-3xl pt-1">
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -244,42 +282,51 @@ export default function QuestionBankHub() {
             </div>
           )}
 
+          {/* Floating grouping control: stays reachable while the grid scrolls. */}
+          <div className="sticky top-0 z-20 -mx-1 mt-3 bg-app/95 px-1 pb-2 pt-1 backdrop-blur-md">
+            <div
+              role="tablist"
+              className="grid grid-cols-3 gap-1 rounded-full border border-card-border bg-card-bg/95 p-1 shadow-[0_8px_24px_-16px_rgba(15,23,42,0.55)]"
+            >
+              {HUB_TABS.map(({ id, labelKey, Icon }) => {
+                const active = tab === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => switchTab(id)}
+                    className={`flex h-10 items-center justify-center gap-1.5 rounded-full text-[11.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                      active
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-text-secondary active:bg-surface'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t(labelKey)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {isError ? (
-            <div className="mt-4">
+            <div className="mt-2">
               <HubError
                 message={t('questionBank.hub.loadError')}
                 onRetry={() => void refetch()}
               />
             </div>
           ) : activeMode === 'hsc' ? (
-            <HscHub payload={payload} />
+            <HscHub payload={payload} tab={tab} />
           ) : (
-            <AdmissionHub
-              payload={payload}
-              onOpenSubjects={() => setSubjectsOpen(true)}
-            />
+            <AdmissionHub payload={payload} tab={tab} />
           )}
         </div>
       </div>
-
-      <HubSubjectSheet
-        open={subjectsOpen}
-        rows={subjectsOf(payload)}
-        onClose={() => setSubjectsOpen(false)}
-        onSelect={(subjectId) => {
-          setSubjectsOpen(false);
-          navigate(hubAdmissionSubjectHref(subjectId));
-        }}
-      />
     </PullToRefresh>
   );
-}
-
-function subjectsOf(payload: QuestionBankHubPayload): QuestionBankHubRow[] {
-  const track = payload.sections.find(
-    (section) => section.kind === 'track' && section.primary
-  );
-  return track && track.kind === 'track' ? track.subjects : [];
 }
 
 function HubError({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -307,7 +354,7 @@ function EmptyHub() {
   const { t } = useLanguage();
 
   return (
-    <div className="mt-4 rounded-2xl border border-border-color bg-card-bg px-4 py-8 text-center">
+    <div className="mt-2 rounded-2xl border border-border-color bg-card-bg px-4 py-8 text-center">
       <p className="text-[13px] font-semibold text-text-primary">
         {t('questionBank.hub.emptyTitle')}
       </p>
@@ -318,100 +365,130 @@ function EmptyHub() {
   );
 }
 
-function HscHub({ payload }: { payload: QuestionBankHubPayload }) {
+function AllAdmissionRow({ count }: { count: number }) {
+  const { t } = useLanguage();
+
+  return (
+    <HubRowList>
+      <HubRow
+        label={t('questionBank.hub.allAdmission')}
+        count={count}
+        href={hubAllAdmissionHref()}
+      />
+    </HubRowList>
+  );
+}
+
+function HscHub({ payload, tab }: { payload: QuestionBankHubPayload; tab: HubTab }) {
   const { t, language } = useLanguage();
 
   const subjects = findSection(payload, 'hsc_subjects');
   const boards = findSection(payload, 'hsc_boards');
   const colleges = findSection(payload, 'hsc_colleges');
 
-  const collegeRows = colleges ? hubCollegeRows(colleges.rows) : [];
   const hasAny =
     (subjects?.rows.length ?? 0) > 0 ||
     (boards?.rows.length ?? 0) > 0 ||
-    collegeRows.length > 0;
+    (colleges?.rows.length ?? 0) > 0;
 
   if (!hasAny) return <EmptyHub />;
 
+  if (tab === 'subject') {
+    const rows = [...(subjects?.rows ?? [])].sort(byCountThenName);
+    if (rows.length === 0) return <EmptyHub />;
+
+    return (
+      <div className="mt-2 space-y-4">
+        <p className="px-1 text-[11px] font-medium text-text-secondary">
+          {t('questionBank.hub.subjectMeta', {
+            count: localizeDigits(rows.length, language),
+          })}
+        </p>
+        <HubGrid>
+          {rows.map((row) => (
+            <HubGridTile
+              key={row.id}
+              href={hubSubjectHref(row.id)}
+              label={row.labelBn}
+              meta={language === 'en' ? null : row.labelEn}
+              count={row.count}
+            />
+          ))}
+        </HubGrid>
+      </div>
+    );
+  }
+
+  if (tab === 'institution') {
+    const rows = [...(colleges?.rows ?? [])].sort(byCountThenName);
+    if (rows.length === 0) return <EmptyHub />;
+
+    return (
+      <div className="mt-2 space-y-3">
+        <p className="px-1 text-[11px] font-medium text-text-secondary">
+          {t('questionBank.hub.collegeMeta', {
+            count: localizeDigits(rows.length, language),
+          })}
+        </p>
+        <HubGrid>
+          {rows.map((row) => (
+            <HubGridTile
+              key={row.id}
+              href={hubInstitutionHref(row.id)}
+              label={row.labelBn}
+              count={row.count}
+            />
+          ))}
+        </HubGrid>
+        <Link
+          to={hubAllCollegesHref()}
+          className="flex min-h-11 items-center justify-center rounded-2xl border border-card-border bg-card-bg px-3.5 text-[12.5px] font-bold text-text-primary transition-colors active:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        >
+          {t('questionBank.hub.allColleges', {
+            count: localizeDigits(colleges?.rows.length ?? 0, language),
+          })}
+        </Link>
+      </div>
+    );
+  }
+
+  const boardRows = [...(boards?.rows ?? [])].sort(byCountThenName);
+  if (boardRows.length === 0) return <EmptyHub />;
+
   return (
-    <div className="mt-4 space-y-5">
-      {subjects && subjects.rows.length > 0 && (
-        <HubSection
-          title={t('questionBank.hub.sectionSubjects')}
-          meta={t('questionBank.hub.subjectMeta', {
-            count: localizeDigits(subjects.rows.length, language),
-          })}
-        >
-          <HubRowList>
-            {subjects.rows.map((row) => (
-              <HubRow
-                key={row.id}
-                label={row.labelBn}
-                count={row.count}
-                href={hubSubjectHref(row.id)}
-              />
-            ))}
-          </HubRowList>
-        </HubSection>
-      )}
-
-      {boards && boards.rows.length > 0 && (
-        <HubSection
-          title={t('questionBank.hub.sectionBoards')}
-          meta={t('questionBank.hub.boardMeta', {
-            count: localizeDigits(boards.rows.length, language),
-          })}
-        >
-          <HubRowList>
-            {boards.rows.map((row) => (
-              <HubRow
-                key={row.id}
-                label={row.labelBn}
-                count={row.count}
-                href={hubInstitutionHref(row.id)}
-              />
-            ))}
-          </HubRowList>
-        </HubSection>
-      )}
-
-      {colleges && collegeRows.length > 0 && (
-        <HubSection
-          title={t('questionBank.hub.sectionColleges')}
-          meta={t('questionBank.hub.collegeMeta', {
-            count: localizeDigits(colleges.rows.length, language),
-          })}
-        >
-          <HubRowList>
-            {collegeRows.map((row) => (
-              <HubRow
-                key={row.id}
-                label={row.labelBn}
-                count={row.count}
-                href={hubInstitutionHref(row.id)}
-              />
-            ))}
-            {hasMoreColleges(colleges.rows) && (
-              <HubRow
-                label={t('questionBank.hub.allColleges', {
-                  count: localizeDigits(colleges.rows.length, language),
-                })}
-                href={hubAllCollegesHref()}
-              />
-            )}
-          </HubRowList>
-        </HubSection>
-      )}
+    <div className="mt-2 space-y-4">
+      <section className="space-y-2">
+        <div className="flex items-baseline justify-between gap-2 px-1">
+          <h2 className="text-[13px] font-extrabold text-text-primary">
+            {t('questionBank.hub.sectionBoards')}
+          </h2>
+          <span className="text-[11px] font-medium text-text-secondary">
+            {t('questionBank.hub.boardMeta', {
+              count: localizeDigits(boardRows.length, language),
+            })}
+          </span>
+        </div>
+        <HubGrid>
+          {boardRows.map((row) => (
+            <HubGridTile
+              key={row.id}
+              href={hubInstitutionHref(row.id)}
+              label={row.labelBn}
+              count={row.count}
+            />
+          ))}
+        </HubGrid>
+      </section>
     </div>
   );
 }
 
 function AdmissionHub({
   payload,
-  onOpenSubjects,
+  tab,
 }: {
   payload: QuestionBankHubPayload;
-  onOpenSubjects: () => void;
+  tab: HubTab;
 }) {
   const { t, language } = useLanguage();
 
@@ -422,134 +499,85 @@ function AdmissionHub({
       section.kind === 'track'
   );
 
+  const primary = tracks.find((section) => section.primary) ?? null;
+  const varsity = tracks.find((section) => section.track === 'varsity') ?? null;
+
   if (tracks.length === 0) return <EmptyHub />;
 
-  return (
-    <div className="mt-4 space-y-5">
-      {allAdmission && (
-        <HubRowList className="border-primary/25 bg-primary/[0.04]">
-          <HubRow
-            label={t('questionBank.hub.allAdmission')}
-            count={allAdmission.count}
-            href={hubAllAdmissionHref()}
-          />
-        </HubRowList>
-      )}
+  if (tab === 'subject') {
+    const subjects = [...(primary?.subjects ?? [])].sort(byCountThenName);
+    if (subjects.length === 0) return <EmptyHub />;
 
-      {tracks.map((section) =>
-        section.primary ? (
-          <GoalTrackCard
-            key={section.track}
-            section={section}
-            logoById={logoById}
-            onOpenSubjects={onOpenSubjects}
-          />
-        ) : section.track === 'varsity' ? (
-          <HubSection
-            key={section.track}
-            title={t(trackLabelKey('varsity'))}
-            meta={t('questionBank.hub.questionMeta', {
-              count: localizeDigits(section.count, language),
-            })}
-          >
-            <UniversityGrid
-              rows={section.universities}
-              total={section.universityTotal}
-              logoById={logoById}
+    return (
+      <div className="mt-2 space-y-3">
+        <p className="px-1 text-[11px] font-medium text-text-secondary">
+          {t('questionBank.hub.subjectMeta', {
+            count: localizeDigits(subjects.length, language),
+          })}
+        </p>
+        <HubGrid>
+          {subjects.map((row) => (
+            <HubGridTile
+              key={row.id}
+              href={hubAdmissionSubjectHref(row.id)}
+              label={row.labelBn}
+              count={row.count}
             />
-          </HubSection>
-        ) : (
-          <HubRowList key={section.track}>
-            <HubRow
-              label={t(trackLabelKey(section.track))}
-              count={section.count}
-              href={hubTrackHref(section.track)}
-            />
-          </HubRowList>
-        )
-      )}
-    </div>
-  );
-}
-
-/**
- * The university grid: two logo cards per row, the same shape the admission
- * screen uses, so the student recognises a university by its crest before
- * reading its name.
- */
-function UniversityGrid({
-  rows,
-  total,
-  logoById,
-}: {
-  rows: QuestionBankHubRow[];
-  total?: number;
-  logoById: Record<string, string>;
-}) {
-  const { t, language } = useLanguage();
-  const shown = hubUniversityRows(rows);
-  const totalCount = total ?? rows.length;
-
-  return (
-    <div>
-      <div className="grid grid-cols-2 gap-2.5">
-        {shown.map((row) => (
-          <HubUniversityCard
-            key={row.id}
-            row={row}
-            logoUrl={logoById[row.id] ?? null}
-          />
-        ))}
+          ))}
+        </HubGrid>
+        {allAdmission && <AllAdmissionRow count={allAdmission.count} />}
       </div>
+    );
+  }
 
-      {totalCount > shown.length && (
-        <Link
-          to={hubAllUniversitiesHref()}
-          className="mt-2 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-card-border bg-card-bg px-3.5 text-[12.5px] font-bold text-text-primary transition-colors active:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        >
-          <span>
-            {t('questionBank.hub.allUniversities', {
-              count: localizeDigits(totalCount, language),
-            })}
-          </span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
-        </Link>
-      )}
-    </div>
-  );
-}
+  if (tab === 'institution') {
+    const universities = [...(varsity?.universities ?? [])].sort(byCountThenName);
+    if (universities.length === 0) return <EmptyHub />;
 
-function GoalTrackCard({
-  section,
-  logoById,
-  onOpenSubjects,
-}: {
-  section: Extract<QuestionBankHubPayload['sections'][number], { kind: 'track' }>;
-  logoById: Record<string, string>;
-  onOpenSubjects: () => void;
-}) {
-  const { t, language } = useLanguage();
-  const title = t(trackLabelKey(section.track));
-  const countLabel = localizeDigits(section.count, language);
+    return (
+      <div className="mt-2 space-y-3">
+        <p className="px-1 text-[11px] font-medium text-text-secondary">
+          {t('questionBank.hub.allUniversities', {
+            count: localizeDigits(varsity?.universityTotal ?? universities.length, language),
+          })}
+        </p>
+        <HubGrid>
+          {universities.map((row) => (
+            <HubUniversityCard
+              key={row.id}
+              row={row}
+              logoUrl={logoById[row.id] ?? null}
+            />
+          ))}
+        </HubGrid>
+        {allAdmission && <AllAdmissionRow count={allAdmission.count} />}
+      </div>
+    );
+  }
 
   return (
-    <section className="rounded-[22px] border border-primary/25 bg-primary/[0.05] p-3.5">
-      <header className="flex items-start justify-between gap-3 px-0.5">
-        <div className="min-w-0">
-          <p className="text-[11px] font-bold text-primary">
-            {t('questionBank.hub.goalKicker')}
-          </p>
-          <h2 className="mt-0.5 truncate text-[18px] font-extrabold leading-snug text-text-primary">
-            {title}
-          </h2>
-        </div>
-        <span className="shrink-0 pt-3 text-[12px] font-bold tabular-nums text-text-secondary">
-          {t('questionBank.hub.questionMeta', { count: countLabel })}
-        </span>
-      </header>
+    <div className="mt-2 space-y-4">
+      {primary && <GoalBanner section={primary} />}
 
-      {section.count === 0 ? (
-        <div className="mt-3 rounded-2xl bg-card-bg p-4">
+      <HubGrid>
+        {[...tracks]
+          .sort((a, b) => Number(b.primary) - Number(a.primary))
+          .map((section) => (
+            <HubGridTile
+              key={section.track}
+              href={hubTrackHref(section.track)}
+              label={t(trackLabelKey(section.track))}
+              icon={trackIcon(section.track)}
+              count={section.count}
+              tone={section.primary ? 'primary' : 'plain'}
+            />
+          ))}
+      </HubGrid>
+
+      {allAdmission && <AllAdmissionRow count={allAdmission.count} />}
+
+      {primary && primary.count === 0 && (
+        <div className="rounded-2xl border border-border-color bg-card-bg p-4">
           <p className="text-[13px] font-semibold text-text-primary">
             {t('questionBank.hub.goalEmptyTitle')}
           </p>
@@ -563,43 +591,40 @@ function GoalTrackCard({
             {t('questionBank.hub.seeAllAdmission')}
           </Link>
         </div>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {section.track === 'varsity' ? (
-            <UniversityGrid
-              rows={section.universities}
-              total={section.universityTotal}
-              logoById={logoById}
-            />
-          ) : (
-            <HubRowList>
-              <HubRow
-                label={t('questionBank.hub.openTrack', { track: title })}
-                count={section.count}
-                href={hubTrackHref(section.track)}
-              />
-            </HubRowList>
-          )}
-
-          {/* The RPC attaches the level-wide subject counts to the goal section
-              only; the compact sections stay one row each. */}
-          {section.subjects.length > 0 && (
-            <HubRowList>
-              <HubRow
-                label={t('questionBank.hub.bySubject')}
-                hint={t('questionBank.hub.bySubjectHint')}
-                onClick={onOpenSubjects}
-              />
-            </HubRowList>
-          )}
-
-          {isThinTrack(section.count) && (
-            <p className="px-1 text-[11px] font-medium leading-relaxed text-text-secondary">
-              {t('questionBank.hub.comingSoon')}
-            </p>
-          )}
-        </div>
       )}
-    </section>
+
+      {primary && isThinTrack(primary.count) && (
+        <p className="px-1 text-[11px] font-medium leading-relaxed text-text-secondary">
+          {t('questionBank.hub.comingSoon')}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The student's own goal, kept as one quiet line above the exam grid. */
+function GoalBanner({
+  section,
+}: {
+  section: Extract<QuestionBankHubPayload['sections'][number], { kind: 'track' }>;
+}) {
+  const { t, language } = useLanguage();
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[20px] border border-primary/25 bg-primary/[0.05] px-3.5 py-3">
+      <div className="min-w-0">
+        <p className="text-[10.5px] font-bold text-primary">
+          {t('questionBank.hub.goalKicker')}
+        </p>
+        <p className="mt-0.5 truncate text-[15px] font-extrabold text-text-primary">
+          {t(trackLabelKey(section.track))}
+        </p>
+      </div>
+      <span className="shrink-0 text-[11px] font-bold tabular-nums text-text-secondary">
+        {t('questionBank.hub.questionMeta', {
+          count: localizeDigits(section.count, language),
+        })}
+      </span>
+    </div>
   );
 }
