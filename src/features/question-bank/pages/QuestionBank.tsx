@@ -2,20 +2,13 @@ import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/shared/i18n/LanguageProvider';
 import { localizeDigits } from '@/shared/i18n/messages';
-import {
-  BookOpen,
-  ChevronLeft,
-  Filter,
-  RefreshCw,
-  Search,
-} from 'lucide-react';
+import { BookOpen, ChevronLeft, RefreshCw, Search } from 'lucide-react';
 import { Card } from '@/shared/components/ui/Card';
 import { Button } from '@/shared/components/ui/Button';
 import { Loader } from '@/shared/components/feedback/Loader';
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import QuestionCard from '../components/QuestionCard';
 import { BankLevelBar } from '../components/BankLevelBar';
-import { BankFilterSheet } from '../components/BankFilterSheet';
 import { BankGoalEmptyState } from '../components/BankGoalEmptyState';
 import { useStage } from '@/features/stage/hooks/useStage';
 import { needsGoalEmptyState, resolveBankMode } from '../utils/bankMode';
@@ -98,7 +91,6 @@ export default function QuestionBank() {
     questions,
     total,
     capped,
-    facets,
     isLoading,
     isQuestionsLoaded,
     isFetching,
@@ -116,7 +108,6 @@ export default function QuestionBank() {
   const pageRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const restoredScrollKeyRef = useRef('');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showInvalidSubjectNotice, setShowInvalidSubjectNotice] = useState(false);
   const [revealState, dispatchReveal] = useReducer(
     revealReducer,
@@ -401,7 +392,7 @@ export default function QuestionBank() {
           </section>
         ) : (
           <section className="space-y-3">
-            <div className="flex items-center justify-between gap-2 border-b border-border-color pb-2">
+            <div className="flex items-center gap-2 border-b border-border-color pb-2">
               <Button
                 variant="ghost"
                 onClick={handleBack}
@@ -409,24 +400,6 @@ export default function QuestionBank() {
               >
                 <ChevronLeft className="mr-1 h-4 w-4" />
                 {t('questionBank.back')}
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => setIsFilterOpen((current) => !current)}
-                className="inline-flex h-9 min-w-9 items-center gap-1.5 rounded-full px-3 text-xs font-bold"
-                aria-expanded={isFilterOpen}
-                aria-controls="question-bank-filters"
-              >
-                <Filter className="h-3.5 w-3.5" />
-                {isFilterOpen
-                  ? t('questionBank.closeFilters')
-                  : t('questionBank.openFilters')}
-                {activeFilterCount > 0 && (
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/10 px-1 text-[10px] font-bold text-primary">
-                    {localizeDigits(activeFilterCount, language)}
-                  </span>
-                )}
               </Button>
             </div>
 
@@ -470,11 +443,6 @@ export default function QuestionBank() {
                       shown: localizeDigits(questions.length, language),
                       total: localizeDigits(total, language),
                     })}
-                    {activeFilterCount > 0
-                      ? ` • ${t('questionBank.filters', {
-                          count: localizeDigits(activeFilterCount, language),
-                        })}`
-                      : ''}
                   </span>
 
                   {isFetching && !isFetchingNextPage && (
@@ -626,16 +594,6 @@ export default function QuestionBank() {
           </section>
         )}
       </div>
-
-      <BankFilterSheet
-        open={isFilterOpen}
-        facets={facets}
-        filters={filters}
-        activeCount={activeFilterCount}
-        onClose={() => setIsFilterOpen(false)}
-        onFilterChange={handleFilterChange}
-        onReset={handleResetFilters}
-      />
 
       {!isSubjectSelectionMode && questions.length > 0 && (
         <FloatingAnswerButton
