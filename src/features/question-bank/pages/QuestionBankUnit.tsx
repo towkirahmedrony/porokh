@@ -9,26 +9,29 @@ import { HubSection } from '../components/hub/HubSection';
 import { useQuestionBankHub } from '../hooks/useQuestionBankHub';
 import { useUniversityLogoMap } from '../hooks/useUniversityLogoMap';
 import { fetchQuestionBankFacets } from '../services/questionBankLevelService';
+import { fetchUnitPapers } from '../services/questionBankPaperService';
 import {
   hubUniversityPageHref,
   hubUniversityYearHref,
   hubUnitQuestionsHref,
 } from '../utils/questionBankHub';
+import { paperLabel } from '../utils/questionBankPaper';
 import {
   DEFAULT_QUESTION_BANK_FILTERS,
   type QuestionBankFilterState,
 } from '../types/questionBank';
 
 /**
- * One unit of one university, third step of the drill-down: its papers.
+ * One unit of one university, third step of the drill-down: its exam papers.
  *
- * Each row is a paper (an exam year) of this unit exactly, because the facets
- * request scopes the year facet by university and unit. Tapping a row opens the
- * question list with the year already applied, which is the last page of the
- * path. The all-questions row at the top is the same unit without a year for a
- * student who wants to revise everything.
+ * A year is not a paper. "2025-26" was sat in four shifts, and each shift (or
+ * set) is the paper a student actually wants, so the list is one row per paper
+ * with its own question count. Tapping a row opens exactly that paper's
+ * questions, which is the last page of the path. The all-questions row at the
+ * top is the same unit without a paper for a student who wants to revise
+ * everything.
  *
- * The unit's own label comes back in the same facets response: the unit facet is
+ * The unit's own label comes from the facets response: the unit facet is
  * counted with its own filter dropped, so it still lists every unit of this
  * university and the current one can be named without a second request.
  */
@@ -69,9 +72,16 @@ export default function QuestionBankUnit() {
     staleTime: 1000 * 60 * 2,
   });
 
+  const papersQuery = useQuery({
+    queryKey: ['question-bank', 'papers', filters],
+    queryFn: () => fetchUnitPapers(filters),
+    enabled: Boolean(institutionId && unitId),
+    staleTime: 1000 * 60 * 2,
+  });
+
   const facets = facetsQuery.data;
   const unit = facets?.admission_unit.find((row) => row.id === unitId) ?? null;
-  const years = facets?.exam_year ?? [];
+  const papers = papersQuery.data ?? [];
   const logoUrl = logoById[institutionId] ?? null;
 
   const questionMeta = (count: number) =>
@@ -153,33 +163,33 @@ export default function QuestionBankUnit() {
               <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
             </Link>
 
-            {(facetsQuery.isPending || years.length > 0) && (
-              <HubSection title={t('questionBank.hub.years')}>
+            {(papersQuery.isPending || papers.length > 0) && (
+              <HubSection title={t('admission.examType.pastExams')}>
                 <div className="space-y-2.5">
-                  {facetsQuery.isPending ? (
-                    [0, 1, 2].map((index) => (
+                  {papersQuery.isPending ? (
+                    [0, 1, 2, 3].map((index) => (
                       <div
                         key={index}
                         className="h-[74px] animate-pulse rounded-[22px] border border-card-border bg-card-bg"
                       />
                     ))
                   ) : (
-                    years.map((year) => (
+                    papers.map((paper) => (
                       <Link
-                        key={year.id}
-                        to={hubUniversityYearHref(institutionId, unitId, year.id)}
-                        className="!no-underline [text-decoration-line:none!important] flex items-center gap-3 rounded-[22px] border border-card-border bg-card-bg px-3.5 py-3 transition-colors active:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                        key={paper.key}
+                        to={hubUniversityYearHref(institutionId, unitId, paper.key)}
+                        className="!no-underline [text-decoration-line:none!important] flex items-center gap-3 rounded-[22px] border border-card-border bg-card-bg px-3.5 py-3.5 transition-colors active:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                       >
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-info/20 bg-info/10 text-info">
                           <CalendarDays className="h-[18px] w-[18px]" aria-hidden="true" />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-[14px] font-extrabold text-text-primary">
-                            {localizeDigits(year.labelBn ?? year.id, language)}
+                            {paperLabel(paper, language)}
                           </span>
                           <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-success">
                             <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                            {questionMeta(year.count)}
+                            {questionMeta(paper.count)}
                           </span>
                         </span>
                         <ChevronRight
@@ -193,7 +203,7 @@ export default function QuestionBankUnit() {
               </HubSection>
             )}
 
-            {!facetsQuery.isPending && years.length === 0 && (
+            {!papersQuery.isPending && papers.length === 0 && !papersQuery.isError && (
               <div className="rounded-2xl border border-border-color bg-card-bg px-4 py-8 text-center">
                 <p className="text-[13px] font-semibold text-text-primary">
                   {t('questionBank.hub.emptyTitle')}
